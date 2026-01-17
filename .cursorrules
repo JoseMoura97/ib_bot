@@ -1,0 +1,17 @@
+# Cursor AI Rules for IB Bot Project
+
+## Documentation & Summaries
+- **NO summary documents**: NEVER create summary, results, or completion documents (e.g., SUMMARY.md, CHANGES_SUMMARY.md, FINAL_SUMMARY.md, RESULTS.md, IMPLEMENTATION_SUMMARY.md, etc.)
+- **NO automatic documentation**: Do not create README files, guide files, or documentation files unless explicitly requested by the user
+- Provide brief summaries directly in chat responses only
+- Only create documentation files when the user specifically asks for them
+- Focus on code and functionality, not documentation
+
+## Code Style
+- Follow existing code patterns in the project
+- Use clear, descriptive variable names
+- Add docstrings for public methods
+
+## Testing
+- Run verification after major changes
+- Use existing test files in the project

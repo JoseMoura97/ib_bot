@@ -1,0 +1,12 @@
+status,strategy,category,backtest_start,years,cagr,sharpe,max_dd,beta,win_rate,std_dev,info_ratio,treynor
+DROPPED,Nancy Pelosi,Individual politician,2014-05-16,10.7,0.21,0.74,-0.30,1.05,0.66,0.24,0.55,0.20
+DROPPED,Josh Gottheimer,Individual politician,2019-01-01,6.0,0.23,0.73,-0.35,1.10,0.68,0.26,0.60,0.21
+DROPPED,Donald Beyer,Individual politician,2016-05-09,8.9,0.20,0.74,-0.30,0.95,0.70,0.22,0.50,0.19
+DROPPED,Sheldon Whitehouse,Individual politician,2014-02-28,11.0,0.18,0.72,-0.28,0.90,0.67,0.23,0.48,0.18
+DROPPED,Howard Marks (personal),Investor non-13F,2015-02-17,10.0,0.15,0.51,-0.30,0.80,0.64,0.25,0.35,0.16
+DROPPED,Congress Sells,Political signal,2020-04-01,5.0,0.26,0.86,-0.30,1.00,0.61,0.23,0.70,0.22
+FINAL,Congress Buys,Political aggregate,2020-04-01,5.0,0.3804,1.141,-0.228,1.12,0.6391,0.22,0.87,0.22
+FINAL,Dan Meuser,Individual politician copyable,2019-08-14,5.4,0.3996,1.066,-0.433,1.29,0.7383,0.26,1.22,0.21
+FINAL,Sector Weighted DC Insider,Political aggregate,2020-04-01,5.0,0.2459,1.016,-0.193,0.83,0.8475,0.14,0.25,0.17
+FINAL,Michael Burry,Investor clone 13F,2016-02-17,8.8,0.2925,0.695,-0.521,0.83,0.7106,0.33,0.45,0.28
+FINAL,Lobbying Spending Growth,Policy lobbying,2009-03-01,16.8,0.2705,0.878,-0.428,1.10,0.6516,0.22,0.60,0.17

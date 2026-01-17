@@ -1,0 +1,1336 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IB Bot — Strategy Performance Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #101a2e;
+      --text: #e6edf3;
+      --muted: #9fb0c0;
+      --border: #25324a;
+      --code-bg: #0f172a;
+      --accent: #7aa2f7;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", sans-serif;
+    }
+    .wrap {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 28px 18px 60px;
+    }
+    h1, h2, h3, h4 {
+      margin: 18px 0 10px;
+      line-height: 1.25;
+    }
+    h1 { font-size: 32px; margin-top: 0; }
+    h2 { font-size: 24px; color: var(--accent); margin-top: 40px; }
+    h3 { font-size: 20px; }
+    h4 { font-size: 16px; color: var(--accent); }
+    p { margin: 10px 0; color: var(--text); }
+    ul { margin: 10px 0 14px 18px; padding: 0; }
+    li { margin: 4px 0; color: var(--text); }
+    hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 30px 0;
+    }
+    code {
+      background: rgba(122, 162, 247, 0.12);
+      border: 1px solid rgba(122, 162, 247, 0.22);
+      padding: 1px 5px;
+      border-radius: 6px;
+      font-family: ui-monospace, monospace;
+      color: var(--text);
+    }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      overflow: auto;
+    }
+    pre code {
+      background: transparent;
+      border: none;
+      padding: 0;
+      border-radius: 0;
+      display: block;
+      color: var(--text);
+    }
+    
+    /* Chart Section */
+    .chart-container {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+      position: relative;
+      height: 500px;
+    }
+    .chart-canvas {
+      position: relative;
+      height: 100%;
+      width: 100%;
+    }
+    .controls {
+      margin: 20px 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .btn {
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    .btn:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+    .strategy-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+      margin: 20px 0;
+    }
+    .strategy-item {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      padding: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 12px;
+    }
+    .strategy-item:hover {
+      border-color: var(--accent);
+    }
+    .strategy-item.selected {
+      background: rgba(122, 162, 247, 0.15);
+      border-color: var(--accent);
+    }
+    .strategy-item input[type="checkbox"] {
+      margin-right: 8px;
+    }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--muted);
+    }
+    .error {
+      background: rgba(248, 113, 113, 0.1);
+      border: 1px solid rgba(248, 113, 113, 0.3);
+      padding: 16px;
+      border-radius: 8px;
+      color: #f87171;
+      margin: 20px 0;
+    }
+    .info {
+      background: rgba(122, 162, 247, 0.1);
+      border: 1px solid rgba(122, 162, 247, 0.3);
+      padding: 16px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    .stats {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin: 10px 0;
+    }
+    .stat-item {
+      background: var(--code-bg);
+      padding: 10px 16px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .stat-value {
+      font-size: 18px;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+    
+    /* Table Section */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 18px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin: 20px 0;
+    }
+    th, td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      white-space: nowrap;
+    }
+    th {
+      text-align: left;
+      font-weight: 700;
+      color: var(--text);
+      background: rgba(122, 162, 247, 0.08);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    th.group-header {
+      background: rgba(122, 162, 247, 0.15);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    tr:last-child td { border-bottom: none; }
+    .metric-group {
+      border-right: 2px solid var(--border);
+    }
+    .positive { color: #4ade80; }
+    .negative { color: #f87171; }
+    .neutral { color: var(--muted); }
+    .strategy-cell {
+      font-weight: 600;
+      min-width: 200px;
+      max-width: 250px;
+      white-space: normal;
+    }
+    .num-cell {
+      text-align: right;
+      font-family: ui-monospace, monospace;
+      font-size: 13px;
+    }
+    .footer {
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .section-nav {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin: 20px 0;
+    }
+    .section-nav a {
+      color: var(--accent);
+      text-decoration: none;
+      margin-right: 20px;
+      padding: 4px 0;
+      border-bottom: 2px solid transparent;
+      transition: border-color 0.2s;
+    }
+    .section-nav a:hover {
+      border-bottom-color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>📊 IB Bot — Strategy Performance Dashboard</h1>
+    <p style="color: var(--muted); font-size: 15px;">Comprehensive analysis of Quiver strategy replication with interactive visualizations and detailed metrics</p>
+    
+    <div class="section-nav">
+      <strong>Quick Navigation:</strong>
+      <a href="#plots">📈 Interactive Charts</a>
+      <a href="#metrics">📊 Detailed Metrics</a>
+      <a href="#rules">⚙️ Trading Rules</a>
+      <a href="#current-state">💡 Implementation Status</a>
+    </div>
+
+    <!-- INTERACTIVE PLOTS SECTION -->
+    <hr id="plots" />
+    <h2>📈 Interactive Performance Charts</h2>
+    <p>Strategy equity curves compared to SPY benchmark (all normalized to start at 100)</p>
+    
+    <div id="loading" class="loading">
+      <p>📊 Loading plot data...</p>
+      <p style="font-size: 12px; color: var(--muted);">If this takes too long, run: <code>python create_sample_plot_data.py</code></p>
+    </div>
+    
+    <div id="error" class="error" style="display: none;">
+      <h4>⚠️ Error Loading Data</h4>
+      <p id="error-message"></p>
+      <p style="font-size: 12px; margin-top: 12px;">To generate plot data, run:</p>
+      <code style="display: block; background: var(--bg); padding: 8px; border-radius: 4px; margin-top: 8px;">python create_sample_plot_data.py</code>
+    </div>
+    
+    <div id="content" style="display: none;">
+      
+      <div class="info">
+        <h4>📈 How to Use</h4>
+        <ul style="margin: 8px 0; padding-left: 20px;">
+          <li>Click on strategy names below to toggle them on/off in the chart</li>
+          <li>Use preset buttons to quickly compare groups of strategies</li>
+          <li>Hover over the chart to see values at specific dates</li>
+          <li>All curves are normalized to start at 100 for easy comparison</li>
+        </ul>
+      </div>
+      
+      <div class="controls">
+        <button class="btn" onclick="showAll()">Show All</button>
+        <button class="btn active" onclick="showTop5()">Top 5 CAGR</button>
+        <button class="btn" onclick="showCongress()">Congress Strategies</button>
+        <button class="btn" onclick="showLobbying()">Lobbying Strategies</button>
+        <button class="btn" onclick="showPoliticians()">Individual Politicians</button>
+        <button class="btn" onclick="hideAll()">Hide All</button>
+      </div>
+      
+      <div id="stats" class="stats"></div>
+      
+      <div class="chart-container">
+        <canvas id="chart" class="chart-canvas"></canvas>
+      </div>
+      
+      <h3>Select Strategies</h3>
+      <div id="strategy-list" class="strategy-grid"></div>
+      
+    </div>
+
+    <!-- DETAILED METRICS SECTION -->
+    <hr id="metrics" />
+    <h2>📊 Complete Metrics Comparison (Quiver vs Our Backtests)</h2>
+    <p>Comprehensive performance metrics for all strategies. All metrics are computed vs <strong>SPY</strong> benchmark using aligned daily returns and RF=2% annualized.</p>
+    <p><strong>Color Legend:</strong> <span class="positive">Green = Positive difference</span>, <span class="negative">Red = Negative difference</span></p>
+    
+    <div class="table-wrap"><table>
+<thead>
+<tr>
+<th rowspan="2" class="strategy-cell">Strategy</th>
+<th rowspan="2">Start Date</th>
+<th colspan="3" class="group-header metric-group">CAGR</th>
+<th colspan="3" class="group-header metric-group">Max Drawdown</th>
+<th colspan="3" class="group-header metric-group">Sharpe Ratio</th>
+<th colspan="3" class="group-header metric-group">Beta</th>
+<th colspan="3" class="group-header metric-group">Alpha</th>
+<th colspan="3" class="group-header metric-group">Info Ratio</th>
+<th colspan="3" class="group-header metric-group">Treynor</th>
+<th colspan="3" class="group-header metric-group">Win Rate</th>
+<th colspan="3" class="group-header">Trades</th>
+</tr>
+<tr>
+<th class="num-cell">Quiver</th>
+<th class="num-cell">Ours</th>
+<th class="num-cell metric-group">Δ</th>
+<th class="num-cell">Quiver</th>
+<th class="num-cell">Ours</th>
+<th class="num-cell metric-group">Δ</th>
+<th class="num-cell">Quiver</th>
+<th class="num-cell">Ours</th>
+<th class="num-cell metric-group">Δ</th>
+<th class="num-cell">Quiver</th>
+<th class="num-cell">Ours</th>
+<th class="num-cell metric-group">Δ</th>
+<th class="num-cell">Quiver</th>
+<th class="num-cell">Ours</th>
+<th class="num-cell metric-group">Δ</th>
+<th class="num-cell">Quiver</th>
+<th class="num-cell">Ours</th>
+<th class="num-cell metric-group">Δ</th>
+<th class="num-cell">Quiver</th>
+<th class="num-cell">Ours</th>
+<th class="num-cell metric-group">Δ</th>
+<th class="num-cell">Quiver</th>
+<th class="num-cell">Ours</th>
+<th class="num-cell metric-group">Δ</th>
+<th class="num-cell">Quiver</th>
+<th class="num-cell">Ours</th>
+<th class="num-cell">Δ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="strategy-cell">Congress Buys</td>
+<td>2020-04-01</td>
+<td class="num-cell">35.13%</td>
+<td class="num-cell">29.00%</td>
+<td class="num-cell metric-group negative">-6.13%</td>
+<td class="num-cell">-22.80%</td>
+<td class="num-cell">-34.62%</td>
+<td class="num-cell metric-group negative">-11.82%</td>
+<td class="num-cell">1.059</td>
+<td class="num-cell">1.136</td>
+<td class="num-cell metric-group positive">+0.077</td>
+<td class="num-cell">1.120</td>
+<td class="num-cell">1.158</td>
+<td class="num-cell metric-group positive">+0.038</td>
+<td class="num-cell">0.090</td>
+<td class="num-cell">0.063</td>
+<td class="num-cell metric-group negative">-0.027</td>
+<td class="num-cell">0.760</td>
+<td class="num-cell">0.744</td>
+<td class="num-cell metric-group negative">-0.016</td>
+<td class="num-cell">0.200</td>
+<td class="num-cell">0.229</td>
+<td class="num-cell metric-group positive">+0.029</td>
+<td class="num-cell">64.11%</td>
+<td class="num-cell">55.33%</td>
+<td class="num-cell metric-group negative">-8.78%</td>
+<td class="num-cell">2914</td>
+<td class="num-cell">3287</td>
+<td class="num-cell positive">+373</td>
+</tr>
+<tr>
+<td class="strategy-cell">Congress Sells</td>
+<td>2020-04-01</td>
+<td class="num-cell">22.46%</td>
+<td class="num-cell">13.28%</td>
+<td class="num-cell metric-group negative">-9.18%</td>
+<td class="num-cell">-26.40%</td>
+<td class="num-cell">-27.17%</td>
+<td class="num-cell metric-group negative">-0.77%</td>
+<td class="num-cell">0.724</td>
+<td class="num-cell">0.480</td>
+<td class="num-cell metric-group negative">-0.244</td>
+<td class="num-cell">1.060</td>
+<td class="num-cell">0.623</td>
+<td class="num-cell metric-group negative">-0.437</td>
+<td class="num-cell">0.010</td>
+<td class="num-cell">0.036</td>
+<td class="num-cell metric-group positive">+0.026</td>
+<td class="num-cell">0.150</td>
+<td class="num-cell">-0.160</td>
+<td class="num-cell metric-group negative">-0.310</td>
+<td class="num-cell">0.130</td>
+<td class="num-cell">0.246</td>
+<td class="num-cell metric-group positive">+0.116</td>
+<td class="num-cell">62.42%</td>
+<td class="num-cell">54.30%</td>
+<td class="num-cell metric-group negative">-8.12%</td>
+<td class="num-cell">2856</td>
+<td class="num-cell">3348</td>
+<td class="num-cell positive">+492</td>
+</tr>
+<tr>
+<td class="strategy-cell">Congress Long-Short</td>
+<td>2020-04-01</td>
+<td class="num-cell">32.29%</td>
+<td class="num-cell">34.01%</td>
+<td class="num-cell metric-group positive">+1.72%</td>
+<td class="num-cell">-24.60%</td>
+<td class="num-cell">-30.41%</td>
+<td class="num-cell metric-group negative">-5.81%</td>
+<td class="num-cell">0.904</td>
+<td class="num-cell">1.013</td>
+<td class="num-cell metric-group positive">+0.109</td>
+<td class="num-cell">1.120</td>
+<td class="num-cell">0.533</td>
+<td class="num-cell metric-group negative">-0.587</td>
+<td class="num-cell">0.080</td>
+<td class="num-cell">0.253</td>
+<td class="num-cell metric-group positive">+0.173</td>
+<td class="num-cell">0.540</td>
+<td class="num-cell">0.540</td>
+<td class="num-cell metric-group neutral">0.000</td>
+<td class="num-cell">0.190</td>
+<td class="num-cell">0.653</td>
+<td class="num-cell metric-group positive">+0.463</td>
+<td class="num-cell">51.52%</td>
+<td class="num-cell">54.33%</td>
+<td class="num-cell metric-group positive">+2.81%</td>
+<td class="num-cell">5334</td>
+<td class="num-cell">6858</td>
+<td class="num-cell positive">+1524</td>
+</tr>
+<tr>
+<td class="strategy-cell">U.S. House Long-Short</td>
+<td>2020-04-01</td>
+<td class="num-cell">32.08%</td>
+<td class="num-cell">26.11%</td>
+<td class="num-cell metric-group negative">-5.97%</td>
+<td class="num-cell">-24.30%</td>
+<td class="num-cell">-29.55%</td>
+<td class="num-cell metric-group negative">-5.25%</td>
+<td class="num-cell">0.908</td>
+<td class="num-cell">0.929</td>
+<td class="num-cell metric-group positive">+0.021</td>
+<td class="num-cell">1.060</td>
+<td class="num-cell">0.508</td>
+<td class="num-cell metric-group negative">-0.552</td>
+<td class="num-cell">0.080</td>
+<td class="num-cell">0.174</td>
+<td class="num-cell metric-group positive">+0.094</td>
+<td class="num-cell">0.520</td>
+<td class="num-cell">0.329</td>
+<td class="num-cell metric-group negative">-0.191</td>
+<td class="num-cell">0.200</td>
+<td class="num-cell">0.521</td>
+<td class="num-cell metric-group positive">+0.321</td>
+<td class="num-cell">53.90%</td>
+<td class="num-cell">53.85%</td>
+<td class="num-cell metric-group neutral">-0.05%</td>
+<td class="num-cell">5152</td>
+<td class="num-cell">5644</td>
+<td class="num-cell positive">+492</td>
+</tr>
+<tr>
+<td class="strategy-cell">Transportation and Infra. Committee (House)</td>
+<td>2020-04-01</td>
+<td class="num-cell">33.96%</td>
+<td class="num-cell">31.81%</td>
+<td class="num-cell metric-group negative">-2.15%</td>
+<td class="num-cell">-39.90%</td>
+<td class="num-cell">-35.28%</td>
+<td class="num-cell metric-group positive">+4.62%</td>
+<td class="num-cell">1.104</td>
+<td class="num-cell">1.207</td>
+<td class="num-cell metric-group positive">+0.103</td>
+<td class="num-cell">0.730</td>
+<td class="num-cell">0.516</td>
+<td class="num-cell metric-group negative">-0.214</td>
+<td class="num-cell">0.130</td>
+<td class="num-cell">0.204</td>
+<td class="num-cell metric-group positive">+0.074</td>
+<td class="num-cell">0.560</td>
+<td class="num-cell">0.481</td>
+<td class="num-cell metric-group negative">-0.079</td>
+<td class="num-cell">0.290</td>
+<td class="num-cell">0.576</td>
+<td class="num-cell metric-group positive">+0.286</td>
+<td class="num-cell">63.79%</td>
+<td class="num-cell">55.01%</td>
+<td class="num-cell metric-group negative">-8.78%</td>
+<td class="num-cell">1900</td>
+<td class="num-cell">3158</td>
+<td class="num-cell positive">+1258</td>
+</tr>
+<tr>
+<td class="strategy-cell">Energy and Commerce Committee (House)</td>
+<td>2020-04-01</td>
+<td class="num-cell">19.14%</td>
+<td class="num-cell">33.87%</td>
+<td class="num-cell metric-group positive">+14.73%</td>
+<td class="num-cell">-39.90%</td>
+<td class="num-cell">-33.93%</td>
+<td class="num-cell metric-group positive">+5.97%</td>
+<td class="num-cell">0.605</td>
+<td class="num-cell">1.292</td>
+<td class="num-cell metric-group positive">+0.687</td>
+<td class="num-cell">0.850</td>
+<td class="num-cell">0.800</td>
+<td class="num-cell metric-group negative">-0.050</td>
+<td class="num-cell">0.010</td>
+<td class="num-cell">0.153</td>
+<td class="num-cell metric-group positive">+0.143</td>
+<td class="num-cell">-0.020</td>
+<td class="num-cell">0.560</td>
+<td class="num-cell metric-group positive">+0.580</td>
+<td class="num-cell">0.140</td>
+<td class="num-cell">0.371</td>
+<td class="num-cell metric-group positive">+0.231</td>
+<td class="num-cell">69.43%</td>
+<td class="num-cell">55.01%</td>
+<td class="num-cell metric-group negative">-14.42%</td>
+<td class="num-cell">1457</td>
+<td class="num-cell">3158</td>
+<td class="num-cell positive">+1701</td>
+</tr>
+<tr>
+<td class="strategy-cell">Homeland Security Committee (Senate)</td>
+<td>2020-04-01</td>
+<td class="num-cell">12.32%</td>
+<td class="num-cell">6.92%</td>
+<td class="num-cell metric-group negative">-5.40%</td>
+<td class="num-cell">-32.90%</td>
+<td class="num-cell">-51.28%</td>
+<td class="num-cell metric-group negative">-18.38%</td>
+<td class="num-cell">0.384</td>
+<td class="num-cell">0.209</td>
+<td class="num-cell metric-group negative">-0.175</td>
+<td class="num-cell">0.440</td>
+<td class="num-cell">0.700</td>
+<td class="num-cell metric-group positive">+0.260</td>
+<td class="num-cell">0.020</td>
+<td class="num-cell">-0.051</td>
+<td class="num-cell metric-group negative">-0.071</td>
+<td class="num-cell">-0.290</td>
+<td class="num-cell">-0.497</td>
+<td class="num-cell metric-group negative">-0.207</td>
+<td class="num-cell">0.160</td>
+<td class="num-cell">0.106</td>
+<td class="num-cell metric-group negative">-0.054</td>
+<td class="num-cell">69.67%</td>
+<td class="num-cell">51.17%</td>
+<td class="num-cell metric-group negative">-18.50%</td>
+<td class="num-cell">1552</td>
+<td class="num-cell">3347</td>
+<td class="num-cell positive">+1795</td>
+</tr>
+<tr>
+<td class="strategy-cell">Top Lobbying Spenders</td>
+<td>2009-03-01</td>
+<td class="num-cell">16.67%</td>
+<td class="num-cell">17.26%</td>
+<td class="num-cell metric-group positive">+0.59%</td>
+<td class="num-cell">-28.80%</td>
+<td class="num-cell">-33.56%</td>
+<td class="num-cell metric-group negative">-4.76%</td>
+<td class="num-cell">0.736</td>
+<td class="num-cell">0.867</td>
+<td class="num-cell metric-group positive">+0.131</td>
+<td class="num-cell">0.870</td>
+<td class="num-cell">0.179</td>
+<td class="num-cell metric-group negative">-0.691</td>
+<td class="num-cell">0.020</td>
+<td class="num-cell">0.172</td>
+<td class="num-cell metric-group positive">+0.152</td>
+<td class="num-cell">0.030</td>
+<td class="num-cell">0.092</td>
+<td class="num-cell metric-group positive">+0.062</td>
+<td class="num-cell">0.120</td>
+<td class="num-cell">1.138</td>
+<td class="num-cell metric-group positive">+1.018</td>
+<td class="num-cell">80.05%</td>
+<td class="num-cell">54.30%</td>
+<td class="num-cell metric-group negative">-25.75%</td>
+<td class="num-cell">1813</td>
+<td class="num-cell">704</td>
+<td class="num-cell negative">-1109</td>
+</tr>
+<tr>
+<td class="strategy-cell">Lobbying Spending Growth</td>
+<td>2009-03-01</td>
+<td class="num-cell">26.61%</td>
+<td class="num-cell">21.55%</td>
+<td class="num-cell metric-group negative">-5.06%</td>
+<td class="num-cell">-42.80%</td>
+<td class="num-cell">-44.38%</td>
+<td class="num-cell metric-group negative">-1.58%</td>
+<td class="num-cell">0.864</td>
+<td class="num-cell">0.758</td>
+<td class="num-cell metric-group negative">-0.106</td>
+<td class="num-cell">1.100</td>
+<td class="num-cell">0.228</td>
+<td class="num-cell metric-group negative">-0.872</td>
+<td class="num-cell">0.070</td>
+<td class="num-cell">0.135</td>
+<td class="num-cell metric-group positive">+0.065</td>
+<td class="num-cell">0.580</td>
+<td class="num-cell">-0.018</td>
+<td class="num-cell metric-group negative">-0.598</td>
+<td class="num-cell">0.170</td>
+<td class="num-cell">0.776</td>
+<td class="num-cell metric-group positive">+0.606</td>
+<td class="num-cell">65.39%</td>
+<td class="num-cell">53.40%</td>
+<td class="num-cell metric-group negative">-11.99%</td>
+<td class="num-cell">2662</td>
+<td class="num-cell">1869</td>
+<td class="num-cell negative">-793</td>
+</tr>
+<tr>
+<td class="strategy-cell">Top Gov Contract Recipients</td>
+<td>2009-03-01</td>
+<td class="num-cell">19.37%</td>
+<td class="num-cell">19.01%</td>
+<td class="num-cell metric-group negative">-0.36%</td>
+<td class="num-cell">-41.20%</td>
+<td class="num-cell">-41.61%</td>
+<td class="num-cell metric-group negative">-0.41%</td>
+<td class="num-cell">0.769</td>
+<td class="num-cell">0.873</td>
+<td class="num-cell metric-group positive">+0.104</td>
+<td class="num-cell">0.860</td>
+<td class="num-cell">0.159</td>
+<td class="num-cell metric-group negative">-0.701</td>
+<td class="num-cell">0.040</td>
+<td class="num-cell">0.138</td>
+<td class="num-cell metric-group positive">+0.098</td>
+<td class="num-cell">0.220</td>
+<td class="num-cell">-0.060</td>
+<td class="num-cell metric-group negative">-0.280</td>
+<td class="num-cell">0.150</td>
+<td class="num-cell">1.052</td>
+<td class="num-cell metric-group positive">+0.902</td>
+<td class="num-cell">71.14%</td>
+<td class="num-cell">53.40%</td>
+<td class="num-cell metric-group negative">-17.74%</td>
+<td class="num-cell">3142</td>
+<td class="num-cell">4393</td>
+<td class="num-cell positive">+1251</td>
+</tr>
+<tr>
+<td class="strategy-cell">Sector Weighted DC Insider</td>
+<td>2020-04-01</td>
+<td class="num-cell">24.05%</td>
+<td class="num-cell">24.43%</td>
+<td class="num-cell metric-group positive">+0.38%</td>
+<td class="num-cell">-18.70%</td>
+<td class="num-cell">-18.17%</td>
+<td class="num-cell metric-group positive">+0.53%</td>
+<td class="num-cell">0.994</td>
+<td class="num-cell">1.318</td>
+<td class="num-cell metric-group positive">+0.324</td>
+<td class="num-cell">0.830</td>
+<td class="num-cell">0.160</td>
+<td class="num-cell metric-group negative">-0.670</td>
+<td class="num-cell">0.040</td>
+<td class="num-cell">0.176</td>
+<td class="num-cell metric-group positive">+0.136</td>
+<td class="num-cell">0.240</td>
+<td class="num-cell">0.100</td>
+<td class="num-cell metric-group negative">-0.140</td>
+<td class="num-cell">0.170</td>
+<td class="num-cell">1.284</td>
+<td class="num-cell metric-group positive">+1.114</td>
+<td class="num-cell">84.26%</td>
+<td class="num-cell">55.29%</td>
+<td class="num-cell metric-group negative">-28.97%</td>
+<td class="num-cell">910</td>
+<td class="num-cell">302</td>
+<td class="num-cell negative">-608</td>
+</tr>
+<tr>
+<td class="strategy-cell">Nancy Pelosi</td>
+<td>2014-05-16</td>
+<td class="num-cell">21.06%</td>
+<td class="num-cell">44.13%</td>
+<td class="num-cell metric-group positive">+23.07%</td>
+<td class="num-cell">-37.40%</td>
+<td class="num-cell">-33.45%</td>
+<td class="num-cell metric-group positive">+3.95%</td>
+<td class="num-cell">0.733</td>
+<td class="num-cell">1.090</td>
+<td class="num-cell metric-group positive">+0.357</td>
+<td class="num-cell">1.140</td>
+<td class="num-cell">0.231</td>
+<td class="num-cell metric-group negative">-0.909</td>
+<td class="num-cell">0.050</td>
+<td class="num-cell">0.264</td>
+<td class="num-cell metric-group positive">+0.214</td>
+<td class="num-cell">0.630</td>
+<td class="num-cell">0.454</td>
+<td class="num-cell metric-group negative">-0.176</td>
+<td class="num-cell">0.120</td>
+<td class="num-cell">1.276</td>
+<td class="num-cell metric-group positive">+1.156</td>
+<td class="num-cell">73.04%</td>
+<td class="num-cell">53.81%</td>
+<td class="num-cell metric-group negative">-19.23%</td>
+<td class="num-cell">715</td>
+<td class="num-cell">307</td>
+<td class="num-cell negative">-408</td>
+</tr>
+<tr>
+<td class="strategy-cell">Dan Meuser</td>
+<td>2019-08-14</td>
+<td class="num-cell">38.58%</td>
+<td class="num-cell">32.79%</td>
+<td class="num-cell metric-group negative">-5.79%</td>
+<td class="num-cell">-43.30%</td>
+<td class="num-cell">-60.80%</td>
+<td class="num-cell metric-group negative">-17.50%</td>
+<td class="num-cell">1.037</td>
+<td class="num-cell">0.829</td>
+<td class="num-cell metric-group negative">-0.208</td>
+<td class="num-cell">1.290</td>
+<td class="num-cell">0.256</td>
+<td class="num-cell metric-group negative">-1.034</td>
+<td class="num-cell">0.140</td>
+<td class="num-cell">0.326</td>
+<td class="num-cell metric-group positive">+0.186</td>
+<td class="num-cell">1.170</td>
+<td class="num-cell">0.485</td>
+<td class="num-cell metric-group negative">-0.685</td>
+<td class="num-cell">0.210</td>
+<td class="num-cell">1.453</td>
+<td class="num-cell metric-group positive">+1.243</td>
+<td class="num-cell">74.00%</td>
+<td class="num-cell">54.98%</td>
+<td class="num-cell metric-group negative">-19.02%</td>
+<td class="num-cell">492</td>
+<td class="num-cell">125</td>
+<td class="num-cell negative">-367</td>
+</tr>
+<tr>
+<td class="strategy-cell">Josh Gottheimer</td>
+<td>2019-01-01</td>
+<td class="num-cell">21.11%</td>
+<td class="num-cell">15.51%</td>
+<td class="num-cell metric-group negative">-5.60%</td>
+<td class="num-cell">-33.70%</td>
+<td class="num-cell">-35.71%</td>
+<td class="num-cell metric-group negative">-2.01%</td>
+<td class="num-cell">0.652</td>
+<td class="num-cell">0.605</td>
+<td class="num-cell metric-group negative">-0.047</td>
+<td class="num-cell">1.100</td>
+<td class="num-cell">0.213</td>
+<td class="num-cell metric-group negative">-0.887</td>
+<td class="num-cell">0.020</td>
+<td class="num-cell">0.135</td>
+<td class="num-cell metric-group positive">+0.115</td>
+<td class="num-cell">0.340</td>
+<td class="num-cell">-0.033</td>
+<td class="num-cell metric-group negative">-0.373</td>
+<td class="num-cell">0.120</td>
+<td class="num-cell">0.816</td>
+<td class="num-cell metric-group positive">+0.696</td>
+<td class="num-cell">87.23%</td>
+<td class="num-cell">54.63%</td>
+<td class="num-cell metric-group negative">-32.60%</td>
+<td class="num-cell">3091</td>
+<td class="num-cell">90851</td>
+<td class="num-cell positive">+87760</td>
+</tr>
+<tr>
+<td class="strategy-cell">Donald Beyer</td>
+<td>2016-05-09</td>
+<td class="num-cell">20.07%</td>
+<td class="num-cell">12.65%</td>
+<td class="num-cell metric-group negative">-7.42%</td>
+<td class="num-cell">-32.50%</td>
+<td class="num-cell">-32.54%</td>
+<td class="num-cell metric-group neutral">-0.04%</td>
+<td class="num-cell">0.728</td>
+<td class="num-cell">0.477</td>
+<td class="num-cell metric-group negative">-0.251</td>
+<td class="num-cell">0.990</td>
+<td class="num-cell">0.195</td>
+<td class="num-cell metric-group negative">-0.795</td>
+<td class="num-cell">0.040</td>
+<td class="num-cell">0.080</td>
+<td class="num-cell metric-group positive">+0.040</td>
+<td class="num-cell">0.430</td>
+<td class="num-cell">-0.261</td>
+<td class="num-cell metric-group negative">-0.691</td>
+<td class="num-cell">0.130</td>
+<td class="num-cell">0.591</td>
+<td class="num-cell metric-group positive">+0.461</td>
+<td class="num-cell">77.95%</td>
+<td class="num-cell">54.46%</td>
+<td class="num-cell metric-group negative">-23.49%</td>
+<td class="num-cell">1188</td>
+<td class="num-cell">2156</td>
+<td class="num-cell positive">+968</td>
+</tr>
+<tr>
+<td class="strategy-cell">Sheldon Whitehouse</td>
+<td>2014-02-28</td>
+<td class="num-cell">18.38%</td>
+<td class="num-cell">11.13%</td>
+<td class="num-cell metric-group negative">-7.25%</td>
+<td class="num-cell">-30.60%</td>
+<td class="num-cell">-37.20%</td>
+<td class="num-cell metric-group negative">-6.60%</td>
+<td class="num-cell">0.711</td>
+<td class="num-cell">0.471</td>
+<td class="num-cell metric-group negative">-0.240</td>
+<td class="num-cell">1.070</td>
+<td class="num-cell">0.223</td>
+<td class="num-cell metric-group negative">-0.847</td>
+<td class="num-cell">0.030</td>
+<td class="num-cell">0.104</td>
+<td class="num-cell metric-group positive">+0.074</td>
+<td class="num-cell">0.760</td>
+<td class="num-cell">-0.144</td>
+<td class="num-cell metric-group negative">-0.904</td>
+<td class="num-cell">0.110</td>
+<td class="num-cell">0.650</td>
+<td class="num-cell metric-group positive">+0.540</td>
+<td class="num-cell">80.94%</td>
+<td class="num-cell">55.37%</td>
+<td class="num-cell metric-group negative">-25.57%</td>
+<td class="num-cell">6756</td>
+<td class="num-cell">8894</td>
+<td class="num-cell positive">+2138</td>
+</tr>
+<tr>
+<td class="strategy-cell">Insider Purchases</td>
+<td>2014-01-01</td>
+<td class="num-cell">18.67%</td>
+<td class="num-cell">34.37%</td>
+<td class="num-cell metric-group positive">+15.70%</td>
+<td class="num-cell">-52.90%</td>
+<td class="num-cell">-34.68%</td>
+<td class="num-cell metric-group positive">+18.22%</td>
+<td class="num-cell">0.540</td>
+<td class="num-cell">1.193</td>
+<td class="num-cell metric-group positive">+0.653</td>
+<td class="num-cell">0.910</td>
+<td class="num-cell">0.208</td>
+<td class="num-cell metric-group negative">-0.702</td>
+<td class="num-cell">0.070</td>
+<td class="num-cell">0.400</td>
+<td class="num-cell metric-group positive">+0.330</td>
+<td class="num-cell">0.270</td>
+<td class="num-cell">0.685</td>
+<td class="num-cell metric-group positive">+0.415</td>
+<td class="num-cell">0.150</td>
+<td class="num-cell">2.102</td>
+<td class="num-cell metric-group positive">+1.952</td>
+<td class="num-cell">60.89%</td>
+<td class="num-cell">50.92%</td>
+<td class="num-cell metric-group negative">-9.97%</td>
+<td class="num-cell">7483</td>
+<td class="num-cell">3096</td>
+<td class="num-cell negative">-4387</td>
+</tr>
+</tbody></table></div>
+    
+    <p><strong>Notes:</strong></p>
+    <ul>
+      <li>Validation writes/merges to <code>.cache/last_validation_results.json</code> so you can run strategies incrementally.</li>
+      <li>Quiver's "Total Trades" may not match our "trades" proxy; our current implementation counts <strong>position weight changes across rebalance events</strong>.</li>
+      <li>For Max Drawdown: a smaller (less negative) number is better. Positive Δ means ours performed better.</li>
+    </ul>
+    
+    <p style="margin-top: 20px;"><strong>How to regenerate metrics:</strong></p>
+    <pre><code>$env:PYTHONUNBUFFERED='1'
+$env:PRICE_SOURCE='auto'
+$env:PROGRESS='0'
+python validate_quiver_replication.py
+python print_summary_table.py</code></pre>
+
+    <!-- TRADING RULES SECTION -->
+    <hr id="rules" />
+    <h2>⚙️ Trading Rules (Implementation Details)</h2>
+    <p><strong>Source of truth:</strong></p>
+    <ul>
+      <li><strong>Scheduling + defaults</strong>: <code>quiver_strategy_rules.py</code></li>
+      <li><strong>Replication knobs (basket size, etc.)</strong>: <code>strategy_replicator.py</code></li>
+      <li><strong>Execution</strong>: <code>rebalancing_backtest_engine.py</code></li>
+    </ul>
+    
+    <table>
+<thead><tr><th>Strategy</th><th>Signal source</th><th>Selection / universe</th><th>Weighting</th><th>Rebalance</th><th>Lookback</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Congress Buys</td><td>Bulk congress trades</td><td>Top <strong>10</strong> purchases (all Congress)</td><td>$ size (Amount/Range)</td><td>Weekly (Mon)</td><td>120</td><td>Long-only</td></tr>
+<tr><td>Congress Sells</td><td>Bulk congress trades</td><td>Top <strong>10</strong> sales (all Congress)</td><td>$ size (Amount/Range)</td><td>Weekly (Mon)</td><td>120</td><td>Long-only (matches Quiver page naming, not a short book)</td></tr>
+<tr><td>Congress Long-Short</td><td>Bulk congress trades</td><td>Long <strong>top 20 buys</strong>, short <strong>top 20 sells</strong></td><td>Transaction-size</td><td>Weekly (Mon)</td><td>120</td><td>130/30 exposure</td></tr>
+<tr><td>U.S. House Long-Short</td><td>Bulk congress trades</td><td>Long <strong>top 10 House buys</strong>, short <strong>top 10 House sells</strong></td><td>Count/frequency</td><td>Weekly (Mon)</td><td>120</td><td>130/30 exposure</td></tr>
+<tr><td>Transportation and Infra. Committee (House)</td><td>Bulk congress trades</td><td>Committee-member purchases, top <strong>10</strong></td><td>$ size</td><td>Weekly (Mon)</td><td>120</td><td>Committee inferred from Quiver naming; implemented as "committee strategy family"</td></tr>
+<tr><td>Nancy Pelosi</td><td>Bulk congress trades</td><td>Mirror traded tickers (incl family)</td><td>Equal</td><td><strong>On trade dates</strong></td><td>365</td><td>Event-driven rebalance dates (not daily approximation)</td></tr>
+<tr><td>Dan Meuser</td><td>Bulk congress trades</td><td>Mirror traded tickers (incl family)</td><td>Equal</td><td>On trade dates</td><td>365</td><td></td></tr>
+<tr><td>Josh Gottheimer</td><td>Bulk congress trades</td><td>Mirror traded tickers (incl family)</td><td>Equal</td><td>On trade dates</td><td>365</td><td></td></tr>
+<tr><td>Donald Beyer</td><td>Bulk congress trades</td><td>Mirror traded tickers (incl family)</td><td>Equal</td><td>On trade dates</td><td>365</td><td></td></tr>
+<tr><td>Sheldon Whitehouse</td><td>Bulk congress trades</td><td>Mirror traded tickers (incl family)</td><td>Equal</td><td>On trade dates</td><td>365</td><td></td></tr>
+<tr><td>Top Lobbying Spenders</td><td>Lobbying feed / holdings</td><td>Top <strong>10</strong> by trailing spend</td><td>Equal</td><td>Monthly (day 1)</td><td>90</td><td>If holdings time-series exists, we prefer Quiver weights snapshot</td></tr>
+<tr><td>Lobbying Spending Growth</td><td>Lobbying feed / holdings</td><td>Top by QoQ growth</td><td>Equal</td><td>Monthly (day 1)</td><td>90</td><td>Same holdings preference behavior</td></tr>
+<tr><td>Top Gov Contract Recipients</td><td>Contracts / holdings</td><td>Top <strong>20</strong> recipients</td><td>Contract value</td><td>Monthly (day 1)</td><td>90</td><td>Same holdings preference behavior</td></tr>
+<tr><td>Sector Weighted DC Insider</td><td>Holdings time-series</td><td>Provided</td><td>Provided</td><td>Monthly (day 1)</td><td>—</td><td>Uses Quiver holdings snapshot when available</td></tr>
+<tr><td>WSB Top 10 / Analyst Long / House Natural Resources / Energy &amp; Commerce (House) / Homeland Security (Senate)</td><td>Holdings time-series</td><td>Provided</td><td>Provided</td><td>Weekly/Monthly (per rule)</td><td>—</td><td>Designed to follow Quiver holdings snapshots (closest match)</td></tr>
+<tr><td>Insider Purchases</td><td>Insider feed / holdings</td><td>Top <strong>10</strong> proprietary score</td><td>Equal</td><td>Weekly (Mon)</td><td>90</td><td>Uses Quiver holdings snapshot when available; otherwise uses underlying feed</td></tr>
+</tbody></table>
+
+    <!-- IMPLEMENTATION STATUS SECTION -->
+    <hr id="current-state" />
+    <h2>💡 Implementation Status</h2>
+    <ul>
+      <li><strong>Strategy metadata + Quiver benchmarks</strong>: scraped from <code>https://www.quiverquant.com/strategies/</code> into <code>.cache/quiver_strategies_site.json</code> (About + Key Metrics).</li>
+      <li><strong>Signals</strong>: fetched via Quiver API (raw feeds and/or <code>beta/strategies/holdings</code> time-series) in <code>quiver_engine.py</code>.</li>
+      <li><strong>Pricing</strong>: <code>backtest_engine.py</code> supports <code>PRICE_SOURCE=yfinance|ib|auto</code> with disk caching for both sources.</li>
+      <li><strong>Backtesting</strong>: <code>rebalancing_backtest_engine.py</code> runs rolling, rebalance-based replication with long/short support and optional progress bars.</li>
+      <li><strong>Rules</strong>: Congress/committee/LS lookback drift is unified: <strong>120d</strong> is now the single source of truth in <code>quiver_strategy_rules.py</code> and read by <code>strategy_replicator.py</code>.</li>
+      <li><strong>Metrics</strong>: the backtest computes comprehensive stats (beta/alpha/IR/treynor vs <strong>SPY</strong>, win rate, avg win/loss, std dev, 1d/30d/1y returns, trades).</li>
+    </ul>
+
+    <div class="footer">
+      Generated: <span id="timestamp"></span> | 
+      <a href="#plots" style="color: var(--accent);">↑ Back to Top</a>
+    </div>
+  </div>
+
+  <script>
+    // Set timestamp
+    document.getElementById('timestamp').textContent = new Date().toLocaleString();
+    
+    let plotData = null;
+    let chart = null;
+    let selectedStrategies = new Set();
+    
+    // Color palette for strategies
+    const colors = [
+      '#7aa2f7', '#bb9af7', '#7dcfff', '#9ece6a', '#e0af68',
+      '#f7768e', '#ff9e64', '#73daca', '#b4f9f8', '#2ac3de',
+      '#c0caf5', '#a9b1d6', '#9aa5ce', '#cfc9c2', '#565f89'
+    ];
+    
+    // Load plot data
+    async function loadPlotData() {
+      try {
+        const response = await fetch('.cache/plot_data.json');
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        plotData = await response.json();
+        
+        if (!plotData || !plotData.strategies) {
+          throw new Error('Invalid plot data format');
+        }
+        
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('content').style.display = 'block';
+        
+        initializeChart();
+        initializeStrategyList();
+        showTop5(); // Show top 5 by default
+        
+      } catch (error) {
+        console.error('Error loading plot data:', error);
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error').style.display = 'block';
+        document.getElementById('error-message').textContent = error.message;
+      }
+    }
+    
+    function initializeChart() {
+      const ctx = document.getElementById('chart').getContext('2d');
+      
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          datasets: []
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top',
+              labels: {
+                color: '#e6edf3',
+                font: { size: 11 },
+                usePointStyle: true,
+                padding: 10,
+                boxWidth: 6,
+                boxHeight: 6
+              }
+            },
+            tooltip: {
+              backgroundColor: '#101a2e',
+              titleColor: '#e6edf3',
+              bodyColor: '#e6edf3',
+              borderColor: '#25324a',
+              borderWidth: 1,
+              padding: 12,
+              displayColors: true,
+              callbacks: {
+                label: function(context) {
+                  return context.dataset.label + ': ' + context.parsed.y.toFixed(2);
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              type: 'time',
+              time: {
+                unit: 'month',
+                displayFormats: {
+                  month: 'MMM yyyy'
+                }
+              },
+              grid: {
+                color: '#25324a',
+                drawBorder: false
+              },
+              ticks: {
+                color: '#9fb0c0',
+                font: { size: 11 }
+              }
+            },
+            y: {
+              grid: {
+                color: '#25324a',
+                drawBorder: false
+              },
+              ticks: {
+                color: '#9fb0c0',
+                font: { size: 11 },
+                callback: function(value) {
+                  return value.toFixed(0);
+                }
+              },
+              title: {
+                display: true,
+                text: 'Normalized Value (Start = 100)',
+                color: '#9fb0c0',
+                font: { size: 12 }
+              }
+            }
+          }
+        }
+      });
+    }
+    
+    function initializeStrategyList() {
+      const container = document.getElementById('strategy-list');
+      container.innerHTML = '';
+      
+      // Sort strategies by CAGR descending
+      const strategyNames = Object.keys(plotData.strategies).sort((a, b) => {
+        return plotData.strategies[b].cagr - plotData.strategies[a].cagr;
+      });
+      
+      strategyNames.forEach(name => {
+        const strategy = plotData.strategies[name];
+        const div = document.createElement('div');
+        div.className = 'strategy-item';
+        div.innerHTML = `
+          <label style="cursor: pointer; display: block;">
+            <input type="checkbox" id="strat-${name.replace(/[^a-zA-Z0-9]/g, '-')}" onchange="toggleStrategy('${name}')">
+            <strong>${name}</strong><br>
+            <span style="font-size: 11px; color: var(--muted);">
+              CAGR: ${strategy.cagr.toFixed(1)}% | Sharpe: ${strategy.sharpe.toFixed(2)}
+            </span>
+          </label>
+        `;
+        container.appendChild(div);
+      });
+    }
+    
+    function toggleStrategy(name) {
+      if (selectedStrategies.has(name)) {
+        selectedStrategies.delete(name);
+      } else {
+        selectedStrategies.add(name);
+      }
+      updateChart();
+      updateStrategyList();
+    }
+    
+    function updateStrategyList() {
+      const strategyNames = Object.keys(plotData.strategies);
+      strategyNames.forEach(name => {
+        const checkbox = document.getElementById(`strat-${name.replace(/[^a-zA-Z0-9]/g, '-')}`);
+        const parent = checkbox.closest('.strategy-item');
+        if (selectedStrategies.has(name)) {
+          checkbox.checked = true;
+          parent.classList.add('selected');
+        } else {
+          // Remove onchange temporarily to prevent triggering toggleStrategy
+          const oldOnchange = checkbox.onchange;
+          checkbox.onchange = null;
+          checkbox.checked = false;
+          checkbox.onchange = oldOnchange;
+          parent.classList.remove('selected');
+        }
+      });
+    }
+    
+    function updateChart() {
+      const datasets = [];
+      
+      // Always show SPY benchmark
+      if (plotData.benchmark) {
+        datasets.push({
+          label: 'SPY (Benchmark)',
+          data: plotData.benchmark.dates.map((date, i) => ({
+            x: date,
+            y: plotData.benchmark.values[i]
+          })),
+          borderColor: '#9fb0c0',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          pointRadius: 0,
+          tension: 0.1
+        });
+      }
+      
+      // Add selected strategies
+      Array.from(selectedStrategies).forEach((name, index) => {
+        const strategy = plotData.strategies[name];
+        if (!strategy) return;
+        
+        const color = colors[index % colors.length];
+        datasets.push({
+          label: name,
+          data: strategy.dates.map((date, i) => ({
+            x: date,
+            y: strategy.values[i]
+          })),
+          borderColor: color,
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.1
+        });
+      });
+      
+      chart.data.datasets = datasets;
+      chart.update();
+      
+      updateStats();
+    }
+    
+    function updateStats() {
+      const container = document.getElementById('stats');
+      
+      // If no strategies selected, show SPY benchmark stats
+      if (selectedStrategies.size === 0) {
+        // Calculate SPY metrics from historical data (approximate)
+        // SPY typically has ~10-12% CAGR, 0.4-0.6 Sharpe, -30 to -50% MaxDD
+        container.innerHTML = `
+          <div class="stat-item">
+            <div class="stat-label">Benchmark</div>
+            <div class="stat-value">SPY</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Avg CAGR</div>
+            <div class="stat-value positive">~10-12%</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Avg Sharpe</div>
+            <div class="stat-value">~0.5-0.6</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Historical MaxDD</div>
+            <div class="stat-value negative">~-35% to -50%</div>
+          </div>
+        `;
+        return;
+      }
+      
+      // Calculate aggregate stats
+      let totalCAGR = 0;
+      let totalSharpe = 0;
+      let worstDD = 0;
+      let bestCAGR = -Infinity;
+      let bestName = '';
+      
+      selectedStrategies.forEach(name => {
+        const s = plotData.strategies[name];
+        totalCAGR += s.cagr;
+        totalSharpe += s.sharpe;
+        worstDD = Math.min(worstDD, s.max_drawdown);
+        if (s.cagr > bestCAGR) {
+          bestCAGR = s.cagr;
+          bestName = name;
+        }
+      });
+      
+      const avgCAGR = totalCAGR / selectedStrategies.size;
+      const avgSharpe = totalSharpe / selectedStrategies.size;
+      
+      container.innerHTML = `
+        <div class="stat-item">
+          <div class="stat-label">Strategies</div>
+          <div class="stat-value">${selectedStrategies.size}</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Avg CAGR</div>
+          <div class="stat-value ${avgCAGR > 0 ? 'positive' : 'negative'}">${avgCAGR.toFixed(1)}%</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Avg Sharpe</div>
+          <div class="stat-value">${avgSharpe.toFixed(2)}</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Worst MaxDD</div>
+          <div class="stat-value negative">${worstDD.toFixed(1)}%</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Best Performer</div>
+          <div class="stat-value" style="font-size: 12px;">${bestName}</div>
+        </div>
+      `;
+    }
+    
+    // Preset functions
+    function showAll() {
+      selectedStrategies = new Set(Object.keys(plotData.strategies));
+      updateChart();
+      updateStrategyList();
+      setActiveButton(0);
+    }
+    
+    function showTop5() {
+      const sorted = Object.entries(plotData.strategies)
+        .sort((a, b) => b[1].cagr - a[1].cagr)
+        .slice(0, 5)
+        .map(([name]) => name);
+      selectedStrategies = new Set(sorted);
+      updateChart();
+      updateStrategyList();
+      setActiveButton(1);
+    }
+    
+    function showCongress() {
+      selectedStrategies = new Set(
+        Object.keys(plotData.strategies).filter(name => 
+          name.includes('Congress') || name.includes('House')
+        )
+      );
+      updateChart();
+      updateStrategyList();
+      setActiveButton(2);
+    }
+    
+    function showLobbying() {
+      selectedStrategies = new Set(
+        Object.keys(plotData.strategies).filter(name => 
+          name.includes('Lobbying') || name.includes('Contract')
+        )
+      );
+      updateChart();
+      updateStrategyList();
+      setActiveButton(3);
+    }
+    
+    function showPoliticians() {
+      const politicians = ['Nancy Pelosi', 'Dan Meuser', 'Josh Gottheimer', 'Donald Beyer', 'Sheldon Whitehouse'];
+      selectedStrategies = new Set(
+        Object.keys(plotData.strategies).filter(name => 
+          politicians.includes(name)
+        )
+      );
+      updateChart();
+      updateStrategyList();
+      setActiveButton(4);
+    }
+    
+    function hideAll() {
+      selectedStrategies = new Set();
+      updateChart();
+      updateStrategyList();
+      setActiveButton(5);
+    }
+    
+    function setActiveButton(index) {
+      document.querySelectorAll('.btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i === index);
+      });
+    }
+    
+    // Load data on page load
+    loadPlotData();
+  </script>
+</body>
+</html>

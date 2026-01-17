@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IB Bot — Full Summary</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #101a2e;
+      --text: #e6edf3;
+      --muted: #9fb0c0;
+      --border: #25324a;
+      --code-bg: #0f172a;
+      --accent: #7aa2f7;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Liberation Sans", sans-serif;
+    }
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 18px 60px;
+    }
+    h3, h4, h5, h6 {
+      margin: 18px 0 10px;
+      line-height: 1.25;
+    }
+    h3 { font-size: 22px; }
+    h4 { font-size: 16px; color: var(--accent); }
+    p { margin: 10px 0; color: var(--text); }
+    ul { margin: 10px 0 14px 18px; padding: 0; }
+    li { margin: 4px 0; color: var(--text); }
+    hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 18px 0;
+    }
+    code {
+      background: rgba(122, 162, 247, 0.12);
+      border: 1px solid rgba(122, 162, 247, 0.22);
+      padding: 1px 5px;
+      border-radius: 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      color: var(--text);
+    }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      overflow: auto;
+    }
+    pre code {
+      background: transparent;
+      border: none;
+      padding: 0;
+      border-radius: 0;
+      display: block;
+      color: var(--text);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 18px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    th, td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th {
+      text-align: left;
+      font-weight: 700;
+      color: var(--text);
+      background: rgba(122, 162, 247, 0.08);
+    }
+    tr:last-child td { border-bottom: none; }
+    .footer {
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h3>IB Bot — Full Summary (comparisons + trading rules)</h3>
+<h4>Current state</h4>
+<ul>
+<li><strong>Strategy metadata + Quiver benchmarks</strong>: scraped from <code>https://www.quiverquant.com/strategies/</code> into <code>.cache/quiver_strategies_site.json</code> (About + Key Metrics).</li>
+<li><strong>Signals</strong>: fetched via Quiver API (raw feeds and/or <code>beta/strategies/holdings</code> time-series) in <code>quiver_engine.py</code>.</li>
+<li><strong>Pricing</strong>: <code>backtest_engine.py</code> supports <code>PRICE_SOURCE=yfinance|ib|auto</code> with disk caching for both sources.</li>
+<li><strong>Backtesting</strong>: <code>rebalancing_backtest_engine.py</code> runs rolling, rebalance-based replication with long/short support and now prints optional progress bars.</li>
+<li><strong>Rules</strong>: Congress/committee/LS lookback drift is unified: <strong>120d</strong> is now the single source of truth in <code>quiver_strategy_rules.py</code> and read by <code>strategy_replicator.py</code>.</li>
+<li><strong>“Other metrics” added</strong>: the backtest now computes additional stats (beta/alpha/IR/treynor vs <strong>SPY</strong>, win rate, avg win/loss, std dev, 1d/30d/1y returns, trades).</li>
+</ul>
+<hr />
+<h4>Trading rules (what we implement)</h4>
+<p>Source of truth:</p>
+<ul>
+<li><strong>Scheduling + defaults</strong>: <code>quiver_strategy_rules.py</code></li>
+<li><strong>Replication knobs (basket size, etc.)</strong>: <code>strategy_replicator.py</code> (now reads lookback from rules)</li>
+<li><strong>Execution</strong>: <code>rebalancing_backtest_engine.py</code></li>
+</ul>
+<table>
+<thead><tr><th>Strategy</th><th>Signal source</th><th>Selection / universe</th><th>Weighting</th><th>Rebalance</th><th>Lookback</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Congress Buys</td><td>Bulk congress trades</td><td>Top <strong>10</strong> purchases (all Congress)</td><td>$ size (Amount/Range)</td><td>Weekly (Mon)</td><td>120</td><td>Long-only</td></tr>
+<tr><td>Congress Sells</td><td>Bulk congress trades</td><td>Top <strong>10</strong> sales (all Congress)</td><td>$ size (Amount/Range)</td><td>Weekly (Mon)</td><td>120</td><td>Long-only (matches Quiver page naming, not a short book)</td></tr>
+<tr><td>Congress Long-Short</td><td>Bulk congress trades</td><td>Long <strong>top 20 buys</strong>, short <strong>top 20 sells</strong></td><td>Transaction-size</td><td>Weekly (Mon)</td><td>120</td><td>130/30 exposure</td></tr>
+<tr><td>U.S. House Long-Short</td><td>Bulk congress trades</td><td>Long <strong>top 10 House buys</strong>, short <strong>top 10 House sells</strong></td><td>Count/frequency</td><td>Weekly (Mon)</td><td>120</td><td>130/30 exposure</td></tr>
+<tr><td>Transportation and Infra. Committee (House)</td><td>Bulk congress trades</td><td>Committee-member purchases, top <strong>10</strong></td><td>$ size</td><td>Weekly (Mon)</td><td>120</td><td>Committee inferred from Quiver naming; implemented as “committee strategy family”</td></tr>
+<tr><td>Nancy Pelosi</td><td>Bulk congress trades</td><td>Mirror traded tickers (incl family)</td><td>Equal</td><td><strong>On trade dates</strong></td><td>365</td><td>Event-driven rebalance dates (not daily approximation)</td></tr>
+<tr><td>Dan Meuser</td><td>Bulk congress trades</td><td>Mirror traded tickers (incl family)</td><td>Equal</td><td>On trade dates</td><td>365</td><td></td></tr>
+<tr><td>Josh Gottheimer</td><td>Bulk congress trades</td><td>Mirror traded tickers (incl family)</td><td>Equal</td><td>On trade dates</td><td>365</td><td></td></tr>
+<tr><td>Donald Beyer</td><td>Bulk congress trades</td><td>Mirror traded tickers (incl family)</td><td>Equal</td><td>On trade dates</td><td>365</td><td></td></tr>
+<tr><td>Sheldon Whitehouse</td><td>Bulk congress trades</td><td>Mirror traded tickers (incl family)</td><td>Equal</td><td>On trade dates</td><td>365</td><td></td></tr>
+<tr><td>Top Lobbying Spenders</td><td>Lobbying feed / holdings</td><td>Top <strong>10</strong> by trailing spend</td><td>Equal</td><td>Monthly (day 1)</td><td>90</td><td>If holdings time-series exists, we prefer Quiver weights snapshot</td></tr>
+<tr><td>Lobbying Spending Growth</td><td>Lobbying feed / holdings</td><td>Top by QoQ growth</td><td>Equal</td><td>Monthly (day 1)</td><td>90</td><td>Same holdings preference behavior</td></tr>
+<tr><td>Top Gov Contract Recipients</td><td>Contracts / holdings</td><td>Top <strong>20</strong> recipients</td><td>Contract value</td><td>Monthly (day 1)</td><td>90</td><td>Same holdings preference behavior</td></tr>
+<tr><td>Sector Weighted DC Insider</td><td>Holdings time-series</td><td>Provided</td><td>Provided</td><td>Monthly (day 1)</td><td>—</td><td>Uses Quiver holdings snapshot when available</td></tr>
+<tr><td>WSB Top 10 / Analyst Long / House Natural Resources / Energy &amp; Commerce (House) / Homeland Security (Senate)</td><td>Holdings time-series</td><td>Provided</td><td>Provided</td><td>Weekly/Monthly (per rule)</td><td>—</td><td>Designed to follow Quiver holdings snapshots (closest match)</td></tr>
+<tr><td>Insider Purchases</td><td>Insider feed / holdings</td><td>Top <strong>10</strong> proprietary score</td><td>Equal</td><td>Weekly (Mon)</td><td>90</td><td>Uses Quiver holdings snapshot when available; otherwise uses underlying feed</td></tr>
+</tbody></table>
+<hr />
+<h4>Comparison table (Quiver vs our backtests) — core metrics</h4>
+<p>These are the latest recorded comparisons for <strong>CAGR / Sharpe / MaxDD</strong> (from our local runs) vs Quiver site metrics.</p>
+<table>
+<thead><tr><th>Strategy</th><th>Status</th><th>Q Start</th><th>Q_CAGR</th><th>Our_CAGR</th><th>Diff</th><th>Q_Sharpe</th><th>Our_Sharpe</th><th>Diff</th><th>Q_MaxDD</th><th>Our_MaxDD</th><th>Diff</th></tr></thead>
+<tbody>
+<tr><td>Congress Buys</td><td>done</td><td>2020-04-01</td><td>35.13%</td><td>29.00%</td><td>-6.13%</td><td>1.059</td><td>1.136</td><td>0.077</td><td>-22.80%</td><td>-34.62%</td><td>-11.82%</td></tr>
+<tr><td>Congress Sells</td><td>done</td><td>2020-04-01</td><td>22.46%</td><td>13.28%</td><td>-9.18%</td><td>0.724</td><td>0.480</td><td>-0.244</td><td>-26.40%</td><td>-27.17%</td><td>-0.77%</td></tr>
+<tr><td>Congress Long-Short</td><td>done</td><td>2020-04-01</td><td>32.29%</td><td>34.01%</td><td>1.72%</td><td>0.904</td><td>1.013</td><td>0.109</td><td>-24.60%</td><td>-30.41%</td><td>-5.81%</td></tr>
+<tr><td>U.S. House Long-Short</td><td>done</td><td>2020-04-01</td><td>32.08%</td><td>26.11%</td><td>-5.97%</td><td>0.908</td><td>0.929</td><td>0.021</td><td>-24.30%</td><td>-29.55%</td><td>-5.25%</td></tr>
+<tr><td>Transportation and Infra. Committee (House)</td><td>done</td><td>2020-04-01</td><td>33.96%</td><td>31.81%</td><td>-2.15%</td><td>1.104</td><td>1.207</td><td>0.103</td><td>-39.90%</td><td>-35.28%</td><td>4.62%</td></tr>
+<tr><td>Energy and Commerce Committee (House)</td><td>done</td><td>2020-04-01</td><td>19.14%</td><td>33.87%</td><td>14.73%</td><td>0.605</td><td>1.292</td><td>0.687</td><td>-39.90%</td><td>-33.93%</td><td>5.97%</td></tr>
+<tr><td>Homeland Security Committee (Senate)</td><td>done</td><td>2020-04-01</td><td>12.32%</td><td>6.92%</td><td>-5.40%</td><td>0.384</td><td>0.209</td><td>-0.175</td><td>-32.90%</td><td>-51.28%</td><td>-18.38%</td></tr>
+<tr><td>Top Lobbying Spenders</td><td>done</td><td>2009-03-01</td><td>16.67%</td><td>17.26%</td><td>0.59%</td><td>0.736</td><td>0.867</td><td>0.131</td><td>-28.80%</td><td>-33.56%</td><td>-4.76%</td></tr>
+<tr><td>Lobbying Spending Growth</td><td>done</td><td>2009-03-01</td><td>26.61%</td><td>21.55%</td><td>-5.06%</td><td>0.864</td><td>0.758</td><td>-0.106</td><td>-42.80%</td><td>-44.38%</td><td>-1.58%</td></tr>
+<tr><td>Top Gov Contract Recipients</td><td>done</td><td>2009-03-01</td><td>19.37%</td><td>19.01%</td><td>-0.36%</td><td>0.769</td><td>0.873</td><td>0.104</td><td>-41.20%</td><td>-41.61%</td><td>-0.41%</td></tr>
+<tr><td>Sector Weighted DC Insider</td><td>done</td><td>2020-04-01</td><td>24.05%</td><td>24.43%</td><td>0.38%</td><td>0.994</td><td>1.318</td><td>0.324</td><td>-18.70%</td><td>-18.17%</td><td>0.53%</td></tr>
+<tr><td>Nancy Pelosi</td><td>done</td><td>2014-05-16</td><td>21.06%</td><td>44.13%</td><td>23.07%</td><td>0.733</td><td>1.090</td><td>0.357</td><td>-37.40%</td><td>-33.45%</td><td>3.95%</td></tr>
+<tr><td>Dan Meuser</td><td>done</td><td>2019-08-14</td><td>38.58%</td><td>32.79%</td><td>-5.79%</td><td>1.037</td><td>0.829</td><td>-0.208</td><td>-43.30%</td><td>-60.80%</td><td>-17.50%</td></tr>
+<tr><td>Josh Gottheimer</td><td>done</td><td>2019-01-01</td><td>21.11%</td><td>15.51%</td><td>-5.60%</td><td>0.652</td><td>0.605</td><td>-0.047</td><td>-33.70%</td><td>-35.71%</td><td>-2.01%</td></tr>
+<tr><td>Donald Beyer</td><td>done</td><td>2016-05-09</td><td>20.07%</td><td>12.65%</td><td>-7.42%</td><td>0.728</td><td>0.477</td><td>-0.251</td><td>-32.50%</td><td>-32.54%</td><td>-0.04%</td></tr>
+<tr><td>Sheldon Whitehouse</td><td>done</td><td>2014-02-28</td><td>18.38%</td><td>11.13%</td><td>-7.25%</td><td>0.711</td><td>0.471</td><td>-0.240</td><td>-30.60%</td><td>-37.20%</td><td>-6.60%</td></tr>
+<tr><td>Insider Purchases</td><td>done</td><td>2014-01-01</td><td>18.67%</td><td>34.37%</td><td>15.70%</td><td>0.540</td><td>1.193</td><td>0.653</td><td>-52.90%</td><td>-34.68%</td><td>18.22%</td></tr>
+</tbody></table>
+<hr />
+<h4>“Other metrics” (beta/alpha/IR/treynor/win-rate/trades) vs SPY</h4>
+<p>We compute these now, benchmarked vs <strong>SPY</strong> using daily returns alignment and a standard RF \(2% annualized\).</p>
+<p>How to generate a full table for all strategies:</p>
+<pre><code class="language-powershell">$env:PYTHONUNBUFFERED='1'
+$env:PRICE_SOURCE='auto'   # or 'ib'
+$env:PROGRESS='0'
+&amp; "venv_stable\Scripts\python.exe" -u validate_quiver_replication.py
+&amp; "venv_stable\Scripts\python.exe" print_summary_table.py
+</code></pre>
+<p>Notes:</p>
+<ul>
+<li>Validation writes/merges to <code>.cache/last_validation_results.json</code> so you can run strategies incrementally.</li>
+<li>Quiver’s “Total Trades” may not match our “trades” proxy; our current implementation counts <strong>position weight changes across rebalance events</strong>.</li>
+</ul>
+    <hr /><h4>Expanded metrics comparison (Quiver vs Our)</h4><p><em>Notes:</em> Our metrics are computed vs <code>SPY</code> using aligned daily returns and RF=2% annualized. Quiver values come from the scraped site cache. Missing values show as N/A.</p><div class="table-wrap"><table><thead><tr><th>Strategy</th><th>Q_Beta</th><th>Our_Beta</th><th>Diff</th><th>Q_Alpha</th><th>Our_Alpha</th><th>Diff</th><th>Q_IR</th><th>Our_IR</th><th>Diff</th><th>Q_Treynor</th><th>Our_Treynor</th><th>Diff</th><th>Q_WinRate</th><th>Our_WinRate</th><th>Diff</th><th>Q_Trades</th><th>Our_Trades</th><th>Diff</th></tr></thead>
+<tbody>
+<tr><td>Congress Buys</td><td>1.120</td><td>1.158</td><td>0.038</td><td>0.090</td><td>0.063</td><td>-0.027</td><td>0.760</td><td>0.744</td><td>-0.016</td><td>0.200</td><td>0.229</td><td>0.029</td><td>64.11%</td><td>55.33%</td><td>-8.78%</td><td>2914</td><td>3287</td><td>373</td></tr>
+<tr><td>Congress Sells</td><td>1.060</td><td>0.623</td><td>-0.437</td><td>0.010</td><td>0.036</td><td>0.026</td><td>0.150</td><td>-0.160</td><td>-0.310</td><td>0.130</td><td>0.246</td><td>0.116</td><td>62.42%</td><td>54.30%</td><td>-8.12%</td><td>2856</td><td>3348</td><td>492</td></tr>
+<tr><td>Congress Long-Short</td><td>1.120</td><td>0.533</td><td>-0.587</td><td>0.080</td><td>0.253</td><td>0.173</td><td>0.540</td><td>0.540</td><td>-0.000</td><td>0.190</td><td>0.653</td><td>0.463</td><td>51.52%</td><td>54.33%</td><td>2.81%</td><td>5334</td><td>6858</td><td>1524</td></tr>
+<tr><td>U.S. House Long-Short</td><td>1.060</td><td>0.508</td><td>-0.552</td><td>0.080</td><td>0.174</td><td>0.094</td><td>0.520</td><td>0.329</td><td>-0.191</td><td>0.200</td><td>0.521</td><td>0.321</td><td>53.90%</td><td>53.85%</td><td>-0.05%</td><td>5152</td><td>5644</td><td>492</td></tr>
+<tr><td>Transportation and Infra. Committee (House)</td><td>0.730</td><td>0.516</td><td>-0.214</td><td>0.130</td><td>0.204</td><td>0.074</td><td>0.560</td><td>0.481</td><td>-0.079</td><td>0.290</td><td>0.576</td><td>0.286</td><td>63.79%</td><td>55.01%</td><td>-8.78%</td><td>1900</td><td>3158</td><td>1258</td></tr>
+<tr><td>Energy and Commerce Committee (House)</td><td>0.850</td><td>0.800</td><td>-0.050</td><td>0.010</td><td>0.153</td><td>0.143</td><td>-0.020</td><td>0.560</td><td>0.580</td><td>0.140</td><td>0.371</td><td>0.231</td><td>69.43%</td><td>55.01%</td><td>-14.42%</td><td>1457</td><td>3158</td><td>1701</td></tr>
+<tr><td>Homeland Security Committee (Senate)</td><td>0.440</td><td>0.700</td><td>0.260</td><td>0.020</td><td>-0.051</td><td>-0.071</td><td>-0.290</td><td>-0.497</td><td>-0.207</td><td>0.160</td><td>0.106</td><td>-0.054</td><td>69.67%</td><td>51.17%</td><td>-18.50%</td><td>1552</td><td>3347</td><td>1795</td></tr>
+<tr><td>Top Lobbying Spenders</td><td>0.870</td><td>0.179</td><td>-0.691</td><td>0.020</td><td>0.172</td><td>0.152</td><td>0.030</td><td>0.092</td><td>0.062</td><td>0.120</td><td>1.138</td><td>1.018</td><td>80.05%</td><td>54.30%</td><td>-25.75%</td><td>1813</td><td>704</td><td>-1109</td></tr>
+<tr><td>Lobbying Spending Growth</td><td>1.100</td><td>0.228</td><td>-0.872</td><td>0.070</td><td>0.135</td><td>0.065</td><td>0.580</td><td>-0.018</td><td>-0.598</td><td>0.170</td><td>0.776</td><td>0.606</td><td>65.39%</td><td>53.40%</td><td>-11.99%</td><td>2662</td><td>1869</td><td>-793</td></tr>
+<tr><td>Top Gov Contract Recipients</td><td>0.860</td><td>0.159</td><td>-0.701</td><td>0.040</td><td>0.138</td><td>0.098</td><td>0.220</td><td>-0.060</td><td>-0.280</td><td>0.150</td><td>1.052</td><td>0.902</td><td>71.14%</td><td>53.40%</td><td>-17.74%</td><td>3142</td><td>4393</td><td>1251</td></tr>
+<tr><td>Sector Weighted DC Insider</td><td>0.830</td><td>0.160</td><td>-0.670</td><td>0.040</td><td>0.176</td><td>0.136</td><td>0.240</td><td>0.100</td><td>-0.140</td><td>0.170</td><td>1.284</td><td>1.114</td><td>84.26%</td><td>55.29%</td><td>-28.97%</td><td>910</td><td>302</td><td>-608</td></tr>
+<tr><td>Nancy Pelosi</td><td>1.140</td><td>0.231</td><td>-0.909</td><td>0.050</td><td>0.264</td><td>0.214</td><td>0.630</td><td>0.454</td><td>-0.176</td><td>0.120</td><td>1.276</td><td>1.156</td><td>73.04%</td><td>53.81%</td><td>-19.23%</td><td>715</td><td>307</td><td>-408</td></tr>
+<tr><td>Dan Meuser</td><td>1.290</td><td>0.256</td><td>-1.034</td><td>0.140</td><td>0.326</td><td>0.186</td><td>1.170</td><td>0.485</td><td>-0.685</td><td>0.210</td><td>1.453</td><td>1.243</td><td>74.00%</td><td>54.98%</td><td>-19.02%</td><td>492</td><td>125</td><td>-367</td></tr>
+<tr><td>Josh Gottheimer</td><td>1.100</td><td>0.213</td><td>-0.887</td><td>0.020</td><td>0.135</td><td>0.115</td><td>0.340</td><td>-0.033</td><td>-0.373</td><td>0.120</td><td>0.816</td><td>0.696</td><td>87.23%</td><td>54.63%</td><td>-32.60%</td><td>3091</td><td>90851</td><td>87760</td></tr>
+<tr><td>Donald Beyer</td><td>0.990</td><td>0.195</td><td>-0.795</td><td>0.040</td><td>0.080</td><td>0.040</td><td>0.430</td><td>-0.261</td><td>-0.691</td><td>0.130</td><td>0.591</td><td>0.461</td><td>77.95%</td><td>54.46%</td><td>-23.49%</td><td>1188</td><td>2156</td><td>968</td></tr>
+<tr><td>Sheldon Whitehouse</td><td>1.070</td><td>0.223</td><td>-0.847</td><td>0.030</td><td>0.104</td><td>0.074</td><td>0.760</td><td>-0.144</td><td>-0.904</td><td>0.110</td><td>0.650</td><td>0.540</td><td>80.94%</td><td>55.37%</td><td>-25.57%</td><td>6756</td><td>8894</td><td>2138</td></tr>
+<tr><td>Insider Purchases</td><td>0.910</td><td>0.208</td><td>-0.702</td><td>0.070</td><td>0.400</td><td>0.330</td><td>0.270</td><td>0.685</td><td>0.415</td><td>0.150</td><td>2.102</td><td>1.952</td><td>60.89%</td><td>50.92%</td><td>-9.97%</td><td>7483</td><td>3096</td><td>-4387</td></tr>
+</tbody></table></div>
+    <div class="footer">Generated from <code>research/reports/FULL_SUMMARY.md</code>.</div>
+  </div>
+</body>
+</html>

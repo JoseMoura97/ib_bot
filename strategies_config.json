@@ -1,0 +1,183 @@
+{
+  "strategies": [
+    {
+      "id": "congress_buys",
+      "name": "Congress Buys",
+      "category": "core",
+      "enabled": true,
+      "weight": 25,
+      "description": "Tracks recent stock purchases by members of Congress, weighted by reported purchase size with weekly rebalancing."
+    },
+    {
+      "id": "dan_meuser",
+      "name": "Dan Meuser",
+      "category": "core",
+      "enabled": true,
+      "weight": 20,
+      "description": "Mirrors the portfolio of Rep. Dan Meuser (and family), rebalanced when new trades or annual reports are reported."
+    },
+    {
+      "id": "sector_insider",
+      "name": "Sector Weighted DC Insider",
+      "category": "core",
+      "enabled": true,
+      "weight": 20,
+      "description": "Tracks aggregated insider trading activity weighted by sector allocation with weekly rebalancing."
+    },
+    {
+      "id": "michael_burry",
+      "name": "Michael Burry",
+      "category": "core",
+      "enabled": true,
+      "weight": 20,
+      "description": "Mirrors Scion Asset Management's portfolio using 13F filings, rebalanced when new filings are reported."
+    },
+    {
+      "id": "lobbying_growth",
+      "name": "Lobbying Spending Growth",
+      "category": "core",
+      "enabled": true,
+      "weight": 15,
+      "description": "Invests in companies with growing lobbying budgets, identifying firms increasing political influence."
+    },
+    {
+      "id": "transportation_committee",
+      "name": "Transportation and Infra. Committee (House)",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Tracks stocks purchased by current/past members of the U.S. House's Transportation and Infrastructure Committee (or their family). Weighted based on reported purchase size, with weekly rebalancing.",
+      "metrics": {
+        "cagr": "33.58%",
+        "return_1y": "54.55%"
+      }
+    },
+    {
+      "id": "house_long_short",
+      "name": "U.S. House Long-Short",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Tracks stocks purchased or sold by U.S. House members (or family). Long position in purchases, short position in sales. Employs leverage with 130% long exposure and 30% short exposure, with weekly rebalancing.",
+      "metrics": {
+        "cagr": "31.80%",
+        "return_1y": "33.79%"
+      }
+    },
+    {
+      "id": "gov_contracts",
+      "name": "Top Gov Contract Recipients",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Selects top 20 government contract recipients, weighted by contract values. Uses exponential moving average to favor recent contracts while weighing historical ones. Rebalanced monthly.",
+      "metrics": {
+        "cagr": "19.16%",
+        "return_1y": "16.02%"
+      }
+    },
+    {
+      "id": "donald_beyer",
+      "name": "Donald Beyer",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Mirrors the portfolio of Rep. Don Beyer (and family). Rebalanced when new trades or annual reports are reported.",
+      "metrics": {
+        "cagr": "20.17%",
+        "return_1y": "22.07%"
+      }
+    },
+    {
+      "id": "josh_gottheimer",
+      "name": "Josh Gottheimer",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Mirrors the portfolio of Rep. Josh Gottheimer (and family). Rebalanced when new trades or annual reports are reported.",
+      "metrics": {
+        "cagr": "21.62%",
+        "return_1y": "14.36%"
+      }
+    },
+    {
+      "id": "top_lobbying_spenders",
+      "name": "Top Lobbying Spenders",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Equal-weighted position in 10 publicly-traded companies with most lobbying spending over the last quarter. Rebalanced monthly.",
+      "metrics": {
+        "cagr": "16.73%",
+        "return_1y": "23.21%"
+      }
+    },
+    {
+      "id": "nancy_pelosi",
+      "name": "Nancy Pelosi",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Mirrors the portfolio of Rep. Nancy Pelosi (and family). Rebalanced when new trades or annual reports are reported.",
+      "metrics": {
+        "cagr": "21.23%",
+        "return_1y": "16.59%"
+      }
+    },
+    {
+      "id": "sheldon_whitehouse",
+      "name": "Sheldon Whitehouse",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Mirrors the portfolio of Senator Sheldon Whitehouse (and family). Rebalanced when new trades or annual reports are reported.",
+      "metrics": {
+        "cagr": "18.51%",
+        "return_1y": "24.89%"
+      }
+    },
+    {
+      "id": "howard_marks",
+      "name": "Howard Marks",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Mirrors Howard Marks's Oaktree Capital Management portfolio using 13F filings. Rebalanced when new filings are reported.",
+      "metrics": {
+        "cagr": "15.63%",
+        "return_1y": "39.39%"
+      }
+    },
+    {
+      "id": "bill_ackman",
+      "name": "Bill Ackman",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Mirrors Bill Ackman's Pershing Square Capital Management portfolio using 13F filings. Rebalanced when new filings are reported.",
+      "metrics": {
+        "cagr": "16.98%",
+        "return_1y": "10.02%"
+      }
+    },
+    {
+      "id": "wall_street_conviction",
+      "name": "Wall Street Conviction",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Uses 13F filings for institutions with $100M+ holdings to find each fund's highest conviction stock in the S&P500. Conviction measured as portfolio allocation minus S&P500 allocation. Equal-weighted positions, rebalanced quarterly 47 days after quarter end.",
+      "metrics": {
+        "cagr": "18.00%",
+        "return_1y": "17.49%"
+      }
+    }
+  ],
+  "accounts": [
+    {
+      "id": "default",
+      "name": "Primary Account",
+      "is_default": true
+    }
+  ]
+}

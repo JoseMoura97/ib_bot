@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IB Bot — Strategy Performance vs SPY</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #101a2e;
+      --text: #e6edf3;
+      --muted: #9fb0c0;
+      --border: #25324a;
+      --code-bg: #0f172a;
+      --accent: #7aa2f7;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.55 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", sans-serif;
+    }
+    .wrap {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 28px 18px 60px;
+    }
+    h1, h2, h3, h4 {
+      margin: 18px 0 10px;
+      line-height: 1.25;
+    }
+    h1 { font-size: 28px; }
+    h2 { font-size: 24px; color: var(--accent); }
+    h3 { font-size: 20px; }
+    h4 { font-size: 16px; color: var(--accent); }
+    
+    .chart-container {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+      position: relative;
+      height: 500px;
+    }
+    
+    .chart-canvas {
+      position: relative;
+      height: 100%;
+      width: 100%;
+    }
+    
+    .controls {
+      margin: 20px 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    
+    .btn {
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    
+    .btn:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    
+    .btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+    
+    .strategy-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+      margin: 20px 0;
+    }
+    
+    .strategy-item {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      padding: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 12px;
+    }
+    
+    .strategy-item:hover {
+      border-color: var(--accent);
+    }
+    
+    .strategy-item.selected {
+      background: rgba(122, 162, 247, 0.15);
+      border-color: var(--accent);
+    }
+    
+    .strategy-item input[type="checkbox"] {
+      margin-right: 8px;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--muted);
+    }
+    
+    .error {
+      background: rgba(248, 113, 113, 0.1);
+      border: 1px solid rgba(248, 113, 113, 0.3);
+      padding: 16px;
+      border-radius: 8px;
+      color: #f87171;
+      margin: 20px 0;
+    }
+    
+    .info {
+      background: rgba(122, 162, 247, 0.1);
+      border: 1px solid rgba(122, 162, 247, 0.3);
+      padding: 16px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    
+    .stats {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin: 10px 0;
+    }
+    
+    .stat-item {
+      background: var(--code-bg);
+      padding: 10px 16px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+    
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .stat-value {
+      font-size: 18px;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+    
+    .positive { color: #4ade80; }
+    .negative { color: #f87171; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>IB Bot — Strategy Performance vs SPY</h1>
+    <p style="color: var(--muted);">Interactive visualization of strategy equity curves compared to SPY benchmark (all normalized to start at 100)</p>
+    
+    <div id="loading" class="loading">
+      <p>📊 Loading plot data...</p>
+      <p style="font-size: 12px; color: var(--muted);">If this takes too long, you may need to run: <code>python generate_plot_data.py</code></p>
+    </div>
+    
+    <div id="error" class="error" style="display: none;">
+      <h4>⚠️ Error Loading Data</h4>
+      <p id="error-message"></p>
+      <p style="font-size: 12px; margin-top: 12px;">To generate plot data, run:</p>
+      <code style="display: block; background: var(--bg); padding: 8px; border-radius: 4px; margin-top: 8px;">python generate_plot_data.py</code>
+    </div>
+    
+    <div id="content" style="display: none;">
+      
+      <div class="info">
+        <h4>📈 How to Use</h4>
+        <ul style="margin: 8px 0; padding-left: 20px;">
+          <li>Click on strategy names below to toggle them on/off in the chart</li>
+          <li>Use preset buttons to quickly compare groups of strategies</li>
+          <li>Hover over the chart to see values at specific dates</li>
+          <li>All curves are normalized to start at 100 for easy comparison</li>
+        </ul>
+      </div>
+      
+      <div class="controls">
+        <button class="btn" onclick="showAll()">Show All</button>
+        <button class="btn active" onclick="showTop5()">Top 5 CAGR</button>
+        <button class="btn" onclick="showCongress()">Congress Strategies</button>
+        <button class="btn" onclick="showLobbying()">Lobbying Strategies</button>
+        <button class="btn" onclick="showPoliticians()">Individual Politicians</button>
+        <button class="btn" onclick="hideAll()">Hide All</button>
+      </div>
+      
+      <div id="stats" class="stats"></div>
+      
+      <div class="chart-container">
+        <canvas id="chart" class="chart-canvas"></canvas>
+      </div>
+      
+      <h3>Select Strategies</h3>
+      <div id="strategy-list" class="strategy-grid"></div>
+      
+    </div>
+  </div>
+
+  <script>
+    let plotData = null;
+    let chart = null;
+    let selectedStrategies = new Set();
+    
+    // Color palette for strategies
+    const colors = [
+      '#7aa2f7', '#bb9af7', '#7dcfff', '#9ece6a', '#e0af68',
+      '#f7768e', '#ff9e64', '#73daca', '#b4f9f8', '#2ac3de',
+      '#c0caf5', '#a9b1d6', '#9aa5ce', '#cfc9c2', '#565f89'
+    ];
+    
+    // Load plot data
+    async function loadPlotData() {
+      try {
+        const response = await fetch('.cache/plot_data.json');
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        plotData = await response.json();
+        
+        if (!plotData || !plotData.strategies) {
+          throw new Error('Invalid plot data format');
+        }
+        
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('content').style.display = 'block';
+        
+        initializeChart();
+        initializeStrategyList();
+        showTop5(); // Show top 5 by default
+        
+      } catch (error) {
+        console.error('Error loading plot data:', error);
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error').style.display = 'block';
+        document.getElementById('error-message').textContent = error.message;
+      }
+    }
+    
+    function initializeChart() {
+      const ctx = document.getElementById('chart').getContext('2d');
+      
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          datasets: []
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top',
+              labels: {
+                color: '#e6edf3',
+                font: { size: 11 },
+                usePointStyle: true,
+                padding: 10,
+                boxWidth: 6,
+                boxHeight: 6
+              }
+            },
+            tooltip: {
+              backgroundColor: '#101a2e',
+              titleColor: '#e6edf3',
+              bodyColor: '#e6edf3',
+              borderColor: '#25324a',
+              borderWidth: 1,
+              padding: 12,
+              displayColors: true,
+              callbacks: {
+                label: function(context) {
+                  return context.dataset.label + ': ' + context.parsed.y.toFixed(2);
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              type: 'time',
+              time: {
+                unit: 'month',
+                displayFormats: {
+                  month: 'MMM yyyy'
+                }
+              },
+              grid: {
+                color: '#25324a',
+                drawBorder: false
+              },
+              ticks: {
+                color: '#9fb0c0',
+                font: { size: 11 }
+              }
+            },
+            y: {
+              grid: {
+                color: '#25324a',
+                drawBorder: false
+              },
+              ticks: {
+                color: '#9fb0c0',
+                font: { size: 11 },
+                callback: function(value) {
+                  return value.toFixed(0);
+                }
+              },
+              title: {
+                display: true,
+                text: 'Normalized Value (Start = 100)',
+                color: '#9fb0c0',
+                font: { size: 12 }
+              }
+            }
+          }
+        }
+      });
+    }
+    
+    function initializeStrategyList() {
+      const container = document.getElementById('strategy-list');
+      container.innerHTML = '';
+      
+      // Sort strategies by CAGR descending
+      const strategyNames = Object.keys(plotData.strategies).sort((a, b) => {
+        return plotData.strategies[b].cagr - plotData.strategies[a].cagr;
+      });
+      
+      strategyNames.forEach(name => {
+        const strategy = plotData.strategies[name];
+        const div = document.createElement('div');
+        div.className = 'strategy-item';
+        div.innerHTML = `
+          <label style="cursor: pointer; display: block;">
+            <input type="checkbox" id="strat-${name.replace(/[^a-zA-Z0-9]/g, '-')}" onchange="toggleStrategy('${name}')">
+            <strong>${name}</strong><br>
+            <span style="font-size: 11px; color: var(--muted);">
+              CAGR: ${strategy.cagr.toFixed(1)}% | Sharpe: ${strategy.sharpe.toFixed(2)}
+            </span>
+          </label>
+        `;
+        container.appendChild(div);
+      });
+    }
+    
+    function toggleStrategy(name) {
+      if (selectedStrategies.has(name)) {
+        selectedStrategies.delete(name);
+      } else {
+        selectedStrategies.add(name);
+      }
+      updateChart();
+      updateStrategyList();
+    }
+    
+    function updateStrategyList() {
+      const strategyNames = Object.keys(plotData.strategies);
+      strategyNames.forEach(name => {
+        const checkbox = document.getElementById(`strat-${name.replace(/[^a-zA-Z0-9]/g, '-')}`);
+        const parent = checkbox.closest('.strategy-item');
+        if (selectedStrategies.has(name)) {
+          checkbox.checked = true;
+          parent.classList.add('selected');
+        } else {
+          checkbox.checked = false;
+          parent.classList.remove('selected');
+        }
+      });
+    }
+    
+    function updateChart() {
+      const datasets = [];
+      
+      // Always show SPY benchmark
+      if (plotData.benchmark) {
+        datasets.push({
+          label: 'SPY (Benchmark)',
+          data: plotData.benchmark.dates.map((date, i) => ({
+            x: date,
+            y: plotData.benchmark.values[i]
+          })),
+          borderColor: '#9fb0c0',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          pointRadius: 0,
+          tension: 0.1
+        });
+      }
+      
+      // Add selected strategies
+      Array.from(selectedStrategies).forEach((name, index) => {
+        const strategy = plotData.strategies[name];
+        if (!strategy) return;
+        
+        const color = colors[index % colors.length];
+        datasets.push({
+          label: name,
+          data: strategy.dates.map((date, i) => ({
+            x: date,
+            y: strategy.values[i]
+          })),
+          borderColor: color,
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.1
+        });
+      });
+      
+      chart.data.datasets = datasets;
+      chart.update();
+      
+      updateStats();
+    }
+    
+    function updateStats() {
+      const container = document.getElementById('stats');
+      if (selectedStrategies.size === 0) {
+        container.innerHTML = '<div class="stat-item"><div class="stat-label">No strategies selected</div></div>';
+        return;
+      }
+      
+      // Calculate aggregate stats
+      let totalCAGR = 0;
+      let totalSharpe = 0;
+      let worstDD = 0;
+      let bestCAGR = -Infinity;
+      let bestName = '';
+      
+      selectedStrategies.forEach(name => {
+        const s = plotData.strategies[name];
+        totalCAGR += s.cagr;
+        totalSharpe += s.sharpe;
+        worstDD = Math.min(worstDD, s.max_drawdown);
+        if (s.cagr > bestCAGR) {
+          bestCAGR = s.cagr;
+          bestName = name;
+        }
+      });
+      
+      const avgCAGR = totalCAGR / selectedStrategies.size;
+      const avgSharpe = totalSharpe / selectedStrategies.size;
+      
+      container.innerHTML = `
+        <div class="stat-item">
+          <div class="stat-label">Strategies</div>
+          <div class="stat-value">${selectedStrategies.size}</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Avg CAGR</div>
+          <div class="stat-value ${avgCAGR > 0 ? 'positive' : 'negative'}">${avgCAGR.toFixed(1)}%</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Avg Sharpe</div>
+          <div class="stat-value">${avgSharpe.toFixed(2)}</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Worst MaxDD</div>
+          <div class="stat-value negative">${worstDD.toFixed(1)}%</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Best Performer</div>
+          <div class="stat-value" style="font-size: 12px;">${bestName}</div>
+        </div>
+      `;
+    }
+    
+    // Preset functions
+    function showAll() {
+      selectedStrategies = new Set(Object.keys(plotData.strategies));
+      updateChart();
+      updateStrategyList();
+      setActiveButton(0);
+    }
+    
+    function showTop5() {
+      const sorted = Object.entries(plotData.strategies)
+        .sort((a, b) => b[1].cagr - a[1].cagr)
+        .slice(0, 5)
+        .map(([name]) => name);
+      selectedStrategies = new Set(sorted);
+      updateChart();
+      updateStrategyList();
+      setActiveButton(1);
+    }
+    
+    function showCongress() {
+      selectedStrategies = new Set(
+        Object.keys(plotData.strategies).filter(name => 
+          name.includes('Congress') || name.includes('House')
+        )
+      );
+      updateChart();
+      updateStrategyList();
+      setActiveButton(2);
+    }
+    
+    function showLobbying() {
+      selectedStrategies = new Set(
+        Object.keys(plotData.strategies).filter(name => 
+          name.includes('Lobbying') || name.includes('Contract')
+        )
+      );
+      updateChart();
+      updateStrategyList();
+      setActiveButton(3);
+    }
+    
+    function showPoliticians() {
+      const politicians = ['Nancy Pelosi', 'Dan Meuser', 'Josh Gottheimer', 'Donald Beyer', 'Sheldon Whitehouse'];
+      selectedStrategies = new Set(
+        Object.keys(plotData.strategies).filter(name => 
+          politicians.includes(name)
+        )
+      );
+      updateChart();
+      updateStrategyList();
+      setActiveButton(4);
+    }
+    
+    function hideAll() {
+      selectedStrategies = new Set();
+      updateChart();
+      updateStrategyList();
+      setActiveButton(5);
+    }
+    
+    function setActiveButton(index) {
+      document.querySelectorAll('.btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i === index);
+      });
+    }
+    
+    // Load data on page load
+    loadPlotData();
+  </script>
+</body>
+</html>
