@@ -35,7 +35,6 @@ env/
 *~
 
 # Cache
-.cache/
 *.cache
 .pytest_cache/
 
