@@ -35,7 +35,6 @@ env/
 *~
 
 # Cache
-*.cache
 .pytest_cache/
 
 # Logs
