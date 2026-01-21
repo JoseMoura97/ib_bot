@@ -192,7 +192,7 @@ export function PortfoliosClient(props: { initialPortfolios: PortfolioOut[]; str
       return;
     }
     const parsed = safeJsonParse(settingsText);
-    if (!parsed.ok) {
+    if ("error" in parsed) {
       setMetaSaveState("error");
       setLoadError(`Settings must be valid JSON. ${parsed.error}`);
       return;
@@ -237,7 +237,7 @@ export function PortfoliosClient(props: { initialPortfolios: PortfolioOut[]; str
       return;
     }
     const parsed = safeJsonParse(settingsText);
-    if (!parsed.ok) {
+    if ("error" in parsed) {
       setMetaSaveState("error");
       setLoadError(`Settings must be valid JSON. ${parsed.error}`);
       return;
@@ -313,7 +313,7 @@ export function PortfoliosClient(props: { initialPortfolios: PortfolioOut[]; str
   function onApplyOverrides() {
     if (!editingOverridesFor) return;
     const parsed = safeJsonParse(overridesText);
-    if (!parsed.ok) {
+    if ("error" in parsed) {
       setLoadError(`Overrides must be valid JSON. ${parsed.error}`);
       return;
     }
@@ -367,17 +367,15 @@ export function PortfoliosClient(props: { initialPortfolios: PortfolioOut[]; str
     <div className="space-y-6">
       <PageHeader
         title="Portfolios"
-        description={
-          <>
-            Create portfolios and configure strategy weights. Then allocate capital on the{" "}
-            <Link href="/allocations" className="font-medium text-foreground">
-              allocations
-            </Link>{" "}
-            page.
-          </>
-        }
+        description="Create portfolios and configure strategy weights."
         right={
           <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/allocations"
+              className="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border bg-background px-4 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+            >
+              Allocations
+            </Link>
             <Button onClick={() => startNewPortfolio()} variant="secondary">
               New portfolio
             </Button>
