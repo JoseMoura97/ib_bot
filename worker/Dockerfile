@@ -16,7 +16,7 @@ COPY . /app
 
 ENV PYTHONPATH=/app:/app/backend
 
-RUN chmod +x /app/backend/docker-entrypoint.sh
+RUN sed -i 's/\r$//' /app/backend/docker-entrypoint.sh && chmod +x /app/backend/docker-entrypoint.sh
 
-ENTRYPOINT ["/app/backend/docker-entrypoint.sh"]
+ENTRYPOINT ["/bin/sh", "/app/backend/docker-entrypoint.sh"]
 CMD ["celery", "-A", "app.worker.celery_app", "worker", "--loglevel=INFO"]

@@ -21,7 +21,7 @@ ENV PYTHONPATH=/app:/app/backend
 
 EXPOSE 8000
 
-RUN chmod +x /app/backend/docker-entrypoint.sh
+RUN sed -i 's/\r$//' /app/backend/docker-entrypoint.sh && chmod +x /app/backend/docker-entrypoint.sh
 
-ENTRYPOINT ["/app/backend/docker-entrypoint.sh"]
+ENTRYPOINT ["/bin/sh", "/app/backend/docker-entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
