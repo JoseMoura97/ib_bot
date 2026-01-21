@@ -36,14 +36,3 @@ export default async function PaperPage() {
   );
 }
 
-import { PaperClient } from "./PaperClient";
-
-export default function PaperPage() {
-  return <PaperClient />;
-}
-
-import { PaperClient } from "./PaperClient";
-
-export default function PaperPage() {
-  return <PaperClient />;
-}
