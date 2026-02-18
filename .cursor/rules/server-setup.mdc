@@ -1,0 +1,99 @@
+---
+description: Production server access, architecture, and deployment details
+alwaysApply: true
+---
+
+# Production Server
+
+- **IP:** 213.159.68.39
+- **Provider:** THE.Hosting (Aurum[FI] package, Finland datacenter)
+- **OS:** Ubuntu 22.04 LTS
+- **SSH:** `ssh root@213.159.68.39`
+- **App user:** `ibbot` (home: `/home/ibbot`)
+- **Project path:** `/home/ibbot/ib_bot`
+
+## Docker Compose Stack
+
+All services run via Docker Compose at `/home/ibbot/ib_bot`.
+Production uses two compose files: `docker-compose.yml` + `docker-compose.prod.yml`.
+
+| Service | Container | Internal Port |
+|---------|-----------|---------------|
+| PostgreSQL 16 | ib_bot-db-1 | 5432 |
+| Redis 7 | ib_bot-redis-1 | 6379 |
+| FastAPI API | ib_bot-api-1 | 8000 |
+| Celery Worker | ib_bot-worker-1 | -- |
+| Celery Beat | ib_bot-beat-1 | -- |
+| Next.js Frontend | ib_bot-web-1 | 3000 |
+| nginx | ib_bot-nginx-1 | 80, 443 |
+
+## Key Paths on Server
+
+- `.env` — `/home/ibbot/ib_bot/.env`
+- Cache (price data) — `/home/ibbot/ib_bot/.cache`
+- nginx config — `/home/ibbot/ib_bot/infra/nginx/nginx.prod.conf`
+- Backups — `/home/ibbot/backups`
+
+## SSH from Agent
+
+Use `SSH_ASKPASS` for non-interactive SSH from Windows:
+
+```powershell
+$env:SSH_ASKPASS = "c:\Users\Jibas\Desktop\cursor_bots\ib_bot\infra\scripts\askpass.cmd"
+$env:SSH_ASKPASS_REQUIRE = "force"
+$env:DISPLAY = "localhost:0"
+ssh -o StrictHostKeyChecking=no root@213.159.68.39 "<command>"
+```
+
+## Git-Based Deployment
+
+The server runs from a git clone of `https://github.com/JoseMoura97/ib_bot.git` on branch `portfolios-builder-allocations-ui`.
+
+**Deploy workflow (local):**
+1. Commit and push changes locally: `git push origin portfolios-builder-allocations-ui`
+2. Run deploy on server via SSH:
+```bash
+ssh root@213.159.68.39 "cd /home/ibbot/ib_bot && GIT_TERMINAL_PROMPT=0 git pull origin portfolios-builder-allocations-ui && docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build"
+```
+
+Or use the deploy script on the server:
+```bash
+ssh root@213.159.68.39 "/home/ibbot/deploy.sh"
+```
+
+**Important:** Always commit and push ALL files the server needs (including migrations) before deploying. The server only gets what's in git. `.env` and `.cache` are gitignored and persist independently on the server.
+
+## Common Operations
+
+```bash
+# Check status
+docker compose ps
+
+# View logs
+docker compose logs -f [service]
+
+# Restart after config change
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+# Rebuild after code change
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+# Database access
+docker compose exec db psql -U ibbot -d ibbot
+
+# Emergency stop trading
+echo "TRADING_HALT=true" >> .env && docker compose restart api worker
+```
+
+## IB Gateway
+
+Not yet installed. Will run on the host (not in Docker) at port 4001 (paper) or 4002 (live).
+Containers reach the host via `IB_HOST=172.17.0.1` (Docker bridge gateway).
+
+## Firewall (UFW)
+
+Open ports: 22 (SSH), 80 (HTTP), 443 (HTTPS), 5900 (VNC — close after IB Gateway setup).
+
+## SSL / Domain
+
+Not yet configured. When ready, use Certbot + update `infra/nginx/nginx.prod.conf`.

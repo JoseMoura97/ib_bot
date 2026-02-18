@@ -38,6 +38,10 @@ env/
 .pytest_cache/
 *.bak-*
 .cache/yf_prices/
+.cache/ib_prices/
+
+# Keep backups - DO NOT DELETE
+!.cache/backups/
 
 # Logs
 *.log
@@ -49,6 +53,9 @@ env/
 # Local configuration
 .env
 .env.local
+
+# Server credentials (never commit)
+infra/scripts/askpass.cmd
 
 # OS files
 .DS_Store

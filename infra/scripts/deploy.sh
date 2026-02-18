@@ -7,9 +7,9 @@ BRANCH="${1:-portfolios-builder-allocations-ui}"
 cd "$PROJECT_DIR"
 
 echo ">>> Pulling latest from origin/$BRANCH..."
-git fetch origin
+GIT_TERMINAL_PROMPT=0 git fetch origin
 git checkout "$BRANCH"
-git pull origin "$BRANCH"
+GIT_TERMINAL_PROMPT=0 git pull origin "$BRANCH"
 
 echo ">>> Rebuilding and restarting containers..."
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
