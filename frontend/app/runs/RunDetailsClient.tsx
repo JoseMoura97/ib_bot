@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CategoryScale,
@@ -13,6 +14,10 @@ import {
 } from "chart.js";
 import "chartjs-adapter-date-fns";
 import { Line } from "react-chartjs-2";
+import { PageHeader } from "../_components/PageHeader";
+import { Button } from "../_components/ui/Button";
+import { Card, CardContent } from "../_components/ui/Card";
+import { Table, TableWrap, Td, Th } from "../_components/ui/Table";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, TimeScale, Tooltip, Legend);
 
@@ -180,133 +185,149 @@ export function RunDetailsClient(props: { runId: string }) {
   }, [run]);
 
   return (
-    <main style={{ maxWidth: 1200, margin: "0 auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-        <div>
-          <h2 style={{ margin: "8px 0 6px" }}>Run Details</h2>
-          <div style={{ fontSize: 12, color: "#666" }}>
-            Run ID: <code>{props.runId}</code>
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <a href="/dashboard" style={{ fontSize: 12 }}>
-            ← Back to Dashboard
-          </a>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Run Details"
+        description={`Run ID: ${props.runId}`}
+        right={
+          <Link href="/dashboard">
+            <Button size="sm" variant="outline">
+              Back to Dashboard
+            </Button>
+          </Link>
+        }
+      />
 
       {errorMsg ? (
-        <div style={{ marginTop: 12, background: "#fff3f3", border: "1px solid #f3b0b0", padding: 10, borderRadius: 8, color: "#b00020" }}>
-          {errorMsg}
-        </div>
+        <Card className="border-destructive/30 bg-destructive/10 shadow-none">
+          <CardContent className="py-4 text-sm text-destructive">{errorMsg}</CardContent>
+        </Card>
       ) : null}
 
-      {loading && !run ? <div style={{ marginTop: 12 }}>Loading…</div> : null}
+      {loading && !run ? <div className="text-sm text-muted-foreground">Loading…</div> : null}
 
       {run ? (
-        <div style={{ marginTop: 12, border: "1px solid #eee", borderRadius: 12, padding: 12, background: "white" }}>
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
-            <div>
-              <div style={{ fontSize: 11, color: "#666", textTransform: "uppercase" }}>Status</div>
-              <div style={{ fontSize: 18, fontWeight: 800 }}>{run.status}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 11, color: "#666", textTransform: "uppercase" }}>Type</div>
-              <div style={{ fontSize: 14, fontWeight: 700 }}>{run.type}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 11, color: "#666", textTransform: "uppercase" }}>Stage</div>
-              <div style={{ fontSize: 14, fontWeight: 700 }}>{run.progress?.stage || "—"}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 11, color: "#666", textTransform: "uppercase" }}>Created</div>
-              <div style={{ fontSize: 12 }}>{fmtTs(run.created_at)}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 11, color: "#666", textTransform: "uppercase" }}>Started</div>
-              <div style={{ fontSize: 12 }}>{fmtTs(run.started_at)}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 11, color: "#666", textTransform: "uppercase" }}>Finished</div>
-              <div style={{ fontSize: 12 }}>{fmtTs(run.finished_at)}</div>
-            </div>
-          </div>
-
-          {run.error ? (
-            <div style={{ marginTop: 10, background: "#fff3f3", border: "1px solid #f3b0b0", padding: 10, borderRadius: 8, color: "#b00020" }}>
-              <strong>Error:</strong> {run.error}
-            </div>
-          ) : null}
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
-            <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 10, background: "#fafafa" }}>
-              <div style={{ fontWeight: 700, marginBottom: 8 }}>Run params</div>
-              <div style={{ fontSize: 12, color: "#444", display: "grid", gap: 6 }}>
-                <div>
-                  <strong>Mode:</strong> {String(run.params?.mode || "—")}
-                </div>
-                <div>
-                  <strong>Start:</strong> {String(run.params?.start_date || "—")} <strong style={{ marginLeft: 8 }}>End:</strong>{" "}
-                  {String(run.params?.end_date || "—")}
-                </div>
-                <div>
-                  <strong>Cost bps:</strong> {String(run.params?.transaction_cost_bps ?? "0")}
-                </div>
-                <div>
-                  <strong>Portfolio:</strong> {String(run.params?.portfolio_id || "—")}
-                </div>
+        <Card className="shadow-none">
+          <CardContent className="space-y-4 py-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="rounded-lg border bg-muted/30 px-3 py-2">
+                <div className="text-xs font-semibold text-muted-foreground">Status</div>
+                <div className="text-lg font-semibold">{run.status}</div>
+              </div>
+              <div className="rounded-lg border bg-muted/30 px-3 py-2">
+                <div className="text-xs font-semibold text-muted-foreground">Type</div>
+                <div className="text-sm font-semibold">{run.type}</div>
+              </div>
+              <div className="rounded-lg border bg-muted/30 px-3 py-2">
+                <div className="text-xs font-semibold text-muted-foreground">Stage</div>
+                <div className="text-sm font-semibold">{run.progress?.stage || "—"}</div>
+              </div>
+              <div className="rounded-lg border bg-muted/30 px-3 py-2">
+                <div className="text-xs font-semibold text-muted-foreground">Created</div>
+                <div className="text-xs">{fmtTs(run.created_at)}</div>
+              </div>
+              <div className="rounded-lg border bg-muted/30 px-3 py-2">
+                <div className="text-xs font-semibold text-muted-foreground">Started</div>
+                <div className="text-xs">{fmtTs(run.started_at)}</div>
+              </div>
+              <div className="rounded-lg border bg-muted/30 px-3 py-2">
+                <div className="text-xs font-semibold text-muted-foreground">Finished</div>
+                <div className="text-xs">{fmtTs(run.finished_at)}</div>
               </div>
             </div>
-            <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 10, background: "#fafafa" }}>
-              <div style={{ fontWeight: 700, marginBottom: 8 }}>Strategies ({strategyParams.length})</div>
-              {strategyParams.length ? (
-                <div style={{ display: "grid", gap: 6, maxHeight: 180, overflow: "auto", paddingRight: 6 }}>
-                  {strategyParams.map((s) => (
-                    <div key={s.name} style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</div>
-                      <div style={{ fontSize: 12, color: "#666" }}>{(s.weight * 100).toFixed(1)}%</div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ fontSize: 12, color: "#666" }}>No strategies captured in run params.</div>
-              )}
+
+            {run.error ? (
+              <Card className="border-destructive/30 bg-destructive/10 shadow-none">
+                <CardContent className="py-4 text-sm text-destructive">
+                  <span className="font-semibold">Error:</span> {run.error}
+                </CardContent>
+              </Card>
+            ) : null}
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Card className="shadow-none">
+                <CardContent className="space-y-2 py-4">
+                  <div className="text-sm font-semibold">Run params</div>
+                  <div className="text-xs text-muted-foreground">Mode: {String(run.params?.mode || "—")}</div>
+                  <div className="text-xs text-muted-foreground">
+                    Start: {String(run.params?.start_date || "—")} · End: {String(run.params?.end_date || "—")}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Cost bps: {String(run.params?.transaction_cost_bps ?? "0")}</div>
+                  <div className="text-xs text-muted-foreground">Portfolio: {String(run.params?.portfolio_id || "—")}</div>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-none">
+                <CardContent className="space-y-3 py-4">
+                  <div className="text-sm font-semibold">Strategies ({strategyParams.length})</div>
+                  {strategyParams.length ? (
+                    <TableWrap>
+                      <Table>
+                        <thead>
+                          <tr>
+                            <Th>Strategy</Th>
+                            <Th className="text-right">Weight</Th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {strategyParams.map((s) => (
+                            <tr key={s.name} className="hover:bg-accent/40">
+                              <Td className="max-w-[240px] truncate font-medium">{s.name}</Td>
+                              <Td className="text-right font-mono">{(s.weight * 100).toFixed(1)}%</Td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </Table>
+                    </TableWrap>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">No strategies captured in run params.</div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       ) : null}
 
-      {run && run.status === "RUNNING" ? <div style={{ marginTop: 12, color: "#666" }}>Polling status…</div> : null}
+      {run && run.status === "RUNNING" ? <div className="text-sm text-muted-foreground">Polling status…</div> : null}
 
       {run && run.status === "SUCCESS" && results ? (
-        <div style={{ marginTop: 12 }}>
-          <h3 style={{ margin: "10px 0" }}>Results</h3>
+        <div className="space-y-4">
+          <div className="text-lg font-semibold">Results</div>
 
           {portfolioResult ? (
             <>
-              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {Object.entries(portfolioResult.metrics || {}).map(([k, v]) => (
-                  <div key={k} style={{ padding: "10px 12px", border: "1px solid #eee", borderRadius: 10, background: "white" }}>
-                    <div style={{ fontSize: 11, color: "#666", textTransform: "uppercase" }}>{k}</div>
-                    <div style={{ fontSize: 16, fontWeight: 800 }}>
-                      {typeof v === "number" ? (Number.isFinite(v) ? v.toFixed(4) : String(v)) : String(v)}
-                    </div>
-                  </div>
+                  <Card key={k} className="shadow-none">
+                    <CardContent className="py-4">
+                      <div className="text-xs font-semibold text-muted-foreground">{k}</div>
+                      <div className="mt-1 text-lg font-semibold">
+                        {typeof v === "number" ? (Number.isFinite(v) ? v.toFixed(4) : String(v)) : String(v)}
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
 
-              <div style={{ marginTop: 12, border: "1px solid #eee", borderRadius: 12, padding: 12, height: 520, background: "white" }}>
-                {equityCurve?.length ? <Line data={chartData as any} options={chartOptions as any} /> : <div style={{ color: "#666" }}>No equity curve artifact.</div>}
-              </div>
+              <Card className="shadow-none">
+                <CardContent className="h-[520px] p-4">
+                  {equityCurve?.length ? (
+                    <Line data={chartData as any} options={chartOptions as any} />
+                  ) : (
+                    <div className="text-sm text-muted-foreground">No equity curve artifact.</div>
+                  )}
+                </CardContent>
+              </Card>
             </>
           ) : (
-            <div style={{ color: "#666" }}>No portfolio results found for this run.</div>
+            <div className="text-sm text-muted-foreground">No portfolio results found for this run.</div>
           )}
         </div>
       ) : null}
 
-      {run && run.status === "SUCCESS" && !results ? <div style={{ marginTop: 12, color: "#666" }}>Loading results…</div> : null}
-    </main>
+      {run && run.status === "SUCCESS" && !results ? <div className="text-sm text-muted-foreground">Loading results…</div> : null}
+    </div>
   );
 }
 
