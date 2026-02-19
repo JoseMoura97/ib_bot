@@ -189,7 +189,10 @@ def place_market_order(
 def fetch_prices(tickers: Iterable[str]) -> dict[str, PriceQuote]:
     out: dict[str, PriceQuote] = {}
     for t in tickers:
-        q = fetch_last_close_price(str(t))
-        out[q.ticker] = q
+        try:
+            q = fetch_last_close_price(str(t))
+            out[q.ticker] = q
+        except Exception:
+            pass
     return out
 
