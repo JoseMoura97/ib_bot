@@ -56,7 +56,10 @@ def fetch_last_close_price(ticker: str, *, lookback_days: int = 10) -> PriceQuot
         if col in df.columns:
             s = df[col].dropna()
             if not s.empty:
-                price = float(s.iloc[-1])
+                val = s.iloc[-1]
+                if hasattr(val, "iloc"):
+                    val = val.iloc[0]
+                price = float(val)
                 break
     if price is None or price <= 0:
         raise ValueError(f"invalid price for {t}")
