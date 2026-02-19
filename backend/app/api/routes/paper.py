@@ -72,6 +72,8 @@ def _trade_out(t: PaperTrade) -> PaperTradeOut:
 @router.get("/accounts", response_model=list[PaperAccountOut])
 def list_paper_accounts(db: Session = Depends(get_db)):
     rows = db.query(PaperAccount).order_by(PaperAccount.id.asc()).all()
+    if not rows:
+        rows = [ensure_paper_account(db, 1)]
     return [_account_out(r) for r in rows]
 
 
@@ -409,6 +411,126 @@ def paper_rebalance_execute(body: PaperRebalanceRequest, db: Session = Depends(g
         trades=[_trade_out(t) for t in trades],
         account=_account_out(acct),
     )
+
+
+# ---- P&L / Snapshot endpoints
+
+
+@router.get("/accounts/{account_id}/snapshots")
+def get_paper_snapshots(
+    account_id: int,
+    limit: int = Query(default=365, ge=1, le=3650),
+    db: Session = Depends(get_db),
+):
+    """Return time-series of equity/cash snapshots for a paper account."""
+    from app.models.paper import PaperSnapshot
+
+    ensure_paper_account(db, int(account_id))
+    rows = (
+        db.query(PaperSnapshot)
+        .filter(PaperSnapshot.account_id == int(account_id))
+        .order_by(PaperSnapshot.timestamp.asc())
+        .limit(int(limit))
+        .all()
+    )
+    return [
+        {
+            "timestamp": r.timestamp.isoformat(),
+            "cash": float(r.cash),
+            "equity": float(r.equity),
+            "portfolio_id": r.portfolio_id,
+        }
+        for r in rows
+    ]
+
+
+@router.get("/accounts/{account_id}/pnl")
+def get_paper_pnl(
+    account_id: int,
+    db: Session = Depends(get_db),
+):
+    """Compute daily and cumulative P&L from snapshots."""
+    from app.models.paper import PaperSnapshot
+
+    ensure_paper_account(db, int(account_id))
+    rows = (
+        db.query(PaperSnapshot)
+        .filter(PaperSnapshot.account_id == int(account_id))
+        .order_by(PaperSnapshot.timestamp.asc())
+        .all()
+    )
+    if not rows:
+        return {"daily": [], "summary": {"total_return": 0, "total_pnl": 0, "days": 0}}
+
+    daily = []
+    first_equity = float(rows[0].equity)
+    prev_equity = first_equity
+    for r in rows:
+        eq = float(r.equity)
+        daily_pnl = eq - prev_equity
+        daily.append({
+            "date": r.timestamp.strftime("%Y-%m-%d"),
+            "equity": eq,
+            "cash": float(r.cash),
+            "daily_pnl": round(daily_pnl, 2),
+            "cumulative_pnl": round(eq - first_equity, 2),
+        })
+        prev_equity = eq
+
+    last_equity = float(rows[-1].equity)
+    total_pnl = last_equity - first_equity
+    total_return = total_pnl / first_equity if first_equity > 0 else 0
+    max_equity = first_equity
+    max_dd = 0.0
+    for r in rows:
+        eq = float(r.equity)
+        if eq > max_equity:
+            max_equity = eq
+        dd = (eq - max_equity) / max_equity if max_equity > 0 else 0
+        if dd < max_dd:
+            max_dd = dd
+
+    return {
+        "daily": daily,
+        "summary": {
+            "total_return": round(total_return, 6),
+            "total_pnl": round(total_pnl, 2),
+            "max_drawdown": round(max_dd, 6),
+            "days": len(rows),
+            "first_equity": round(first_equity, 2),
+            "last_equity": round(last_equity, 2),
+        },
+    }
+
+
+@router.get("/accounts/{account_id}/rebalance-logs")
+def get_paper_rebalance_logs(
+    account_id: int,
+    limit: int = Query(default=50, ge=1, le=500),
+    db: Session = Depends(get_db),
+):
+    """Return rebalance history for a paper account."""
+    from app.models.paper import PaperRebalanceLog
+
+    ensure_paper_account(db, int(account_id))
+    rows = (
+        db.query(PaperRebalanceLog)
+        .filter(PaperRebalanceLog.account_id == int(account_id))
+        .order_by(PaperRebalanceLog.timestamp.desc())
+        .limit(int(limit))
+        .all()
+    )
+    return [
+        {
+            "id": r.id,
+            "timestamp": r.timestamp.isoformat(),
+            "portfolio_id": r.portfolio_id,
+            "status": r.status,
+            "n_orders": r.n_orders,
+            "details": r.details or {},
+        }
+        for r in rows
+    ]
 
 
 # ---- Backward-compatible legacy endpoints

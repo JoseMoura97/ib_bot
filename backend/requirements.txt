@@ -18,3 +18,5 @@ numpy
 yfinance
 ib_insync
 quiverquant
+exchange-calendars
+scipy

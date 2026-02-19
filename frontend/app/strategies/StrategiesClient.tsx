@@ -50,9 +50,10 @@ export function StrategiesClient(props: { initialStrategies: Strategy[] }) {
   }, [strategies, filter]);
 
   async function refresh() {
-    const res = await fetch("/api/strategies", { cache: "no-store" });
+    const res = await fetch("/api/strategies/catalog", { cache: "no-store" });
     if (!res.ok) throw new Error(`API error ${res.status}`);
-    const data = (await res.json()) as Strategy[];
+    const payload = (await res.json()) as { rows?: Strategy[] };
+    const data = (payload?.rows || []) as Strategy[];
     setStrategies(data);
     // keep selection if possible
     if (selectedName && !data.some((s) => s.name === selectedName)) {

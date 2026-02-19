@@ -39,7 +39,7 @@
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 217.2 32.6% 10%;
     --card-foreground: 210 40% 98%;
 
     --popover: 222.2 84% 4.9%;
@@ -60,7 +60,7 @@
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
+    --border: 217.2 32.6% 20%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
   }
@@ -102,6 +102,107 @@
 @layer components {
   .container-app {
     @apply mx-auto w-full max-w-[1400px] px-4 md:px-6;
+  }
+
+  /* Paper & Allocations page styles */
+  .stat-card {
+    @apply rounded-lg border border-border bg-card p-3 text-card-foreground shadow-sm transition-all duration-200 hover:shadow-md;
+  }
+
+  .stat-label {
+    @apply mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground;
+  }
+
+  .stat-value {
+    @apply text-lg font-bold text-foreground;
+  }
+
+  .section-card {
+    @apply rounded-xl border border-border bg-card text-card-foreground shadow-sm transition-shadow duration-200;
+  }
+
+  .section-header {
+    @apply border-b border-border bg-muted px-3 py-2.5 font-semibold text-card-foreground;
+  }
+
+  .input-field {
+    @apply rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm transition-all duration-200 placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn {
+    @apply rounded-lg border border-input bg-background px-3 py-2 text-sm font-medium text-foreground shadow-sm transition-all duration-200 hover:bg-accent hover:text-accent-foreground hover:shadow focus:outline-none focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all duration-200 hover:bg-primary/90 hover:shadow focus:outline-none focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .error-message {
+    @apply rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm leading-relaxed text-destructive;
+  }
+
+  .info-message {
+    @apply rounded-lg border border-green-500/50 bg-green-500/10 p-3 text-sm leading-relaxed text-green-600 dark:text-green-400;
+  }
+
+  .table-wrapper {
+    @apply overflow-auto;
+  }
+
+  .table-wrapper::-webkit-scrollbar {
+    @apply h-2 w-2;
+  }
+
+  .table-wrapper::-webkit-scrollbar-track {
+    @apply bg-muted/30;
+  }
+
+  .table-wrapper::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-muted-foreground/30 transition-colors hover:bg-muted-foreground/50;
+  }
+
+  .data-table {
+    @apply w-full border-collapse text-sm;
+  }
+
+  .data-table thead tr {
+    @apply border-b border-border bg-transparent;
+  }
+
+  .data-table th {
+    @apply bg-muted px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground;
+  }
+
+  .data-table tbody tr {
+    @apply border-b border-border/50 transition-colors duration-150 hover:bg-muted/20;
+  }
+
+  .data-table tbody tr:last-child {
+    @apply border-b-0;
+  }
+
+  .data-table td {
+    @apply px-3 py-2.5 text-foreground;
+  }
+
+  .empty-state {
+    @apply px-3 py-6 text-center text-sm italic text-muted-foreground;
+  }
+
+  .code-block {
+    @apply mt-2.5 overflow-auto rounded-lg bg-muted/50 p-3 font-mono text-xs leading-relaxed text-foreground;
+  }
+
+  .code-block::-webkit-scrollbar {
+    @apply h-2 w-2;
+  }
+
+  .code-block::-webkit-scrollbar-track {
+    @apply bg-muted/30;
+  }
+
+  .code-block::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-muted-foreground/30 transition-colors hover:bg-muted-foreground/50;
   }
 }
 

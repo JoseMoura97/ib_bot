@@ -25,6 +25,7 @@ type MetricsPayload = {
 
 type SortKey =
   | "name"
+  | "mismatch_score"
   | "cagr_diff"
   | "sharpe_diff"
   | "maxdd_diff"
@@ -94,13 +95,26 @@ export function MetricsTable() {
   const rows = useMemo(() => {
     const all = payload?.rows || [];
     const q = filter.trim().toLowerCase();
-    const filtered = q ? all.filter((r) => r.name.toLowerCase().includes(q)) : all;
+    const filtered = q
+      ? all.filter((r) => {
+          const hay = `${r.name} ${(r.category ?? "")} ${(r.subcategory ?? "")}`.toLowerCase();
+          return hay.includes(q);
+        })
+      : all;
 
     function keyVal(r: MetricsRow): number {
       const d = r.diffs || {};
       const v =
         sortKey === "name"
           ? null
+          : sortKey === "mismatch_score"
+            ? (() => {
+                const a = typeof d.cagr === "number" ? Math.abs(d.cagr) : 0;
+                const b = typeof d.sharpe === "number" ? Math.abs(d.sharpe) : 0;
+                const c = typeof d.max_drawdown === "number" ? Math.abs(d.max_drawdown) : 0;
+                // Unweighted sum is simple + easy to reason about.
+                return a + b + c;
+              })()
           : sortKey === "cagr_diff"
             ? d.cagr
             : sortKey === "sharpe_diff"
@@ -125,6 +139,25 @@ export function MetricsTable() {
     });
     return sorted;
   }, [payload, filter, sortKey, sortDesc]);
+
+  const showCategory = useMemo(() => rows.some((r) => !!r.category), [rows]);
+  const showSubcategory = useMemo(() => rows.some((r) => !!r.subcategory), [rows]);
+
+  const topMismatches = useMemo(() => {
+    const all = payload?.rows || [];
+    const scored = all
+      .map((r) => {
+        const d = r.diffs || {};
+        const score =
+          (typeof d.cagr === "number" ? Math.abs(d.cagr) : 0) +
+          (typeof d.sharpe === "number" ? Math.abs(d.sharpe) : 0) +
+          (typeof d.max_drawdown === "number" ? Math.abs(d.max_drawdown) : 0);
+        return { r, score };
+      })
+      .filter((x) => x.score > 0);
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, 10);
+  }, [payload]);
 
   if (loading) return <div className="text-sm text-muted-foreground">Loading metrics…</div>;
   if (error) return <div className="text-sm text-destructive">Metrics error: {error}</div>;
@@ -156,9 +189,10 @@ export function MetricsTable() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="w-56">
-            <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter…" />
+            <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter name/category…" />
           </div>
           <Select value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)} className="w-auto">
+            <option value="mismatch_score">Sort by Mismatch score</option>
             <option value="cagr_diff">Sort by ΔCAGR</option>
             <option value="sharpe_diff">Sort by ΔSharpe</option>
             <option value="maxdd_diff">Sort by ΔMaxDD</option>
@@ -185,13 +219,60 @@ export function MetricsTable() {
         </Card>
       ) : null}
 
+      {topMismatches.length ? (
+        <Card className="shadow-none">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold">Top mismatches</div>
+                <div className="text-xs text-muted-foreground">
+                  Ranked by |ΔCAGR| + |ΔSharpe| + |ΔMaxDD| (top 10).
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 overflow-x-auto">
+              <Table className="min-w-[680px]">
+                <thead>
+                  <tr>
+                    <Th>Strategy</Th>
+                    <Th className="text-right">ΔCAGR</Th>
+                    <Th className="text-right">ΔSharpe</Th>
+                    <Th className="text-right">ΔMaxDD</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topMismatches.map(({ r }) => {
+                    const d = r.diffs || {};
+                    return (
+                      <tr key={r.name} className="hover:bg-accent/40">
+                        <Td className="max-w-[360px] truncate font-semibold">{r.name}</Td>
+                        <Td className={`text-right font-mono ${clsDiff(d.cagr ?? null)}`}>
+                          {typeof d.cagr === "number" ? `${d.cagr.toFixed(2)}%` : "—"}
+                        </Td>
+                        <Td className={`text-right font-mono ${clsDiff(d.sharpe ?? null)}`}>
+                          {typeof d.sharpe === "number" ? d.sharpe.toFixed(2) : "—"}
+                        </Td>
+                        <Td className={`text-right font-mono ${clsDiff(d.max_drawdown ?? null)}`}>
+                          {typeof d.max_drawdown === "number" ? `${d.max_drawdown.toFixed(2)}%` : "—"}
+                        </Td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <TableWrap>
         <Table>
           <thead>
             <tr>
               <Th>Strategy</Th>
-              <Th>Category</Th>
-              <Th>Subcategory</Th>
+              <Th>Status</Th>
+              {showCategory ? <Th>Category</Th> : null}
+              {showSubcategory ? <Th>Subcategory</Th> : null}
 
               <Th className="text-right">CAGR (Our)</Th>
               <Th className="text-right">CAGR (Q)</Th>
@@ -237,11 +318,15 @@ export function MetricsTable() {
           <tbody>
             {rows.map((r) => {
               const d = r.diffs || {};
+              const status = String(r.ours?.status ?? "—");
               return (
                 <tr key={r.name} className="hover:bg-accent/40">
                   <Td className="max-w-[260px] truncate font-semibold">{r.name}</Td>
-                  <Td className="text-muted-foreground">{r.category ?? "—"}</Td>
-                  <Td className="text-muted-foreground">{r.subcategory ?? "—"}</Td>
+                  <Td className={status === "OK" ? "text-muted-foreground" : "text-muted-foreground"}>
+                    {status}
+                  </Td>
+                  {showCategory ? <Td className="text-muted-foreground">{r.category ?? ""}</Td> : null}
+                  {showSubcategory ? <Td className="text-muted-foreground">{r.subcategory ?? ""}</Td> : null}
 
                   <Td className="text-right font-mono">{fmtPct(r.ours?.cagr)}</Td>
                   <Td className="text-right font-mono">{fmtPct(r.quiver?.cagr)}</Td>

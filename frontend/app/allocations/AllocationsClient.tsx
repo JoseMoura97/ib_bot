@@ -1,6 +1,5 @@
 "use client";
 
-import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
@@ -15,13 +14,13 @@ type PortfolioOut = {
   updated_at: string;
 };
 
-type AllocationTarget = "paper" | "live";
+type AllocationMode = "paper" | "live";
 
 type AllocationRecord = {
   id: string;
   portfolio_id: string;
   amount: number;
-  target: AllocationTarget;
+  mode: AllocationMode;
   created_at: string;
   // allow backend to add fields without breaking UI
   [k: string]: unknown;
@@ -36,18 +35,7 @@ async function fetchJson<T>(input: RequestInfo | URL, init?: RequestInit): Promi
   return (await res.json()) as T;
 }
 
-const inputStyle: CSSProperties = {
-  padding: "8px 10px",
-  borderRadius: 8,
-  border: "1px solid #ddd",
-};
-
-const buttonStyle: CSSProperties = {
-  padding: "8px 12px",
-  borderRadius: 8,
-  border: "1px solid #ddd",
-  cursor: "pointer",
-};
+// Styles migrated to CSS classes for dark mode support
 
 function formatUsd(n: number): string {
   return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(n);
@@ -56,7 +44,8 @@ function formatUsd(n: number): string {
 export function AllocationsClient(props: { initialPortfolios: PortfolioOut[] }) {
   const [portfolios, setPortfolios] = useState<PortfolioOut[]>(props.initialPortfolios || []);
   const [portfolioId, setPortfolioId] = useState<string>(() => props.initialPortfolios?.[0]?.id ?? "");
-  const [target, setTarget] = useState<AllocationTarget>("paper");
+  const [mode, setMode] = useState<AllocationMode>("paper");
+  const [accountId, setAccountId] = useState<string>("paper");
   const [amountText, setAmountText] = useState<string>("1000");
 
   const [history, setHistory] = useState<AllocationRecord[]>([]);
@@ -66,6 +55,23 @@ export function AllocationsClient(props: { initialPortfolios: PortfolioOut[] }) 
   const [infoMsg, setInfoMsg] = useState<string | null>(null);
 
   const selectedPortfolio = useMemo(() => portfolios.find((p) => p.id === portfolioId) || null, [portfolios, portfolioId]);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("allocations.accountId");
+      if (saved) setAccountId(saved);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("allocations.accountId", accountId);
+    } catch {
+      // ignore
+    }
+  }, [accountId]);
 
   const currentAllocated = useMemo(() => {
     return history.reduce((sum, r) => sum + (Number.isFinite(Number(r.amount)) ? Number(r.amount) : 0), 0);
@@ -88,9 +94,7 @@ export function AllocationsClient(props: { initialPortfolios: PortfolioOut[] }) 
     setErrorMsg(null);
     setInfoMsg(null);
     try {
-      // Expected from Agent E:
-      // GET /allocations?portfolio_id=<uuid>&target=paper|live => AllocationRecord[]
-      const qs = new URLSearchParams({ portfolio_id: portfolioId, target });
+      const qs = new URLSearchParams({ portfolio_id: portfolioId });
       const rows = await fetchJson<AllocationRecord[]>(`/api/allocations?${qs.toString()}`, { cache: "no-store" });
       setHistory(Array.isArray(rows) ? rows : []);
     } catch (e: any) {
@@ -98,7 +102,7 @@ export function AllocationsClient(props: { initialPortfolios: PortfolioOut[] }) 
       setHistory([]);
       setErrorMsg(
         msg +
-          " (If this says 404, the allocation-ledger endpoints may not be deployed yet. Once they are, this page will show allocation history and current allocated amount.)",
+          " (If this says 404, the allocation endpoints may not be deployed yet. Once they are, this page will show allocation history and current allocated amount.)",
       );
     } finally {
       setLoading(false);
@@ -115,7 +119,7 @@ export function AllocationsClient(props: { initialPortfolios: PortfolioOut[] }) 
   useEffect(() => {
     loadHistory().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [portfolioId, target]);
+  }, [portfolioId]);
 
   async function onCreateAllocation() {
     setErrorMsg(null);
@@ -127,18 +131,16 @@ export function AllocationsClient(props: { initialPortfolios: PortfolioOut[] }) 
       setErrorMsg("Pick a portfolio first.");
       return;
     }
-    if (!Number.isFinite(amt) || amt === 0) {
+    if (!Number.isFinite(amt) || amt <= 0) {
       setSaveState("error");
-      setErrorMsg("Amount must be a non-zero number (positive to allocate, negative to de-allocate).");
+      setErrorMsg("Amount must be a positive number.");
       return;
     }
     try {
-      // Expected from Agent E:
-      // POST /allocations { portfolio_id, amount, target } => AllocationRecord
       await fetchJson<AllocationRecord>("/api/allocations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ portfolio_id: portfolioId, amount: amt, target }),
+        body: JSON.stringify({ portfolio_id: portfolioId, amount: amt, mode, account_id: accountId }),
       });
       setSaveState("saved");
       setInfoMsg("Allocation recorded.");
@@ -150,57 +152,38 @@ export function AllocationsClient(props: { initialPortfolios: PortfolioOut[] }) 
   }
 
   return (
-    <main style={{ padding: 20, maxWidth: 1200, margin: "0 auto" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+    <main className="mx-auto max-w-[1200px] p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 style={{ margin: "8px 0 6px" }}>Allocations</h2>
-          <div style={{ color: "#666", fontSize: 12 }}>
-            Send +$X to a portfolio (or -$X to withdraw) and track the allocation ledger.
+          <h2 className="mb-1.5 mt-2">Allocations</h2>
+          <div className="text-xs text-muted-foreground">
+            Allocate cash to a portfolio and track the allocation ledger.
           </div>
         </div>
-        <button onClick={() => refreshPortfolios().catch((e) => setErrorMsg(String(e?.message || e)))} style={buttonStyle}>
+        <button onClick={() => refreshPortfolios().catch((e) => setErrorMsg(String(e?.message || e)))} className="btn">
           Refresh portfolios
         </button>
       </div>
 
       {errorMsg ? (
-        <div
-          style={{
-            background: "#fff3f3",
-            border: "1px solid #f3b0b0",
-            padding: 10,
-            borderRadius: 8,
-            marginTop: 12,
-            color: "#b00020",
-            whiteSpace: "pre-wrap",
-          }}
-        >
+        <div className="error-message mt-3 whitespace-pre-wrap">
           {errorMsg}
         </div>
       ) : null}
       {infoMsg ? (
-        <div
-          style={{
-            background: "#f6ffed",
-            border: "1px solid #b7eb8f",
-            padding: 10,
-            borderRadius: 8,
-            marginTop: 12,
-            color: "#135200",
-          }}
-        >
+        <div className="info-message mt-3">
           {infoMsg}
         </div>
       ) : null}
 
-      <div style={{ marginTop: 12, border: "1px solid #eee", borderRadius: 10, overflow: "hidden" }}>
-        <div style={{ padding: 10, background: "#fafafa", borderBottom: "1px solid #eee", fontWeight: 600 }}>
+      <div className="section-card mt-3 overflow-hidden">
+        <div className="section-header">
           Create allocation
         </div>
-        <div style={{ padding: 12, display: "grid", gridTemplateColumns: "1fr 180px 180px 180px", gap: 10, alignItems: "end" }}>
+        <div className="grid items-end gap-2.5 p-3 lg:grid-cols-[1fr_180px_180px_180px_200px]">
           <div>
-            <div style={{ fontSize: 12, color: "#666", marginBottom: 6 }}>Portfolio</div>
-            <select value={portfolioId} onChange={(e) => setPortfolioId(e.target.value)} style={{ ...inputStyle, width: "100%" }}>
+            <div className="mb-1.5 text-xs text-muted-foreground">Portfolio</div>
+            <select value={portfolioId} onChange={(e) => setPortfolioId(e.target.value)} className="input-field w-full">
               <option value="" disabled>
                 Select…
               </option>
@@ -211,22 +194,22 @@ export function AllocationsClient(props: { initialPortfolios: PortfolioOut[] }) 
               ))}
             </select>
             {selectedPortfolio ? (
-              <div style={{ fontSize: 12, color: "#666", marginTop: 6 }}>
+              <div className="mt-1.5 text-xs text-muted-foreground">
                 Default cash: {formatUsd(Number(selectedPortfolio.default_cash ?? 0))}
               </div>
             ) : null}
           </div>
 
           <div>
-            <div style={{ fontSize: 12, color: "#666", marginBottom: 6 }}>Target</div>
-            <select value={target} onChange={(e) => setTarget(e.target.value as AllocationTarget)} style={{ ...inputStyle, width: "100%" }}>
+            <div className="mb-1.5 text-xs text-muted-foreground">Mode</div>
+            <select value={mode} onChange={(e) => setMode(e.target.value as AllocationMode)} className="input-field w-full">
               <option value="paper">paper</option>
               <option value="live">live</option>
             </select>
           </div>
 
           <div>
-            <div style={{ fontSize: 12, color: "#666", marginBottom: 6 }}>Amount</div>
+            <div className="mb-1.5 text-xs text-muted-foreground">Amount</div>
             <input
               value={amountText}
               onChange={(e) => {
@@ -235,63 +218,73 @@ export function AllocationsClient(props: { initialPortfolios: PortfolioOut[] }) 
               }}
               placeholder="e.g. 25000"
               inputMode="decimal"
-              style={{ ...inputStyle, width: "100%" }}
+              className="input-field w-full"
             />
           </div>
 
           <div>
-            <button onClick={onCreateAllocation} disabled={saveState === "saving"} style={{ ...buttonStyle, width: "100%" }}>
+            <div className="mb-1.5 text-xs text-muted-foreground">Account ID</div>
+            <input
+              value={accountId}
+              onChange={(e) => setAccountId(e.target.value)}
+              placeholder="e.g. paper-1"
+              className="input-field w-full"
+            />
+          </div>
+
+          <div>
+            <button onClick={onCreateAllocation} disabled={saveState === "saving"} className="btn w-full">
               {saveState === "saving" ? "Submitting…" : "Submit"}
             </button>
-            <div style={{ fontSize: 12, color: "#666", marginTop: 6, minHeight: 16 }}>
+            <div className="mt-1.5 min-h-[16px] text-xs text-muted-foreground">
               {saveState === "saved" ? "Saved" : saveState === "error" ? "Error" : ""}
             </div>
           </div>
         </div>
       </div>
 
-      <div style={{ marginTop: 12, display: "flex", gap: 12, flexWrap: "wrap" }}>
-        <div style={{ padding: "10px 12px", border: "1px solid #eee", borderRadius: 10 }}>
-          <div style={{ fontSize: 11, color: "#666", textTransform: "uppercase" }}>Current allocated</div>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>{formatUsd(currentAllocated)}</div>
-          <div style={{ fontSize: 12, color: "#666" }}>Computed as sum(history) for selected portfolio + target.</div>
+      <div className="mt-3 flex flex-wrap gap-3">
+        <div className="stat-card">
+          <div className="stat-label">Current allocated</div>
+          <div className="stat-value">{formatUsd(currentAllocated)}</div>
+          <div className="text-xs text-muted-foreground">Computed as sum(history) for selected portfolio.</div>
         </div>
-        <button onClick={() => loadHistory().catch((e) => setErrorMsg(String(e?.message || e)))} style={buttonStyle}>
+        <button onClick={() => loadHistory().catch((e) => setErrorMsg(String(e?.message || e)))} className="btn">
           Reload history
         </button>
       </div>
 
-      <div style={{ marginTop: 12, overflowX: "auto", border: "1px solid #eee", borderRadius: 12 }}>
-        <div style={{ padding: 10, background: "#fafafa", borderBottom: "1px solid #eee", fontWeight: 600 }}>
+      <div className="section-card mt-3 overflow-x-auto">
+        <div className="section-header">
           Allocation history {loading ? "— loading…" : ""}
         </div>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+        <table className="data-table">
           <thead>
-            <tr style={{ background: "#fafafa" }}>
-              <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #eee" }}>When</th>
-              <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #eee" }}>Target</th>
-              <th style={{ textAlign: "right", padding: 10, borderBottom: "1px solid #eee" }}>Amount</th>
-              <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #eee" }}>Allocation id</th>
+            <tr>
+              <th>When</th>
+              <th>Mode</th>
+              <th className="text-right">Amount</th>
+              <th>Allocation id</th>
             </tr>
           </thead>
           <tbody>
             {history.map((r) => (
               <tr key={String(r.id)}>
-                <td style={{ padding: 10, borderBottom: "1px solid #f1f1f1" }}>
+                <td>
                   {r.created_at ? new Date(String(r.created_at)).toLocaleString() : "—"}
                 </td>
-                <td style={{ padding: 10, borderBottom: "1px solid #f1f1f1" }}>{String(r.target)}</td>
-                <td style={{ padding: 10, borderBottom: "1px solid #f1f1f1", textAlign: "right" }}>
+                <td>{String(r.mode)}</td>
+                <td className="text-right">
                   {formatUsd(Number(r.amount ?? 0))}
                 </td>
-                <td style={{ padding: 10, borderBottom: "1px solid #f1f1f1", fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" }}>
+                <td className="font-mono">
                   {String(r.id)}
                 </td>
               </tr>
             ))}
             {history.length === 0 && !loading ? (
               <tr>
-                <td colSpan={4} style={{ padding: 12, color: "#666" }}>
+                <td colSpan={4} className="empty-state">
                   No allocation records for this selection.
                 </td>
               </tr>

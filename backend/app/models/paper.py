@@ -82,5 +82,29 @@ class PaperTrade(Base):
     notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
+class PaperSnapshot(Base):
+    __tablename__ = "paper_snapshots"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, ForeignKey("paper_cash.id", ondelete="CASCADE"), nullable=False)
+    portfolio_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    cash: Mapped[float] = mapped_column(Float, nullable=False)
+    equity: Mapped[float] = mapped_column(Float, nullable=False)
+    positions_json: Mapped[dict] = mapped_column(_json_type(), default=dict, nullable=False)
+
+
+class PaperRebalanceLog(Base):
+    __tablename__ = "paper_rebalance_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, ForeignKey("paper_cash.id", ondelete="CASCADE"), nullable=False)
+    portfolio_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="SUCCESS")
+    n_orders: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    details: Mapped[dict] = mapped_column(_json_type(), default=dict, nullable=False)
+
+
 # Backward-compatible alias (older code imported PaperCash).
 PaperCash = PaperAccount

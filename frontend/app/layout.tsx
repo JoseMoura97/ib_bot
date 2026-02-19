@@ -13,7 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 (function () {
   try {
     var t = localStorage.getItem(${JSON.stringify(themeStorageKey)});
-    if (t !== "dark" && t !== "light") t = "light";
+    if (t !== "dark" && t !== "light") t = "dark";
     document.documentElement.dataset.theme = t;
     if (t === "dark") document.documentElement.classList.add("dark");
     else document.documentElement.classList.remove("dark");

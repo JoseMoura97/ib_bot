@@ -221,6 +221,29 @@ class PaperRebalanceExecuteOut(BaseModel):
 # ----------------------------
 
 
+# ----------------------------
+# Portfolio optimizer
+# ----------------------------
+
+
+class OptimizeRequest(BaseModel):
+    method: Literal["equal_weight", "inverse_volatility", "risk_parity", "max_sharpe"] = "equal_weight"
+    max_weight: float = Field(default=0.30, ge=0.01, le=1.0)
+    min_weight: float = Field(default=0.02, ge=0.0, le=1.0)
+    risk_free_rate: float = Field(default=0.04, ge=0.0)
+
+
+class OptimizeCompareRequest(BaseModel):
+    max_weight: float = Field(default=0.30, ge=0.01, le=1.0)
+    min_weight: float = Field(default=0.02, ge=0.0, le=1.0)
+    risk_free_rate: float = Field(default=0.04, ge=0.0)
+
+
+# ----------------------------
+# Allocations ledger
+# ----------------------------
+
+
 class AllocationCreate(BaseModel):
     account_id: str
     portfolio_id: UUID

@@ -34,6 +34,18 @@ celery_app.conf.update(
             "schedule": crontab(day_of_week="sun", hour=3, minute=0),
             "kwargs": {"force": False, "max_age_hours": 24 * 7},
         },
+        "shadow_preview_daily": {
+            "task": "shadow_preview_task",
+            "schedule": crontab(hour=6, minute=0),
+        },
+        "paper_rebalance_daily": {
+            "task": "paper_rebalance_daily_task",
+            "schedule": crontab(hour=15, minute=0),  # 15:00 UTC = ~10:00 AM ET
+        },
+        "paper_snapshot_daily": {
+            "task": "paper_snapshot_daily_task",
+            "schedule": crontab(hour=21, minute=30),  # 21:30 UTC = ~4:30 PM ET
+        },
     },
 )
 

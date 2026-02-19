@@ -179,131 +179,108 @@ export function BacktestWizard(props: {
   }
 
   return (
-    <section style={{ border: "1px solid #eee", borderRadius: 12, padding: 14, background: "white" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <div>
-          <h3 style={{ margin: "4px 0 6px" }}>Backtest Wizard</h3>
-          <div style={{ fontSize: 12, color: "#666" }}>
-            Pick 1+ strategies + weights, choose blend mode, date range, and transaction cost. “Run” will create a run and open run details.
-          </div>
+    <section className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="text-sm text-muted-foreground">
+          Create a custom backtest by selecting strategies, setting weights, and choosing a date range. The system will simulate
+          historical performance and show you the results.
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={equalizeWeights}
             disabled={!selected.length}
-            style={{
-              padding: "8px 10px",
-              borderRadius: 8,
-              border: "1px solid #ddd",
-              cursor: selected.length ? "pointer" : "not-allowed",
-            }}
+            className="btn"
           >
             Equalize weights
           </button>
           <button
             onClick={onRun}
             disabled={submitting}
-            style={{
-              padding: "8px 12px",
-              borderRadius: 8,
-              border: "1px solid #ddd",
-              cursor: submitting ? "not-allowed" : "pointer",
-              background: "#eef6ff",
-            }}
+            className="btn-primary"
           >
-            {submitting ? "Creating run…" : "Run"}
+            {submitting ? "Creating run…" : "Run Backtest"}
           </button>
         </div>
       </div>
 
       {errorMsg ? (
-        <div
-          style={{
-            marginTop: 10,
-            background: "#fff3f3",
-            border: "1px solid #f3b0b0",
-            padding: 10,
-            borderRadius: 8,
-            color: "#b00020",
-          }}
-        >
+        <div className="error-message mt-2.5">
           {errorMsg}
         </div>
       ) : null}
 
       {toast ? (
-        <div
-          style={{
-            position: "fixed",
-            right: 16,
-            bottom: 16,
-            background: "#111",
-            color: "white",
-            padding: "10px 12px",
-            borderRadius: 10,
-            fontSize: 12,
-            zIndex: 9999,
-          }}
-        >
+        <div className="fixed right-4 bottom-4 z-[9999] rounded-lg bg-foreground px-3 py-2.5 text-xs text-background">
           {toast}
         </div>
       ) : null}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
-        <div style={{ display: "grid", gap: 10 }}>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span style={{ fontSize: 12, color: "#666" }}>Blend mode</span>
-            <select value={mode} onChange={(e) => setMode(e.target.value as any)} style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #ddd" }}>
-              <option value="nav_blend">nav_blend (blend equity curves by weights)</option>
-              <option value="holdings_union">holdings_union (union rebalance events, combine holdings)</option>
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        <div className="grid gap-2.5">
+          <label className="grid gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground">Blend mode</span>
+            <select value={mode} onChange={(e) => setMode(e.target.value as any)} className="input-field">
+              <option value="nav_blend">Blend Returns (recommended for most users)</option>
+              <option value="holdings_union">Combine Holdings (advanced)</option>
             </select>
+            <span className="text-[11px] text-muted-foreground">
+              {mode === "nav_blend" 
+                ? "Combines strategy returns by weight. Simple and intuitive." 
+                : "Merges actual holdings and rebalances together. More realistic but complex."}
+            </span>
           </label>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <label style={{ display: "grid", gap: 6 }}>
-              <span style={{ fontSize: 12, color: "#666" }}>Start date</span>
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #ddd" }} />
+          <div className="grid grid-cols-2 gap-2.5">
+            <label className="grid gap-1.5">
+              <span className="text-xs font-medium text-muted-foreground">Start date</span>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="input-field" />
             </label>
-            <label style={{ display: "grid", gap: 6 }}>
-              <span style={{ fontSize: 12, color: "#666" }}>End date</span>
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #ddd" }} />
+            <label className="grid gap-1.5">
+              <span className="text-xs font-medium text-muted-foreground">End date</span>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="input-field" />
             </label>
           </div>
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span style={{ fontSize: 12, color: "#666" }}>Transaction cost (bps)</span>
+          <label className="grid gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground">Transaction cost (bps)</span>
             <input
               type="number"
               value={Number.isFinite(costBps) ? costBps : 0}
               min={0}
               step={0.5}
               onChange={(e) => setCostBps(Number(e.target.value))}
-              style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #ddd" }}
+              className="input-field"
             />
+            <span className="text-[11px] text-muted-foreground">
+              Cost per trade. 10 bps = 0.1%. Set to 0 for idealized results.
+            </span>
           </label>
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span style={{ fontSize: 12, color: "#666" }}>Initial cash (USD)</span>
+          <label className="grid gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground">Initial cash (USD)</span>
             <input
               type="number"
               value={Number.isFinite(initialCash) ? initialCash : 0}
               min={0}
               step={1000}
               onChange={(e) => setInitialCash(Number(e.target.value))}
-              style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #ddd" }}
+              className="input-field"
             />
+            <span className="text-[11px] text-muted-foreground">
+              Starting portfolio value. Default: $100,000
+            </span>
           </label>
         </div>
 
-        <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 10, background: "#fafafa" }}>
-          <div style={{ fontWeight: 700, marginBottom: 8 }}>Selected strategies ({selected.length})</div>
+        <div className="rounded-lg border border-border bg-muted/30 p-2.5">
+          <div className="mb-2 text-sm font-semibold">Selected strategies ({selected.length})</div>
           {selected.length ? (
-            <div style={{ display: "grid", gap: 8, maxHeight: 220, overflow: "auto", paddingRight: 6 }}>
+            <div className="grid max-h-[220px] gap-2 overflow-auto pr-1.5">
               {selected.map((s) => (
-                <div key={s.name} style={{ display: "grid", gridTemplateColumns: "1fr 120px 28px", gap: 10, alignItems: "center" }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
-                    <div style={{ fontSize: 11, color: "#666" }}>Weight is normalized on submit</div>
+                <div key={s.name} className="grid grid-cols-[1fr_120px_28px] items-center gap-2.5">
+                  <div className="min-w-0">
+                    <div className="overflow-hidden text-ellipsis whitespace-nowrap text-sm font-semibold">{s.name}</div>
+                    <div className="text-[11px] text-muted-foreground">Weights auto-normalize to 100%</div>
                   </div>
                   <input
                     type="number"
@@ -311,12 +288,13 @@ export function BacktestWizard(props: {
                     min={0}
                     step={0.01}
                     onChange={(e) => setWeight(s.name, Number(e.target.value))}
-                    style={{ padding: "6px 8px", borderRadius: 8, border: "1px solid #ddd", width: "100%" }}
+                    className="input-field w-full text-xs"
+                    placeholder="Weight"
                   />
                   <button
                     onClick={() => toggleStrategy(s.name)}
                     title="Remove"
-                    style={{ width: 28, height: 28, borderRadius: 8, border: "1px solid #ddd", background: "white", cursor: "pointer" }}
+                    className="btn h-7 w-7 p-0 text-lg leading-none"
                   >
                     ×
                   </button>
@@ -324,56 +302,54 @@ export function BacktestWizard(props: {
               ))}
             </div>
           ) : (
-            <div style={{ color: "#666", fontSize: 12 }}>Select strategies below.</div>
+            <div className="text-xs text-muted-foreground">Select strategies below to add them to your backtest.</div>
           )}
         </div>
       </div>
 
-      <div style={{ marginTop: 12 }}>
-        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
+      <div className="mt-3">
+        <div className="mb-2.5 flex flex-wrap items-center gap-2.5">
           <input
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Search strategies…"
-            style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #ddd", minWidth: 280 }}
+            className="input-field min-w-[280px]"
           />
           <button
             onClick={() => {
               setSelected([]);
               setErrorMsg(null);
             }}
-            style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #ddd", cursor: "pointer" }}
+            className="btn"
           >
             Clear selection
           </button>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10 }}>
+        <div className="mb-2 text-xs text-muted-foreground">
+          Select strategies to include in your backtest. You can adjust individual weights or use &quot;Equalize weights&quot; to distribute
+          evenly.
+        </div>
+
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-2.5">
           {options.map((opt) => {
             const checked = selectedSet.has(opt.name);
             return (
               <label
                 key={opt.name}
-                style={{
-                  border: "1px solid #eee",
-                  borderRadius: 10,
-                  padding: 10,
-                  cursor: "pointer",
-                  background: checked ? "#eef6ff" : "white",
-                }}
+                className={`cursor-pointer rounded-lg border border-border p-2.5 transition-colors hover:bg-accent/20 ${checked ? "border-primary/50 bg-accent/40" : "bg-card"}`}
               >
-                <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                  <input type="checkbox" checked={checked} onChange={() => toggleStrategy(opt.name)} />
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{opt.name}</div>
+                <div className="flex items-start gap-2.5">
+                  <input type="checkbox" checked={checked} onChange={() => toggleStrategy(opt.name)} className="mt-0.5" />
+                  <div className="min-w-0">
+                    <div className="overflow-hidden text-ellipsis whitespace-nowrap text-sm font-semibold">{opt.name}</div>
                     {opt.subcategory || opt.category ? (
-                      <div style={{ fontSize: 11, color: "#777" }}>
-                        {opt.category ? `${opt.category} / ` : ""}
-                        {opt.subcategory || ""}
+                      <div className="text-[11px] text-muted-foreground">
+                        {opt.subcategory || opt.category || ""}
                       </div>
                     ) : null}
                     {opt.description ? (
-                      <div style={{ fontSize: 12, color: "#666", marginTop: 4, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any }}>
+                      <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                         {opt.description}
                       </div>
                     ) : null}
@@ -387,4 +363,3 @@ export function BacktestWizard(props: {
     </section>
   );
 }
-

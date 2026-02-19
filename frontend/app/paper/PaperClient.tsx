@@ -67,6 +67,15 @@ export function PaperClient() {
   const [rebalancePreview, setRebalancePreview] = useState<any>(null);
   const [rebalanceError, setRebalanceError] = useState<string | null>(null);
 
+  // P&L / Performance tracking
+  type PnlDaily = { date: string; equity: number; cash: number; daily_pnl: number; cumulative_pnl: number };
+  type PnlSummary = { total_return: number; total_pnl: number; max_drawdown: number; days: number; first_equity: number; last_equity: number };
+  const [pnlDaily, setPnlDaily] = useState<PnlDaily[]>([]);
+  const [pnlSummary, setPnlSummary] = useState<PnlSummary | null>(null);
+  const [pnlLoading, setPnlLoading] = useState(false);
+  type RebalLog = { id: number; timestamp: string; portfolio_id: string; status: string; n_orders: number; details: any };
+  const [rebalLogs, setRebalLogs] = useState<RebalLog[]>([]);
+
   const mountedRef = useRef(true);
   useEffect(() => {
     mountedRef.current = true;
@@ -103,6 +112,24 @@ export function PaperClient() {
     }
   }
 
+  async function refreshPnl(aid: string) {
+    setPnlLoading(true);
+    try {
+      const [pnlRes, logsRes] = await Promise.all([
+        fetch(`/api/paper/accounts/${encodeURIComponent(aid)}/pnl`).then((r) => r.json()),
+        fetch(`/api/paper/accounts/${encodeURIComponent(aid)}/rebalance-logs?limit=20`).then((r) => r.json()),
+      ]);
+      if (!mountedRef.current) return;
+      setPnlDaily(pnlRes?.daily ?? []);
+      setPnlSummary(pnlRes?.summary ?? null);
+      setRebalLogs(logsRes ?? []);
+    } catch {
+      // best-effort
+    } finally {
+      if (mountedRef.current) setPnlLoading(false);
+    }
+  }
+
   useEffect(() => {
     async function boot() {
       setLoading(true);
@@ -114,6 +141,7 @@ export function PaperClient() {
         const firstId = acct[0]?.id || "default";
         setAccountId(firstId);
         await refreshAll(firstId);
+        refreshPnl(firstId).catch(() => {});
       } catch (e: any) {
         if (!mountedRef.current) return;
         setError(String(e?.message || e));
@@ -157,6 +185,7 @@ export function PaperClient() {
     setLoading(true);
     try {
       await refreshAll(nextId);
+      refreshPnl(nextId).catch(() => {});
     } finally {
       setLoading(false);
     }
@@ -238,23 +267,23 @@ export function PaperClient() {
   }
 
   if (loading && !balance && positions.length === 0 && fills.length === 0) {
-    return <div>Loading paper trading…</div>;
+    return <div className="p-5">Loading paper trading…</div>;
   }
 
   return (
-    <main style={{ maxWidth: 1400, margin: "0 auto" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+    <main className="mx-auto max-w-[1400px] p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 style={{ margin: "8px 0 6px" }}>Paper Trading</h2>
-          <div style={{ color: "#666", fontSize: 12 }}>Place a market order and watch cash/positions update instantly.</div>
+          <h2 className="mb-1.5 mt-2">Paper Trading</h2>
+          <div className="text-xs text-muted-foreground">Place a market order and watch cash/positions update instantly.</div>
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <label style={{ fontSize: 12, color: "#666" }}>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <label className="text-xs text-muted-foreground">
             Account{" "}
             <select
               value={accountId}
               onChange={(e) => onAccountChange(e.target.value)}
-              style={{ padding: "6px 8px", marginLeft: 6 }}
+              className="input-field ml-1.5 inline-block"
             >
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
@@ -265,7 +294,7 @@ export function PaperClient() {
           </label>
           <button
             onClick={() => refreshAll(accountId)}
-            style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #ddd" }}
+            className="btn"
             disabled={!!actionBusy}
           >
             Refresh
@@ -274,74 +303,65 @@ export function PaperClient() {
       </div>
 
       {error ? (
-        <div
-          style={{
-            background: "#fff3f3",
-            border: "1px solid #f3b0b0",
-            padding: 10,
-            borderRadius: 8,
-            marginTop: 12,
-            color: "#b00020",
-          }}
-        >
+        <div className="error-message mt-3">
           {error}
         </div>
       ) : null}
 
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 14 }}>
-        <div style={{ padding: "10px 12px", border: "1px solid #eee", borderRadius: 10 }}>
-          <div style={{ fontSize: 11, color: "#666", textTransform: "uppercase" }}>Cash</div>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>{fmtMoney(cash, currency)}</div>
+      <div className="mt-3.5 flex flex-wrap gap-3">
+        <div className="stat-card">
+          <div className="stat-label">Cash</div>
+          <div className="stat-value">{fmtMoney(cash, currency)}</div>
         </div>
-        <div style={{ padding: "10px 12px", border: "1px solid #eee", borderRadius: 10 }}>
-          <div style={{ fontSize: 11, color: "#666", textTransform: "uppercase" }}>Equity</div>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>{fmtMoney(computedEquity, currency)}</div>
+        <div className="stat-card">
+          <div className="stat-label">Equity</div>
+          <div className="stat-value">{fmtMoney(computedEquity, currency)}</div>
         </div>
-        <div style={{ padding: "10px 12px", border: "1px solid #eee", borderRadius: 10 }}>
-          <div style={{ fontSize: 11, color: "#666", textTransform: "uppercase" }}>Positions</div>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>{positions.length}</div>
+        <div className="stat-card">
+          <div className="stat-label">Positions</div>
+          <div className="stat-value">{positions.length}</div>
         </div>
-        <div style={{ padding: "10px 12px", border: "1px solid #eee", borderRadius: 10 }}>
-          <div style={{ fontSize: 11, color: "#666", textTransform: "uppercase" }}>Last update</div>
-          <div style={{ fontSize: 12, fontWeight: 600 }}>{fmtTime(balance?.updated_at)}</div>
+        <div className="stat-card">
+          <div className="stat-label">Last update</div>
+          <div className="text-xs font-semibold">{fmtTime(balance?.updated_at)}</div>
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 12, marginTop: 14 }}>
-        <div style={{ border: "1px solid #eee", borderRadius: 12, padding: 12 }}>
-          <h3 style={{ margin: "0 0 10px" }}>Fund paper account</h3>
-          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+      <div className="mt-3.5 grid gap-3 lg:grid-cols-[420px_1fr]">
+        <div className="section-card p-3">
+          <h3 className="mb-2.5 mt-0">Fund paper account</h3>
+          <div className="flex flex-wrap items-center gap-2.5">
             <input
               value={fundAmount}
               onChange={(e) => setFundAmount(e.target.value)}
               inputMode="decimal"
               placeholder="Amount"
-              style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #ddd", width: 160 }}
+              className="input-field w-40"
             />
-            <span style={{ color: "#666", fontSize: 12 }}>{currency}</span>
+            <span className="text-xs text-muted-foreground">{currency}</span>
             <button
               onClick={onFund}
               disabled={actionBusy === "fund"}
-              style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #ddd" }}
+              className="btn"
             >
               {actionBusy === "fund" ? "Funding…" : "Add cash"}
             </button>
           </div>
-          <div style={{ marginTop: 8, fontSize: 12, color: "#666" }}>
+          <div className="mt-2 text-xs text-muted-foreground">
             Uses Agent E funding endpoint if available; otherwise shows a clear error.
           </div>
         </div>
 
-        <div style={{ border: "1px solid #eee", borderRadius: 12, padding: 12 }}>
-          <h3 style={{ margin: "0 0 10px" }}>Order ticket (market)</h3>
-          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <div className="section-card p-3">
+          <h3 className="mb-2.5 mt-0">Order ticket (market)</h3>
+          <div className="flex flex-wrap items-center gap-2.5">
             <input
               value={symbol}
               onChange={(e) => setSymbol(e.target.value.toUpperCase())}
               placeholder="Symbol (e.g. AAPL)"
-              style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #ddd", width: 160 }}
+              className="input-field w-40"
             />
-            <select value={side} onChange={(e) => setSide(e.target.value as PaperOrderSide)} style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #ddd" }}>
+            <select value={side} onChange={(e) => setSide(e.target.value as PaperOrderSide)} className="input-field">
               <option value="BUY">BUY</option>
               <option value="SELL">SELL</option>
             </select>
@@ -350,51 +370,51 @@ export function PaperClient() {
               onChange={(e) => setQty(e.target.value)}
               inputMode="decimal"
               placeholder="Qty"
-              style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #ddd", width: 120 }}
+              className="input-field w-30"
             />
             <button
               onClick={onSubmitOrder}
               disabled={actionBusy === "order"}
-              style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #ddd" }}
+              className="btn"
             >
               {actionBusy === "order" ? "Submitting…" : "Submit"}
             </button>
           </div>
-          <div style={{ marginTop: 8, fontSize: 12, color: "#666" }}>
+          <div className="mt-2 text-xs text-muted-foreground">
             After submit, this page auto-refreshes to show the fill and updated cash/positions.
           </div>
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 14 }}>
-        <div style={{ border: "1px solid #eee", borderRadius: 12, overflow: "hidden" }}>
-          <div style={{ padding: 10, background: "#fafafa", borderBottom: "1px solid #eee", fontWeight: 600 }}>Positions</div>
-          <div style={{ overflow: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <div className="mt-3.5 grid gap-3 lg:grid-cols-2">
+        <div className="section-card overflow-hidden">
+          <div className="section-header">Positions</div>
+          <div className="table-wrapper">
+            <table className="data-table">
               <thead>
-                <tr style={{ textAlign: "left", fontSize: 12, color: "#666" }}>
-                  <th style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>Symbol</th>
-                  <th style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>Qty</th>
-                  <th style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>Avg cost</th>
-                  <th style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>Mkt price</th>
-                  <th style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>Mkt value</th>
+                <tr>
+                  <th>Symbol</th>
+                  <th>Qty</th>
+                  <th>Avg cost</th>
+                  <th>Mkt price</th>
+                  <th>Mkt value</th>
                 </tr>
               </thead>
               <tbody>
                 {positions.map((p) => (
-                  <tr key={p.symbol} style={{ borderBottom: "1px solid #f3f3f3" }}>
-                    <td style={{ padding: "10px 12px", fontWeight: 700 }}>{p.symbol}</td>
-                    <td style={{ padding: "10px 12px" }}>{fmtNum(p.quantity, 4)}</td>
-                    <td style={{ padding: "10px 12px" }}>{fmtMoney(p.avg_cost, p.currency || currency)}</td>
-                    <td style={{ padding: "10px 12px" }}>{fmtMoney(p.market_price, p.currency || currency)}</td>
-                    <td style={{ padding: "10px 12px" }}>
+                  <tr key={p.symbol}>
+                    <td className="font-bold">{p.symbol}</td>
+                    <td>{fmtNum(p.quantity, 4)}</td>
+                    <td>{fmtMoney(p.avg_cost, p.currency || currency)}</td>
+                    <td>{fmtMoney(p.market_price, p.currency || currency)}</td>
+                    <td>
                       {fmtMoney(p.market_value ?? (p.market_price != null ? p.market_price * p.quantity : undefined), p.currency || currency)}
                     </td>
                   </tr>
                 ))}
                 {positions.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ padding: 12, color: "#666" }}>
+                    <td colSpan={5} className="empty-state">
                       No positions.
                     </td>
                   </tr>
@@ -404,32 +424,32 @@ export function PaperClient() {
           </div>
         </div>
 
-        <div style={{ border: "1px solid #eee", borderRadius: 12, overflow: "hidden" }}>
-          <div style={{ padding: 10, background: "#fafafa", borderBottom: "1px solid #eee", fontWeight: 600 }}>Recent fills / trades</div>
-          <div style={{ overflow: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <div className="section-card overflow-hidden">
+          <div className="section-header">Recent fills / trades</div>
+          <div className="table-wrapper">
+            <table className="data-table">
               <thead>
-                <tr style={{ textAlign: "left", fontSize: 12, color: "#666" }}>
-                  <th style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>Time</th>
-                  <th style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>Symbol</th>
-                  <th style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>Side</th>
-                  <th style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>Qty</th>
-                  <th style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>Price</th>
+                <tr>
+                  <th>Time</th>
+                  <th>Symbol</th>
+                  <th>Side</th>
+                  <th>Qty</th>
+                  <th>Price</th>
                 </tr>
               </thead>
               <tbody>
                 {fills.map((f, idx) => (
-                  <tr key={`${f.id ?? "fill"}-${idx}`} style={{ borderBottom: "1px solid #f3f3f3" }}>
-                    <td style={{ padding: "10px 12px", fontSize: 12, color: "#444" }}>{fmtTime(f.timestamp)}</td>
-                    <td style={{ padding: "10px 12px", fontWeight: 700 }}>{f.symbol}</td>
-                    <td style={{ padding: "10px 12px" }}>{f.side}</td>
-                    <td style={{ padding: "10px 12px" }}>{fmtNum(f.quantity, 4)}</td>
-                    <td style={{ padding: "10px 12px" }}>{fmtMoney(f.price, currency)}</td>
+                  <tr key={`${f.id ?? "fill"}-${idx}`}>
+                    <td className="text-xs">{fmtTime(f.timestamp)}</td>
+                    <td className="font-bold">{f.symbol}</td>
+                    <td>{f.side}</td>
+                    <td>{fmtNum(f.quantity, 4)}</td>
+                    <td>{fmtMoney(f.price, currency)}</td>
                   </tr>
                 ))}
                 {fills.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ padding: 12, color: "#666" }}>
+                    <td colSpan={5} className="empty-state">
                       No fills yet.
                     </td>
                   </tr>
@@ -440,34 +460,34 @@ export function PaperClient() {
         </div>
       </div>
 
-      <div style={{ marginTop: 14, border: "1px solid #eee", borderRadius: 12, overflow: "hidden" }}>
-        <div style={{ padding: 10, background: "#fafafa", borderBottom: "1px solid #eee", fontWeight: 600 }}>Recent orders</div>
-        <div style={{ overflow: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <div className="section-card mt-3.5 overflow-hidden">
+        <div className="section-header">Recent orders</div>
+        <div className="table-wrapper">
+          <table className="data-table">
             <thead>
-              <tr style={{ textAlign: "left", fontSize: 12, color: "#666" }}>
-                <th style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>Time</th>
-                <th style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>Symbol</th>
-                <th style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>Side</th>
-                <th style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>Qty</th>
-                <th style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>Type</th>
-                <th style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>Status</th>
+              <tr>
+                <th>Time</th>
+                <th>Symbol</th>
+                <th>Side</th>
+                <th>Qty</th>
+                <th>Type</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
               {orders.map((o, idx) => (
-                <tr key={`${o.id ?? "order"}-${idx}`} style={{ borderBottom: "1px solid #f3f3f3" }}>
-                  <td style={{ padding: "10px 12px", fontSize: 12, color: "#444" }}>{fmtTime(o.created_at)}</td>
-                  <td style={{ padding: "10px 12px", fontWeight: 700 }}>{o.symbol}</td>
-                  <td style={{ padding: "10px 12px" }}>{o.side}</td>
-                  <td style={{ padding: "10px 12px" }}>{fmtNum(o.quantity, 4)}</td>
-                  <td style={{ padding: "10px 12px" }}>{o.type || "—"}</td>
-                  <td style={{ padding: "10px 12px" }}>{o.status || "—"}</td>
+                <tr key={`${o.id ?? "order"}-${idx}`}>
+                  <td className="text-xs">{fmtTime(o.created_at)}</td>
+                  <td className="font-bold">{o.symbol}</td>
+                  <td>{o.side}</td>
+                  <td>{fmtNum(o.quantity, 4)}</td>
+                  <td>{o.type || "—"}</td>
+                  <td>{o.status || "—"}</td>
                 </tr>
               ))}
               {orders.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: 12, color: "#666" }}>
+                  <td colSpan={6} className="empty-state">
                     No orders yet.
                   </td>
                 </tr>
@@ -478,13 +498,13 @@ export function PaperClient() {
       </div>
 
       {portfolios.length ? (
-        <div style={{ marginTop: 14, border: "1px solid #eee", borderRadius: 12, padding: 12 }}>
-          <h3 style={{ margin: "0 0 10px" }}>Optional: Allocate cash to a portfolio (rebalance)</h3>
-          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <div className="section-card mt-3.5 p-3">
+          <h3 className="mb-2.5 mt-0">Optional: Allocate cash to a portfolio (rebalance)</h3>
+          <div className="flex flex-wrap items-center gap-2.5">
             <select
               value={portfolioId}
               onChange={(e) => setPortfolioId(e.target.value)}
-              style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #ddd", minWidth: 260 }}
+              className="input-field min-w-[260px]"
             >
               {portfolios.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -497,35 +517,180 @@ export function PaperClient() {
               onChange={(e) => setAllocationUsd(e.target.value)}
               inputMode="decimal"
               placeholder="Allocation (USD)"
-              style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #ddd", width: 200 }}
+              className="input-field w-[200px]"
             />
             <button
               onClick={onPreviewRebalance}
               disabled={actionBusy === "preview"}
-              style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #ddd" }}
+              className="btn"
             >
               {actionBusy === "preview" ? "Previewing…" : "Preview"}
             </button>
             <button
               onClick={onExecuteRebalance}
               disabled={actionBusy === "execute"}
-              style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #ddd" }}
+              className="btn"
             >
               {actionBusy === "execute" ? "Executing…" : "Execute"}
             </button>
           </div>
           {rebalanceError ? (
-            <div style={{ marginTop: 10, color: "#b00020", fontSize: 12 }}>
+            <div className="error-message mt-2.5">
               {rebalanceError}
             </div>
           ) : null}
           {rebalancePreview ? (
-            <pre style={{ marginTop: 10, background: "#f6f6f6", padding: 12, overflow: "auto", borderRadius: 10 }}>
+            <pre className="code-block">
               {JSON.stringify(rebalancePreview, null, 2)}
             </pre>
           ) : null}
         </div>
       ) : null}
+
+      {/* P&L / Performance Tracking */}
+      <div className="section-card mt-3.5 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+          <h3 className="mt-0 mb-0">Performance Tracking</h3>
+          <button onClick={() => refreshPnl(accountId)} disabled={pnlLoading} className="btn text-xs">
+            {pnlLoading ? "Loading..." : "Refresh P&L"}
+          </button>
+        </div>
+
+        {pnlSummary && pnlSummary.days > 0 ? (
+          <>
+            <div className="flex flex-wrap gap-3 mb-3">
+              <div className="stat-card">
+                <div className="stat-label">Total P&L</div>
+                <div className={`stat-value ${pnlSummary.total_pnl >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                  {fmtMoney(pnlSummary.total_pnl)}
+                </div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-label">Total Return</div>
+                <div className={`stat-value ${pnlSummary.total_return >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                  {(pnlSummary.total_return * 100).toFixed(2)}%
+                </div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-label">Max Drawdown</div>
+                <div className="stat-value text-red-500">{(pnlSummary.max_drawdown * 100).toFixed(2)}%</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-label">Days Tracked</div>
+                <div className="stat-value">{pnlSummary.days}</div>
+              </div>
+            </div>
+
+            {/* Equity curve SVG sparkline */}
+            {pnlDaily.length > 1 ? (
+              <div className="mb-3">
+                <div className="text-xs font-semibold mb-1">Equity Curve</div>
+                <svg viewBox={`0 0 ${Math.max(pnlDaily.length - 1, 1)} 100`} className="w-full h-32 border rounded bg-background" preserveAspectRatio="none">
+                  {(() => {
+                    const eqs = pnlDaily.map((d) => d.equity);
+                    const minE = Math.min(...eqs);
+                    const maxE = Math.max(...eqs);
+                    const range = maxE - minE || 1;
+                    const points = eqs.map((e, i) => `${i},${100 - ((e - minE) / range) * 90 - 5}`).join(" ");
+                    return <polyline points={points} fill="none" stroke="currentColor" strokeWidth="0.5" className="text-emerald-500" />;
+                  })()}
+                </svg>
+                <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
+                  <span>{pnlDaily[0]?.date}</span>
+                  <span>{pnlDaily[pnlDaily.length - 1]?.date}</span>
+                </div>
+              </div>
+            ) : null}
+
+            {/* Daily P&L bars */}
+            {pnlDaily.length > 1 ? (
+              <div className="mb-3">
+                <div className="text-xs font-semibold mb-1">Daily P&L</div>
+                <div className="flex items-end gap-px h-20 border rounded bg-background p-1 overflow-hidden">
+                  {pnlDaily.slice(1).map((d, i) => {
+                    const maxPnl = Math.max(...pnlDaily.slice(1).map((x) => Math.abs(x.daily_pnl)), 1);
+                    const pct = Math.abs(d.daily_pnl) / maxPnl;
+                    return (
+                      <div
+                        key={i}
+                        className={`flex-1 min-w-[1px] ${d.daily_pnl >= 0 ? "bg-emerald-500" : "bg-red-500"}`}
+                        style={{
+                          height: `${Math.max(pct * 100, 2)}%`,
+                          alignSelf: d.daily_pnl >= 0 ? "flex-end" : "flex-end",
+                          opacity: 0.8,
+                        }}
+                        title={`${d.date}: ${fmtMoney(d.daily_pnl)}`}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            {/* Daily data table */}
+            <details className="mb-2">
+              <summary className="text-xs font-semibold cursor-pointer">Daily breakdown ({pnlDaily.length} entries)</summary>
+              <div className="table-wrapper mt-1">
+                <table className="data-table text-xs">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Equity</th>
+                      <th>Cash</th>
+                      <th>Daily P&L</th>
+                      <th>Cumulative</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pnlDaily.map((d, i) => (
+                      <tr key={i}>
+                        <td>{d.date}</td>
+                        <td>{fmtMoney(d.equity)}</td>
+                        <td>{fmtMoney(d.cash)}</td>
+                        <td className={d.daily_pnl >= 0 ? "text-emerald-600" : "text-red-500"}>{fmtMoney(d.daily_pnl)}</td>
+                        <td className={d.cumulative_pnl >= 0 ? "text-emerald-600" : "text-red-500"}>{fmtMoney(d.cumulative_pnl)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </>
+        ) : (
+          <div className="text-xs text-muted-foreground">
+            No snapshots yet. Snapshots are taken daily at 4:30 PM ET by the automated scheduler.
+          </div>
+        )}
+
+        {/* Rebalance logs */}
+        {rebalLogs.length > 0 ? (
+          <details className="mt-2">
+            <summary className="text-xs font-semibold cursor-pointer">Rebalance history ({rebalLogs.length} entries)</summary>
+            <div className="table-wrapper mt-1">
+              <table className="data-table text-xs">
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Status</th>
+                    <th>Orders</th>
+                    <th>Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rebalLogs.map((r) => (
+                    <tr key={r.id}>
+                      <td>{fmtTime(r.timestamp)}</td>
+                      <td className={r.status === "SUCCESS" ? "text-emerald-600" : "text-red-500"}>{r.status}</td>
+                      <td>{r.n_orders}</td>
+                      <td className="text-xs max-w-[300px] truncate">{JSON.stringify(r.details)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        ) : null}
+      </div>
     </main>
   );
 }

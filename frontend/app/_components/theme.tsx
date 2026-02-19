@@ -23,14 +23,15 @@ function applyTheme(theme: Theme) {
 }
 
 export function ThemeProvider(props: { children: React.ReactNode; defaultTheme?: Theme }) {
-  const [theme, setThemeState] = useState<Theme>(props.defaultTheme ?? "light");
+  const [theme, setThemeState] = useState<Theme>(props.defaultTheme ?? "dark");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      const t: Theme = stored === "dark" ? "dark" : "light";
+      // Default to dark if no stored preference
+      const t: Theme = stored === "light" ? "light" : "dark";
       setThemeState(t);
       applyTheme(t);
     } catch {

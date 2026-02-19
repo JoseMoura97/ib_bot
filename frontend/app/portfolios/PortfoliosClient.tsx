@@ -41,6 +41,28 @@ type PortfolioWithStrategies = PortfolioOut & {
 
 type Mode = "" | "holdings_union" | "nav_blend";
 
+type OptMethod = "equal_weight" | "inverse_volatility" | "risk_parity" | "max_sharpe";
+
+type OptStats = {
+  annual_return: number;
+  annual_vol: number;
+  sharpe: number;
+};
+
+type OptResult = {
+  method: string;
+  weights: Record<string, number>;
+  stats: OptStats;
+  missing_strategies?: string[];
+  available_strategies?: string[];
+};
+
+type CompareResult = {
+  available_strategies: string[];
+  missing_strategies: string[];
+  methods: OptResult[];
+};
+
 function safeJsonParse(input: string): { ok: true; value: any } | { ok: false; error: string } {
   try {
     const v = JSON.parse(input);
@@ -84,6 +106,13 @@ export function PortfoliosClient(props: { initialPortfolios: PortfolioOut[]; str
   const [metaSaveState, setMetaSaveState] = useState<SaveState>("idle");
   const [strategiesSaveState, setStrategiesSaveState] = useState<SaveState>("idle");
   const [infoMsg, setInfoMsg] = useState<string | null>(null);
+
+  const [optMethod, setOptMethod] = useState<OptMethod>("max_sharpe");
+  const [optMaxWeight, setOptMaxWeight] = useState("0.30");
+  const [optMinWeight, setOptMinWeight] = useState("0.02");
+  const [optResult, setOptResult] = useState<OptResult | null>(null);
+  const [compareResults, setCompareResults] = useState<CompareResult | null>(null);
+  const [optLoading, setOptLoading] = useState(false);
 
   function startNewPortfolio() {
     setSelectedId(null);
@@ -326,6 +355,65 @@ export function PortfoliosClient(props: { initialPortfolios: PortfolioOut[]; str
       prev.map((r) => (r.strategy_name === editingOverridesFor ? { ...r, overrides: parsed.value as Record<string, unknown> } : r)),
     );
     setStrategiesSaveState("idle");
+  }
+
+  async function onOptimize() {
+    if (!selected) return;
+    setOptLoading(true);
+    setOptResult(null);
+    setCompareResults(null);
+    setLoadError(null);
+    try {
+      const result = await fetchJson<OptResult>(`/api/portfolios/${encodeURIComponent(selected.id)}/optimize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          method: optMethod,
+          max_weight: Number(optMaxWeight) || 0.3,
+          min_weight: Number(optMinWeight) || 0.02,
+        }),
+      });
+      setOptResult(result);
+    } catch (e: any) {
+      setLoadError(String(e?.message || e));
+    } finally {
+      setOptLoading(false);
+    }
+  }
+
+  async function onCompareAll() {
+    if (!selected) return;
+    setOptLoading(true);
+    setOptResult(null);
+    setCompareResults(null);
+    setLoadError(null);
+    try {
+      const result = await fetchJson<CompareResult>(`/api/portfolios/${encodeURIComponent(selected.id)}/optimize/compare`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          max_weight: Number(optMaxWeight) || 0.3,
+          min_weight: Number(optMinWeight) || 0.02,
+        }),
+      });
+      setCompareResults(result);
+    } catch (e: any) {
+      setLoadError(String(e?.message || e));
+    } finally {
+      setOptLoading(false);
+    }
+  }
+
+  function onApplyOptWeights(weights: Record<string, number>) {
+    setStrategyRows((prev) =>
+      prev.map((r) => {
+        const w = weights[r.strategy_name];
+        if (w !== undefined) return { ...r, weight: w, enabled: w > 0 };
+        return r;
+      }),
+    );
+    setStrategiesSaveState("idle");
+    setInfoMsg("Optimized weights applied. Click 'Save strategies' to persist.");
   }
 
   async function onSaveStrategies() {
@@ -624,6 +712,153 @@ export function PortfoliosClient(props: { initialPortfolios: PortfolioOut[]; str
               </div>
             </CardContent>
           </Card>
+
+          {selected && strategyRows.length > 0 ? (
+            <Card className="shadow-none">
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
+                  <div className="text-sm font-semibold">Weight Optimizer</div>
+                  {optLoading ? <div className="text-xs text-muted-foreground">Running...</div> : null}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="space-y-1">
+                    <div className="text-xs font-medium text-muted-foreground">Method</div>
+                    <Select value={optMethod} onChange={(e) => setOptMethod(e.target.value as OptMethod)} className="w-auto">
+                      <option value="max_sharpe">Max Sharpe</option>
+                      <option value="risk_parity">Risk Parity</option>
+                      <option value="inverse_volatility">Inverse Volatility</option>
+                      <option value="equal_weight">Equal Weight</option>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-xs font-medium text-muted-foreground">Max weight</div>
+                    <Input value={optMaxWeight} onChange={(e) => setOptMaxWeight(e.target.value)} className="h-9 w-20 font-mono text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-xs font-medium text-muted-foreground">Min weight</div>
+                    <Input value={optMinWeight} onChange={(e) => setOptMinWeight(e.target.value)} className="h-9 w-20 font-mono text-xs" />
+                  </div>
+                  <div className="flex items-end gap-2 self-end">
+                    <Button onClick={onOptimize} disabled={optLoading} variant="primary" size="sm">
+                      Optimize
+                    </Button>
+                    <Button onClick={onCompareAll} disabled={optLoading} variant="outline" size="sm">
+                      Compare all
+                    </Button>
+                  </div>
+                </div>
+
+                {optResult ? (
+                  <div className="space-y-3">
+                    <div className="text-xs font-semibold">
+                      {"Result: " + (optResult.method?.replace(/_/g, " ") ?? "")}
+                      {optResult.stats?.sharpe != null ? ` | Sharpe ${optResult.stats.sharpe.toFixed(3)}` : ""}
+                      {optResult.stats?.annual_return != null ? ` | Return ${(optResult.stats.annual_return * 100).toFixed(1)}%` : ""}
+                      {optResult.stats?.annual_vol != null ? ` | Vol ${(optResult.stats.annual_vol * 100).toFixed(1)}%` : ""}
+                    </div>
+                    <TableWrap>
+                      <Table>
+                        <thead>
+                          <tr>
+                            <Th>Strategy</Th>
+                            <Th className="w-[120px]">Current</Th>
+                            <Th className="w-[120px]">Suggested</Th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(optResult.weights)
+                            .sort(([, a], [, b]) => b - a)
+                            .map(([name, w]) => {
+                              const current = strategyRows.find((r) => r.strategy_name === name)?.weight ?? 0;
+                              return (
+                                <tr key={name} className="hover:bg-accent/40">
+                                  <Td className="whitespace-nowrap font-medium">{name}</Td>
+                                  <Td className="font-mono text-xs">{(current * 100).toFixed(1)}%</Td>
+                                  <Td className="font-mono text-xs">{(w * 100).toFixed(1)}%</Td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </Table>
+                    </TableWrap>
+                    <Button onClick={() => onApplyOptWeights(optResult.weights)} size="sm" variant="secondary">
+                      Apply weights
+                    </Button>
+                  </div>
+                ) : null}
+
+                {compareResults ? (
+                  <div className="space-y-3">
+                    <div className="text-xs font-semibold">Comparison: all methods</div>
+                    <TableWrap>
+                      <Table>
+                        <thead>
+                          <tr>
+                            <Th>Method</Th>
+                            <Th className="w-[100px]">Sharpe</Th>
+                            <Th className="w-[100px]">Return</Th>
+                            <Th className="w-[100px]">Volatility</Th>
+                            <Th className="w-[100px]" />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {compareResults.methods.map((m) => (
+                            <tr key={m.method} className="hover:bg-accent/40">
+                              <Td className="whitespace-nowrap font-medium">{m.method?.replace(/_/g, " ")}</Td>
+                              <Td className="font-mono text-xs">{m.stats?.sharpe?.toFixed(3) ?? "-"}</Td>
+                              <Td className="font-mono text-xs">{m.stats?.annual_return != null ? `${(m.stats.annual_return * 100).toFixed(1)}%` : "-"}</Td>
+                              <Td className="font-mono text-xs">{m.stats?.annual_vol != null ? `${(m.stats.annual_vol * 100).toFixed(1)}%` : "-"}</Td>
+                              <Td>
+                                <Button onClick={() => onApplyOptWeights(m.weights)} size="sm" variant="outline">
+                                  Apply
+                                </Button>
+                              </Td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </Table>
+                    </TableWrap>
+                    {compareResults.methods.length > 0 ? (
+                      <div className="space-y-2">
+                        <div className="text-xs font-semibold">Weight breakdown</div>
+                        <TableWrap>
+                          <Table>
+                            <thead>
+                              <tr>
+                                <Th>Strategy</Th>
+                                {compareResults.methods.map((m) => (
+                                  <Th key={m.method} className="w-[100px]">{m.method?.replace(/_/g, " ")}</Th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {compareResults.available_strategies.sort().map((name) => (
+                                <tr key={name} className="hover:bg-accent/40">
+                                  <Td className="whitespace-nowrap font-medium">{name}</Td>
+                                  {compareResults.methods.map((m) => (
+                                    <Td key={m.method} className="font-mono text-xs">
+                                      {m.weights[name] != null ? `${(m.weights[name] * 100).toFixed(1)}%` : "-"}
+                                    </Td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </Table>
+                        </TableWrap>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {(optResult?.missing_strategies?.length ?? 0) > 0 || (compareResults?.missing_strategies?.length ?? 0) > 0 ? (
+                  <div className="text-xs text-amber-600 dark:text-amber-400">
+                    {"Missing curve data for: " + (optResult?.missing_strategies ?? compareResults?.missing_strategies ?? []).join(", ")}
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+          ) : null}
 
           <Card className="shadow-none">
             <CardContent className="text-sm text-muted-foreground">

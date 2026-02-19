@@ -100,17 +100,18 @@ def metrics_strategies():
     try:
         from quiver_signals import QuiverSignals  # repo root
 
-        for name in ours_by_name.keys():
-            info = QuiverSignals.get_strategy_info(name)
-            if isinstance(info, dict):
-                quiver_by_name[name] = info
+        all_quiver = QuiverSignals.get_all_strategies()
+        if isinstance(all_quiver, dict):
+            for name, info in all_quiver.items():
+                if isinstance(info, dict):
+                    quiver_by_name[str(name)] = info
     except Exception:
         quiver_by_name = {}
 
-    # Build merged list
+    # Build merged list (include all strategies, even if ours is missing)
     rows: list[dict[str, Any]] = []
     for name in sorted(set(ours_by_name.keys()) | set(quiver_by_name.keys())):
-        ours = ours_by_name.get(name) or {}
+        ours = ours_by_name.get(name) or {"status": "MISSING"}
         quiver = quiver_by_name.get(name) or {}
 
         def diff(a: Any, b: Any) -> float | None:
