@@ -315,38 +315,53 @@ def refresh_plot_data_task(self, force: bool = True, max_age_hours: int = 24) ->
         sys.executable,
         "generate_plot_data.py",
     ]
-    
-    # Update progress: running script
+
     self.update_state(state="PROGRESS", meta={"stage": "generating", "percent": 20})
 
-    # Run in repo root (WORKDIR is /app in docker images)
     result = subprocess.run(cmd, check=False, capture_output=True, text=True)
-    
-    # Update progress: validating
+
     self.update_state(state="PROGRESS", meta={"stage": "validating", "percent": 80})
-    
+
     out_path = Path("/app/.cache/plot_data.json")
-    
-    # Check if script succeeded
+
+    def _restore_backup() -> None:
+        """Restore the most recent non-empty backup if available."""
+        backups = sorted(backup_dir.glob("plot_data_backup_*.json"), reverse=True)
+        for bp in backups:
+            try:
+                bdata = json.loads(bp.read_text(encoding="utf-8"))
+                if len(bdata.get("strategies", {})) > 0:
+                    shutil.copy2(bp, out_path)
+                    return
+            except Exception:
+                continue
+
+    def _validate_output() -> tuple[dict, bool]:
+        """Return (payload, is_valid). Restores backup on failure."""
+        if not out_path.exists():
+            _restore_backup()
+            raise RuntimeError("plot_data.json not found after refresh; backup restored")
+        try:
+            payload = json.loads(out_path.read_text(encoding="utf-8"))
+        except Exception as e:
+            _restore_backup()
+            raise RuntimeError(f"plot_data.json unreadable ({e}); backup restored") from e
+        strats = payload.get("strategies") if isinstance(payload, dict) else None
+        if not isinstance(strats, dict) or len(strats) == 0:
+            _restore_backup()
+            raise RuntimeError("plot_data.json has 0 strategies; backup restored")
+        return payload, True
+
     if result.returncode != 0:
+        _restore_backup()
         stderr = (result.stderr or "").strip()
         stdout = (result.stdout or "").strip()
         detail = stderr or stdout or f"generate_plot_data.py exited with code {result.returncode}"
-        raise RuntimeError(detail)
+        raise RuntimeError(f"{detail}; backup restored")
 
-    # Validate output file content
-    if not out_path.exists():
-        raise RuntimeError("plot_data.json not found after refresh")
-    try:
-        payload = json.loads(out_path.read_text(encoding="utf-8"))
-    except Exception as e:
-        raise RuntimeError(f"plot_data.json unreadable: {type(e).__name__}: {e}") from e
-    
-    strategies = payload.get("strategies") if isinstance(payload, dict) else None
-    if not isinstance(strategies, dict) or len(strategies) == 0:
-        raise RuntimeError("plot_data.json contains no strategies after refresh")
-    
-    # Verify it's not synthetic
+    payload, _ = _validate_output()
+
+    strategies = payload.get("strategies", {})
     is_synthetic = payload.get("synthetic", False)
     data_source = payload.get("data_source", "unknown")
     
