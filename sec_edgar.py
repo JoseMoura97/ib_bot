@@ -8,8 +8,11 @@ import pandas as pd
 from datetime import datetime, timedelta
 import time
 import logging
+import os
+import json
 from typing import Optional, Dict, List
 import xml.etree.ElementTree as ET
+import re
 
 class SECEdgarClient:
     """Free SEC EDGAR API client for 13F filings and institutional holdings."""
@@ -37,6 +40,114 @@ class SECEdgarClient:
         self.session.headers.update(self.HEADERS)
         self._last_request_time = 0
         self._rate_limit_delay = 0.1  # SEC requests 10 requests/second max
+
+        # Persistent cache (survives container restarts if .cache is volume-mounted)
+        self._cache_dir = os.path.join(os.path.dirname(__file__), ".cache", "sec_edgar")
+        os.makedirs(self._cache_dir, exist_ok=True)
+        self._cusip_ticker_cache_path = os.path.join(self._cache_dir, "cusip_ticker_cache.json")
+        self._cusip_ticker_cache: Dict[str, str] = {}
+        self._load_cusip_ticker_cache()
+
+    def _load_cusip_ticker_cache(self) -> None:
+        try:
+            if os.path.exists(self._cusip_ticker_cache_path):
+                with open(self._cusip_ticker_cache_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict):
+                    # normalize keys (CUSIPs) to stripped strings
+                    self._cusip_ticker_cache = {str(k).strip(): str(v).strip() for k, v in data.items() if v}
+        except Exception:
+            self._cusip_ticker_cache = {}
+
+    def _save_cusip_ticker_cache(self) -> None:
+        try:
+            with open(self._cusip_ticker_cache_path, "w", encoding="utf-8") as f:
+                json.dump(self._cusip_ticker_cache, f, indent=2, sort_keys=True)
+        except Exception:
+            pass
+
+    @staticmethod
+    def _is_valid_ticker(t: Optional[str]) -> bool:
+        """
+        Basic sanity check for US tickers.
+        Allows letters/digits plus '.' and '-' (e.g., BRK.B, BF-A).
+        """
+        if not t:
+            return False
+        s = str(t).strip().upper()
+        if len(s) < 1 or len(s) > 10:
+            return False
+        return re.fullmatch(r"[A-Z0-9][A-Z0-9.\-]*", s) is not None
+
+    def _openfigi_map_cusip_to_ticker(self, cusip: str) -> Optional[str]:
+        """
+        Use OpenFIGI to map CUSIP -> ticker.
+        Works with or without API key (rate-limited for anonymous access).
+        """
+        api_key = os.environ.get("OPENFIGI_API_KEY", "").strip()
+        try:
+            url = "https://api.openfigi.com/v3/mapping"
+            headers = {
+                "Content-Type": "application/json",
+            }
+            if api_key:
+                headers["X-OPENFIGI-APIKEY"] = api_key
+            
+            # Clean CUSIP - use first 9 chars (base CUSIP) for equity lookup
+            clean_cusip = str(cusip).strip()[:9]
+            
+            # Try US equity mapping. OpenFIGI accepts list payloads.
+            payload = [
+                {"idType": "ID_CUSIP", "idValue": clean_cusip, "exchCode": "US"},
+            ]
+            resp = requests.post(url, headers=headers, json=payload, timeout=15)
+            if resp.status_code == 429:
+                # Rate limited - wait and don't cache miss
+                logging.debug(f"OpenFIGI rate limited for CUSIP {cusip}")
+                return None
+            if resp.status_code != 200:
+                return None
+            data = resp.json()
+            if not isinstance(data, list) or not data:
+                return None
+            # Each element is { "data": [ { "ticker": "...", ... } ], "error": ... }
+            item = data[0] if isinstance(data[0], dict) else {}
+            rows = item.get("data") if isinstance(item, dict) else None
+            if isinstance(rows, list) and rows:
+                # Prefer common stock over other security types
+                for row in rows:
+                    sec_type = row.get("securityType", "")
+                    if sec_type in ("Common Stock", "COMMON STOCK", "Depositary Receipt"):
+                        ticker = row.get("ticker")
+                        if self._is_valid_ticker(ticker):
+                            return str(ticker).upper()
+                # Fallback to first valid ticker
+                ticker = rows[0].get("ticker")
+                if self._is_valid_ticker(ticker):
+                    return str(ticker).upper()
+        except Exception as e:
+            logging.debug(f"OpenFIGI lookup failed for CUSIP {cusip}: {e}")
+            return None
+        return None
+
+    def _cache_path_filings(self, cik: str) -> str:
+        safe = str(cik).strip().zfill(10)
+        return os.path.join(self._cache_dir, f"filings_CIK{safe}.json")
+
+    def _cache_path_holdings(self, cik: str, accession_number: str) -> str:
+        safe_cik = str(cik).strip().zfill(10)
+        safe_acc = str(accession_number).strip().replace("-", "")
+        return os.path.join(self._cache_dir, f"holdings_CIK{safe_cik}_{safe_acc}.pkl")
+
+    @staticmethod
+    def _is_cache_fresh(path: str, max_age_seconds: float) -> bool:
+        try:
+            if not os.path.exists(path):
+                return False
+            age = time.time() - os.path.getmtime(path)
+            return age <= float(max_age_seconds)
+        except Exception:
+            return False
     
     def _rate_limit(self):
         """Enforce SEC rate limiting (10 requests per second)."""
@@ -78,6 +189,17 @@ class SECEdgarClient:
     def get_13f_filings(self, cik: str, limit: int = 4) -> List[Dict]:
         """Get list of 13F filings for a CIK using JSON API."""
         try:
+            # Prefer cache to reduce SEC load / rate-limit issues.
+            cache_path = self._cache_path_filings(cik)
+            if self._is_cache_fresh(cache_path, max_age_seconds=12 * 3600):
+                try:
+                    with open(cache_path, "r", encoding="utf-8") as f:
+                        cached = json.load(f)
+                    if isinstance(cached, list):
+                        return cached[: int(limit)]
+                except Exception:
+                    pass
+
             self._rate_limit()
             
             # Use the data.sec.gov submissions API (more reliable)
@@ -108,7 +230,14 @@ class SECEdgarClient:
                             'accession_number': accession_numbers[i],
                             'cik': cik
                         })
-            
+
+            # Cache full list (even if empty) to smooth repeat calls.
+            try:
+                with open(cache_path, "w", encoding="utf-8") as f:
+                    json.dump(filings, f)
+            except Exception:
+                pass
+
             return filings
         except Exception as e:
             logging.error(f"Error fetching 13F filings: {e}")
@@ -117,30 +246,67 @@ class SECEdgarClient:
     def parse_13f_holdings(self, cik: str, accession_number: str) -> pd.DataFrame:
         """Parse holdings from a 13F filing."""
         try:
+            cache_path = self._cache_path_holdings(cik, accession_number)
+            if self._is_cache_fresh(cache_path, max_age_seconds=30 * 24 * 3600):
+                try:
+                    df = pd.read_pickle(cache_path)
+                    if isinstance(df, pd.DataFrame) and not df.empty:
+                        return df
+                except Exception:
+                    pass
+
             # Remove dashes from accession number for URL
             acc_no_dashes = accession_number.replace('-', '')
             
             # Construct URL to the filing folder
             cik_no_lead = str(int(cik))  # Remove leading zeros
-            base_url = f"https://www.sec.gov/cgi-bin/viewer"
+            base_folder = f"https://www.sec.gov/Archives/edgar/data/{cik_no_lead}/{acc_no_dashes}"
             
-            # Try multiple possible filenames for the info table
-            possible_files = [
-                'primary_doc.xml',
+            # First, check the index.json to find the actual info table XML file
+            # Some funds use custom names like "13F_OCMLP_3Q2025.xml"
+            possible_files = []
+            try:
+                self._rate_limit()
+                index_url = f"{base_folder}/index.json"
+                idx_response = self.session.get(index_url, timeout=10)
+                if idx_response.status_code == 200:
+                    idx_data = idx_response.json()
+                    items = idx_data.get("directory", {}).get("item", [])
+                    for item in items:
+                        name = item.get("name", "")
+                        size = item.get("size", "0")
+                        # Look for large XML files (likely the info table)
+                        # Skip primary_doc.xml (cover page) and index files
+                        if name.endswith(".xml") and name != "primary_doc.xml":
+                            try:
+                                if int(size) > 5000:  # Info tables are usually > 5KB
+                                    possible_files.insert(0, name)  # Prioritize large files
+                            except (ValueError, TypeError):
+                                possible_files.append(name)
+            except Exception:
+                pass
+            
+            # Fallback to common filenames if index.json didn't help
+            possible_files.extend([
                 'form13fInfoTable.xml',
                 'infotable.xml',
-                'doc.xml'
-            ]
+                'doc.xml',
+                'primary_doc.xml'  # Last resort
+            ])
             
             for filename in possible_files:
                 try:
                     self._rate_limit()
-                    url = f"https://www.sec.gov/Archives/edgar/data/{cik_no_lead}/{acc_no_dashes}/{filename}"
+                    url = f"{base_folder}/{filename}"
                     response = self.session.get(url, timeout=10)
                     
                     if response.status_code == 200:
                         df = self._parse_13f_xml(response.content)
                         if not df.empty:
+                            try:
+                                df.to_pickle(cache_path)
+                            except Exception:
+                                pass
                             return df
                 except Exception as e:
                     continue
@@ -190,7 +356,8 @@ class SECEdgarClient:
                     value_elem = info_table.find('.//value')
                 if value_elem is not None:
                     try:
-                        holding['Value'] = float(value_elem.text) * 1000  # Convert to dollars
+                        # SEC 13F values are reported in dollars (not thousands)
+                        holding['Value'] = float(value_elem.text)
                     except (ValueError, TypeError):
                         pass
                 
@@ -211,11 +378,94 @@ class SECEdgarClient:
                 if type_elem is not None:
                     holding['ShareType'] = type_elem.text
                 
+                # Get putCall (for options - PUT or CALL)
+                put_call_elem = info_table.find('.//ns:putCall', ns)
+                if put_call_elem is None:
+                    put_call_elem = info_table.find('.//putCall')
+                if put_call_elem is not None:
+                    holding['PutCall'] = put_call_elem.text  # 'Put' or 'Call'
+                
+                # Get titleOfClass to detect preferred shares
+                title_elem = info_table.find('.//ns:titleOfClass', ns)
+                if title_elem is None:
+                    title_elem = info_table.find('.//titleOfClass')
+                if title_elem is not None:
+                    holding['TitleOfClass'] = title_elem.text
+                
                 if holding and 'Name' in holding:
                     holdings.append(holding)
             
             if holdings:
                 df = pd.DataFrame(holdings)
+                
+                # Handle options based on include_options mode
+                # Mode is controlled by environment variable or can be set programmatically
+                # Default to stock-only for accuracy:
+                # - 13F option rows lack strike/expiry, so any delta mapping is heuristic.
+                # - If you want an approximation of directional exposure, set:
+                #   SEC_13F_OPTIONS_MODE=delta_adjusted (and optionally SEC_13F_PUT_DELTA / SEC_13F_CALL_DELTA)
+                include_options_mode = os.environ.get('SEC_13F_OPTIONS_MODE', 'filter')
+                # Options modes:
+                # - 'filter': Remove all options (conservative)
+                # - 'as_exposure': Treat PUT as 100% SHORT, CALL as 100% LONG
+                # - 'delta_adjusted': Treat PUT as ~40% SHORT, CALL as ~40% LONG (default, most accurate)
+                # - 'include': Include options as-is (legacy behavior, WRONG)
+                
+                # Delta estimates for options (since 13F doesn't include strike/expiration)
+                # These are typical deltas for at-the-money options
+                PUT_DELTA = float(os.environ.get('SEC_13F_PUT_DELTA', '0.40'))   # 40% short exposure
+                CALL_DELTA = float(os.environ.get('SEC_13F_CALL_DELTA', '0.40')) # 40% long exposure
+                
+                if 'PutCall' in df.columns:
+                    options_mask = df['PutCall'].notna()
+                    options_count = options_mask.sum()
+                    
+                    if include_options_mode == 'delta_adjusted' and options_count > 0:
+                        # Delta-adjusted exposure:
+                        # - CALL = CALL_DELTA * value (partial long exposure)
+                        # - PUT = -PUT_DELTA * value (partial short exposure)
+                        logging.info(f"Converting {options_count} options to delta-adjusted exposure (PUT={PUT_DELTA}x SHORT, CALL={CALL_DELTA}x LONG)")
+                        
+                        put_mask = df['PutCall'].str.upper() == 'PUT'
+                        call_mask = df['PutCall'].str.upper() == 'CALL'
+                        
+                        if 'Value' in df.columns:
+                            # PUT: negative value * delta (short exposure)
+                            df.loc[put_mask, 'Value'] = -df.loc[put_mask, 'Value'].abs() * PUT_DELTA
+                            # CALL: positive value * delta (long exposure)
+                            df.loc[call_mask, 'Value'] = df.loc[call_mask, 'Value'].abs() * CALL_DELTA
+                        
+                        df['ExposureType'] = 'LONG'
+                        df.loc[put_mask, 'ExposureType'] = 'SHORT'
+                        df['Delta'] = 1.0  # Stock positions
+                        df.loc[put_mask, 'Delta'] = -PUT_DELTA
+                        df.loc[call_mask, 'Delta'] = CALL_DELTA
+                        
+                    elif include_options_mode == 'as_exposure' and options_count > 0:
+                        # Full 100% exposure (PUT = 100% SHORT, CALL = 100% LONG)
+                        logging.info(f"Converting {options_count} options to full exposure (PUT=100% SHORT, CALL=100% LONG)")
+                        
+                        put_mask = df['PutCall'].str.upper() == 'PUT'
+                        if 'Value' in df.columns:
+                            df.loc[put_mask, 'Value'] = -df.loc[put_mask, 'Value'].abs()
+                        
+                        df['ExposureType'] = 'LONG'
+                        df.loc[put_mask, 'ExposureType'] = 'SHORT'
+                        
+                    elif include_options_mode == 'filter' and options_count > 0:
+                        # Remove all options
+                        logging.info(f"Filtering out {options_count} option positions (PUT/CALL)")
+                        df = df[~options_mask]
+                    # else 'include': keep options as-is (legacy)
+                
+                # Filter out preferred shares (typically have different price behavior)
+                if 'TitleOfClass' in df.columns:
+                    # Keep only common stock (COM, CL A, CL B, etc.) not PREF
+                    pref_mask = df['TitleOfClass'].str.upper().str.contains('PREF|PREFERRED', na=False)
+                    pref_count = pref_mask.sum()
+                    if pref_count > 0:
+                        logging.info(f"Filtering out {pref_count} preferred share positions")
+                    df = df[~pref_mask]
                 
                 # Try to add tickers using CUSIP lookup
                 if 'CUSIP' in df.columns:
@@ -243,9 +493,18 @@ class SECEdgarClient:
     
     def _cusip_to_ticker(self, cusip: str) -> Optional[str]:
         """Convert CUSIP to ticker symbol using comprehensive mapping."""
+        if not cusip:
+            return None
+        cusip = str(cusip).strip()
+
+        # 1) Check persistent cache first (user-extendable, and filled by OpenFIGI if enabled).
+        cached = self._cusip_ticker_cache.get(cusip)
+        if cached and self._is_valid_ticker(cached):
+            return str(cached).upper()
+
         # Comprehensive CUSIP to ticker mapping for common stocks
         cusip_map = {
-            # Tech
+            # Tech Giants
             '037833100': 'AAPL',   # Apple
             '594918104': 'MSFT',   # Microsoft
             '023135106': 'AMZN',   # Amazon
@@ -265,7 +524,7 @@ class SECEdgarClient:
             '30231G102': 'EXPE',   # Expedia
             '46120E102': 'INTC',   # Intel
             '46625H100': 'JPM',    # JPMorgan
-            '025816109': 'AMEX',   # American Express
+            '025816109': 'AXP',    # American Express
             '24906P109': 'GS',     # Goldman Sachs
             '06652K103': 'BAC',    # Bank of America
             '14448C104': 'CAT',    # Caterpillar
@@ -278,49 +537,150 @@ class SECEdgarClient:
             '084670702': 'BRK.B',  # Berkshire Hathaway B
             '084670108': 'BRK.A',  # Berkshire Hathaway A
             '931142103': 'WMT',    # Walmart
-            '037833AK47': 'AAPL',  # Apple (alt)
-            '594918AH62': 'MSFT',  # Microsoft (alt)
             '278642103': 'EBAY',   # eBay
             '81762P102': 'SHOP',   # Shopify
-            '88579Y101': 'TSMC',   # Taiwan Semi (ADR)
+            '88579Y101': 'TSM',    # Taiwan Semi (ADR)
             '459200101': 'IBM',    # IBM
-            '68389X105': 'ORCL',   # Oracle
             '747525103': 'QCOM',   # Qualcomm
             '911312106': 'TXN',    # Texas Instruments
-            '594918104': 'MSFT',   # Microsoft
             '070858107': 'BABA',   # Alibaba
-            '92826C839': 'VIAC',   # ViacomCBS
+            '92826C839': 'PARA',   # Paramount (was ViacomCBS)
             '302130109': 'T',      # AT&T
             '92343V104': 'VZ',     # Verizon
-            '191216100': 'KO',     # Coca-Cola
             '713448108': 'PEP',    # PepsiCo
-            '88579Y101': 'TSM',    # Taiwan Semi
             '032095101': 'AMGN',   # Amgen
             '126650100': 'CVS',    # CVS Health
             '02376R102': 'AAL',    # American Airlines
             '247361702': 'DAL',    # Delta
             '844741108': 'SBUX',   # Starbucks
             '58933Y105': 'MCD',    # McDonald's
-            '931142103': 'WMT',    # Walmart
             '918204108': 'ULTA',   # Ulta Beauty
-            '594918104': 'MSFT',   # Microsoft
-            # Actual holdings from 13F filings
-            '116794207': 'BRKR',   # Bruker Corp (preferred)
+            # From 13F filings - hedge fund holdings
+            '116794207': 'BRKR',   # Bruker Corp
             '406216101': 'HAL',    # Halliburton
             '550021109': 'LULU',   # Lululemon
             '69608A108': 'PLTR',   # Palantir
-            '90353T100': 'UNH',    # UnitedHealth
             '903724107': 'UBER',   # Uber Technologies
             '112585104': 'BN',     # Brookfield
             '443669107': 'HHH',    # Howard Hughes
             '024382104': 'AMZN',   # Amazon
             '169656105': 'CMG',    # Chipotle
             '76169C102': 'QSR',    # Restaurant Brands
-            '02079K107': 'GOOGL',  # Alphabet
             '43300A203': 'HLT',    # Hilton
             '428291108': 'HTZ',    # Hertz
             '606496204': 'MOH',    # Molina Healthcare
             '829224107': 'SLM',    # SLM Corp
+            # Oaktree Capital Holdings (Howard Marks)
+            '87266J104': 'TPIC',   # TPI Composites
+            '09075P204': 'BTAI',   # BioXcel Therapeutics
+            '30050B101': 'EVH',    # Evolent Health
+            '33835L104': 'FVRR',   # Fiverr International
+            '893870203': 'TGS',    # Transportadora de Gas del Sur
+            '450056106': 'IRTC',   # iRhythm Technologies
+            '31188V100': 'FSLY',   # Fastly
+            '98975W100': 'ZD',     # Ziff Davis
+            '70614W100': 'PTON',   # Peloton
+            '04351P101': 'ASND',   # Ascendis Pharma
+            '94419L101': 'W',      # Wayfair
+            '55087P104': 'LYFT',   # Lyft
+            '737446104': 'POST',   # Post Holdings
+            '08265T108': 'BSY',    # Bentley Systems
+            '25402D102': 'DOCN',   # DigitalOcean
+            '83304A106': 'SNAP',   # Snap Inc
+            '29664W105': 'ESPR',   # Esperion Therapeutics
+            '682189105': 'ON',     # ON Semiconductor
+            '399473107': 'GRPN',   # Groupon
+            '10806X102': 'BBIO',   # BridgeBio Pharma
+            '42703M102': 'HLF',    # Herbalife
+            '74736L109': 'QTWO',   # Q2 Holdings
+            '852234103': 'SQ',     # Block Inc (Square)
+            '090043102': 'BILL',   # BILL Holdings
+            '156727103': 'CRNC',   # Cerence
+            '64049M108': 'NEO',    # NeoGenomics
+            '91332U101': 'U',      # Unity Software
+            '401617105': 'GES',    # Guess Inc
+            '07134L107': 'BATL',   # Battalion Oil
+            '90187B109': 'TWO',    # Two Harbors Investment
+            '00827B106': 'AFRM',   # Affirm Holdings
+            '67011X109': 'NVCR',   # Novocure
+            '13118K108': 'MODG',   # Topgolf Callaway (was MODG)
+            '974637100': 'WGO',    # Winnebago Industries
+            '40131M109': 'GH',     # Guardant Health
+            '35953D107': 'FUBO',   # fuboTV
+            '91688F108': 'UPWK',   # Upwork
+            '92343X100': 'VRNT',   # Verint Systems
+            '358039100': 'FRPT',   # Freshpet
+            '842587107': 'SO',     # Southern Company
+            '40415F101': 'HDB',    # HDFC Bank
+            '70932A103': 'PMT',    # PennyMac Mortgage
+            '89677Q107': 'TCOM',   # Trip.com
+            '758075100': 'RWT',    # Redwood Trust
+            '91879Q109': 'MTN',    # Vail Resorts
+            '501812107': 'LCII',   # LCI Industries
+            '55955D107': 'MGNI',   # Magnite
+            '516544103': 'LNTH',   # Lantheus Holdings
+            # Pershing Square Holdings (Bill Ackman)
+            '43300A104': 'HLT',    # Hilton Worldwide
+            '45168D104': 'HHH',    # Howard Hughes Holdings
+            '112585104': 'BN',     # Brookfield Corp
+            # Scion Asset Management (Michael Burry)
+            '070500105': 'BAP',    # Credicorp
+            '031162100': 'AMKR',   # Amkor Technology
+            '04316A108': 'ARRY',   # Array Technologies
+            '05351W103': 'AXTA',   # Axalta Coating Systems
+            '29080A104': 'EMN',    # Eastman Chemical
+            '30303M102': 'META',   # Meta Platforms
+            '34959E109': 'FROG',   # JFrog
+            '37959E102': 'GLOB',   # Globant
+            '40049J206': 'GTLB',   # GitLab
+            '42251A104': 'HCP',    # HashiCorp
+            '45867R105': 'ICU',    # SeaStar Medical
+            '46128T105': 'IOT',    # Samsara
+            '49271V100': 'KEYS',   # Keysight Technologies
+            '52736R102': 'LECO',   # Lincoln Electric
+            '55087P104': 'LYFT',   # Lyft
+            '59522J103': 'MIDD',   # Middleby Corp
+            '624756102': 'MUSA',   # Murphy USA
+            '629482107': 'NBIX',   # Neurocrine Biosciences
+            '63946M104': 'NSA',    # National Storage Affiliates
+            '65339F101': 'NI',     # NiSource
+            '655664100': 'NKE',    # Nike
+            '67066G104': 'NVDA',   # Nvidia
+            '68902V107': 'OSW',    # OneSpaWorld
+            '69349H107': 'PBH',    # Prestige Consumer Healthcare
+            '70060P107': 'PARR',   # Par Pacific Holdings
+            '72814L108': 'PKG',    # Packaging Corp of America
+            '74758T303': 'QRVO',   # Qorvo
+            '756109104': 'REG',    # Regency Centers
+            '78409V104': 'SPG',    # Simon Property Group
+            '78467J100': 'STX',    # Seagate Technology
+            '80105N105': 'SANM',   # Sanmina
+            '82480R100': 'SHEL',   # Shell PLC
+            '82968B103': 'SIGI',   # Selective Insurance
+            '843646104': 'SXI',    # Standex International
+            '85254J102': 'STAG',   # STAG Industrial
+            '87612E106': 'TDC',    # Teradata
+            '88076W103': 'TER',    # Teradyne
+            '88826T102': 'THS',    # TreeHouse Foods
+            '89236T109': 'TSEM',   # Tower Semiconductor
+            '896239100': 'TT',     # Trane Technologies
+            '90353T100': 'UNH',    # UnitedHealth
+            '90384S303': 'UBER',   # Uber
+            '91325V108': 'UDR',    # UDR Inc
+            '92343E102': 'VFC',    # VF Corp
+            '92345Y106': 'VMC',    # Vulcan Materials
+            '92553P201': 'VIPS',   # Vipshop
+            '92763W103': 'VSAT',   # Viasat
+            '929903102': 'WBA',    # Walgreens Boots Alliance
+            '93114W100': 'WAB',    # Wabtec Corp
+            '94106L109': 'WDAY',   # Workday
+            '945528109': 'WGO',    # Winnebago
+            '94770V102': 'WEN',    # Wendy's
+            '96145D105': 'WH',     # Wyndham Hotels
+            '98138H101': 'WOR',    # Worthington Industries
+            '98419M100': 'XM',     # Qualtrics
+            '98422D105': 'XPO',    # XPO Logistics
+            '98956P102': 'ZBH',    # Zimmer Biomet
         }
         
         # Try direct lookup
@@ -332,6 +692,108 @@ class SECEdgarClient:
         if base_cusip in cusip_map:
             return cusip_map[base_cusip]
         
+        # Issuer code (6 char) to ticker mapping for convertibles/bonds
+        issuer_map = {
+            '037833': 'AAPL',   # Apple
+            '594918': 'MSFT',   # Microsoft
+            '023135': 'AMZN',   # Amazon
+            '02079K': 'GOOGL',  # Alphabet
+            '30303M': 'META',   # Meta
+            '88160R': 'TSLA',   # Tesla
+            '67066G': 'NVDA',   # Nvidia
+            '91912E': 'V',      # Visa
+            '90353T': 'UBER',   # Uber (important - their conv notes)
+            # Oaktree holdings - issuer codes
+            '87266J': 'TPIC',   # TPI Composites
+            '09075P': 'BTAI',   # BioXcel
+            '30050B': 'EVH',    # Evolent Health
+            '33835L': 'FVRR',   # Fiverr
+            '893870': 'TGS',    # Transportadora de Gas
+            '450056': 'IRTC',   # iRhythm
+            '31188V': 'FSLY',   # Fastly
+            '48123V': 'ZD',     # Ziff Davis
+            '70614W': 'PTON',   # Peloton
+            '04351P': 'ASND',   # Ascendis
+            '94419L': 'W',      # Wayfair
+            '55087P': 'LYFT',   # Lyft
+            '737446': 'POST',   # Post Holdings
+            '08265T': 'BSY',    # Bentley Systems
+            '25402D': 'DOCN',   # DigitalOcean
+            '83304A': 'SNAP',   # Snap
+            '29664W': 'ESPR',   # Esperion
+            '682189': 'ON',     # ON Semiconductor
+            '399473': 'GRPN',   # Groupon
+            '10806X': 'BBIO',   # BridgeBio
+            '42703M': 'HLF',    # Herbalife
+            '74736L': 'QTWO',   # Q2 Holdings
+            '852234': 'SQ',     # Block/Square
+            '090043': 'BILL',   # BILL Holdings
+            '156727': 'CRNC',   # Cerence
+            '64049M': 'NEO',    # NeoGenomics
+            '91332U': 'U',      # Unity
+            '401617': 'GES',    # Guess
+            '07134L': 'BATL',   # Battalion Oil
+            '90187B': 'TWO',    # Two Harbors
+            '00827B': 'AFRM',   # Affirm
+            '67011X': 'NVCR',   # Novocure
+            '13118K': 'MODG',   # Topgolf Callaway
+            '974637': 'WGO',    # Winnebago
+            '40131M': 'GH',     # Guardant Health
+            '35953D': 'FUBO',   # fuboTV
+            '91688F': 'UPWK',   # Upwork
+            '92343X': 'VRNT',   # Verint
+            '358039': 'FRPT',   # Freshpet
+            '842587': 'SO',     # Southern Company
+            '40415F': 'HDB',    # HDFC Bank
+            '70932A': 'PMT',    # PennyMac
+            '89677Q': 'TCOM',   # Trip.com
+            '758075': 'RWT',    # Redwood Trust
+            '91879Q': 'MTN',    # Vail Resorts
+            '501812': 'LCII',   # LCI Industries
+            '55955D': 'MGNI',   # Magnite
+            '516544': 'LNTH',   # Lantheus
+            '903724': 'UBER',   # Uber Technologies
+            # Additional common issuers
+            '46625H': 'JPM',    # JPMorgan
+            '06652K': 'BAC',    # Bank of America
+            '84670B': 'BRK.B',  # Berkshire
+            '478160': 'JNJ',    # J&J
+            '717081': 'PFE',    # Pfizer
+            '17275R': 'CSCO',   # Cisco
+            '68389X': 'ORCL',   # Oracle
+            '713448': 'PEP',    # PepsiCo
+            '191216': 'KO',     # Coca-Cola
+            '931142': 'WMT',    # Walmart
+        }
+        
+        # For bond/convertible CUSIPs (letters in positions 7-8), try issuer lookup
+        # Bond CUSIPs have format: XXXXXX[A-Z][A-Z]# where stock would be XXXXXX###
+        issuer_code = cusip[:6] if len(cusip) >= 6 else cusip
+        
+        # Direct issuer code lookup
+        if issuer_code in issuer_map:
+            return issuer_map[issuer_code]
+        
+        if len(cusip) >= 8 and any(c.isalpha() for c in cusip[6:8]):
+            # Try common stock suffix patterns (10#, 20#)
+            for suffix in ['101', '100', '102', '103', '104', '105', '106', '107', '108', '109',
+                          '201', '200', '202', '203', '204', '205', '206', '207', '208', '209',
+                          '301', '302', '303', '304', '305', '306', '307', '308', '309']:
+                stock_cusip = issuer_code + suffix
+                if stock_cusip in cusip_map:
+                    return cusip_map[stock_cusip]
+
+        # 2) OpenFIGI lookup (fills persistent cache when successful)
+        #    Skip during batch operations (backtests) to avoid rate limits and slowdowns.
+        if os.environ.get("SEC_SKIP_OPENFIGI", "").strip().lower() not in ("1", "true", "yes"):
+            ticker = self._openfigi_map_cusip_to_ticker(cusip)
+            if ticker:
+                self._cusip_ticker_cache[cusip] = ticker
+                if base_cusip and base_cusip != cusip:
+                    self._cusip_ticker_cache[base_cusip] = ticker
+                self._save_cusip_ticker_cache()
+                return ticker
+
         return None
     
     def get_latest_holdings(self, fund_name: str) -> pd.DataFrame:
@@ -378,11 +840,17 @@ class SECEdgarClient:
         cik = self.get_cik_by_name(fund_name)
         if not cik:
             logging.error(f"Could not find CIK for {fund_name}")
-            return pd.DataFrame()
+            df = pd.DataFrame()
+            df.attrs["sec_edgar_had_filing"] = False
+            df.attrs["sec_edgar_fund"] = fund_name
+            return df
 
         filings = self.get_13f_filings(cik, limit=search_limit)
         if not filings:
-            return pd.DataFrame()
+            df = pd.DataFrame()
+            df.attrs["sec_edgar_had_filing"] = False
+            df.attrs["sec_edgar_fund"] = fund_name
+            return df
 
         chosen = None
         for f in filings:
@@ -404,9 +872,22 @@ class SECEdgarClient:
 
         if chosen is None:
             # No filing existed yet as-of-date
-            return pd.DataFrame()
+            df = pd.DataFrame()
+            df.attrs["sec_edgar_had_filing"] = False
+            df.attrs["sec_edgar_fund"] = fund_name
+            return df
 
         holdings = self.parse_13f_holdings(cik, chosen["accession_number"])
+        # Attach metadata even when holdings is empty, so backtests can distinguish:
+        # - "no filing yet" (carry previous portfolio)
+        # - "filing exists but filtered/empty" (liquidate to cash)
+        try:
+            holdings.attrs["sec_edgar_had_filing"] = True
+            holdings.attrs["sec_edgar_filing_date"] = chosen.get("filed_date")
+            holdings.attrs["sec_edgar_accession_number"] = chosen.get("accession_number")
+            holdings.attrs["sec_edgar_fund"] = fund_name
+        except Exception:
+            pass
         if not holdings.empty:
             holdings["FilingDate"] = chosen.get("filed_date")
             holdings["Fund"] = fund_name
@@ -464,6 +945,7 @@ class SECEdgarClient:
         """Try to extract ticker symbols from company names."""
         # Comprehensive company name to ticker mapping
         name_map = {
+            # Tech Giants
             'APPLE': 'AAPL',
             'MICROSOFT': 'MSFT',
             'AMAZON': 'AMZN',
@@ -543,7 +1025,7 @@ class SECEdgarClient:
             'RAYTHEON': 'RTX',
             'LOCKHEED MARTIN': 'LMT',
             'NORTHROP GRUMMAN': 'NOC',
-            # From actual 13F filings
+            # From 13F filings - Hedge fund holdings
             'PALANTIR': 'PLTR',
             'UBER TECHNOLOGIES': 'UBER',
             'UBER': 'UBER',
@@ -557,14 +1039,116 @@ class SECEdgarClient:
             'HILTON': 'HLT',
             'HERTZ': 'HTZ',
             'MOLINA HEALTHCARE': 'MOH',
-            'PFIZER': 'PFE',
             'SLM CORP': 'SLM',
             'SALLIE MAE': 'SLM',
+            # Oaktree Capital Holdings (Howard Marks)
+            'TPI COMPOSITES': 'TPIC',
+            'BIOXCEL THERAPEUTICS': 'BTAI',
+            'EVOLENT HEALTH': 'EVH',
+            'FIVERR': 'FVRR',
+            'TRANSPORTADORA DE GAS': 'TGS',
+            'IRHYTHM': 'IRTC',
+            'FASTLY': 'FSLY',
+            'ZIFF DAVIS': 'ZD',
+            'PELOTON': 'PTON',
+            'ASCENDIS': 'ASND',
+            'WAYFAIR': 'W',
+            'LYFT': 'LYFT',
+            'POST HOLDINGS': 'POST',
+            'BENTLEY SYSTEMS': 'BSY',
+            'DIGITALOCEAN': 'DOCN',
+            'SNAP': 'SNAP',
+            'ESPERION': 'ESPR',
+            'ON SEMICONDUCTOR': 'ON',
+            'GROUPON': 'GRPN',
+            'BRIDGEBIO': 'BBIO',
+            'HERBALIFE': 'HLF',
+            'Q2 HOLDINGS': 'QTWO',
+            'BLOCK INC': 'SQ',
+            'SQUARE': 'SQ',
+            'BILL HOLDINGS': 'BILL',
+            'CERENCE': 'CRNC',
+            'NEOGENOMICS': 'NEO',
+            'UNITY SOFTWARE': 'U',
+            'GUESS': 'GES',
+            'BATTALION OIL': 'BATL',
+            'TWO HARBORS': 'TWO',
+            'AFFIRM': 'AFRM',
+            'NOVOCURE': 'NVCR',
+            'TOPGOLF CALLAWAY': 'MODG',
+            'CALLAWAY': 'MODG',
+            'WINNEBAGO': 'WGO',
+            'GUARDANT': 'GH',
+            'FUBOTV': 'FUBO',
+            'UPWORK': 'UPWK',
+            'VERINT': 'VRNT',
+            'FRESHPET': 'FRPT',
+            'SOUTHERN CO': 'SO',
+            'HDFC BANK': 'HDB',
+            'PENNYMAC': 'PMT',
+            'TRIP.COM': 'TCOM',
+            'REDWOOD TRUST': 'RWT',
+            'VAIL RESORTS': 'MTN',
+            'LCI INDUSTRIES': 'LCII',
+            'MAGNITE': 'MGNI',
+            'LANTHEUS': 'LNTH',
+            # Pershing Square Holdings (Bill Ackman)
+            'HILTON WORLDWIDE': 'HLT',
+            # Scion Asset Management (Michael Burry)
+            'CREDICORP': 'BAP',
+            'AMKOR': 'AMKR',
+            'ARRAY TECHNOLOGIES': 'ARRY',
+            'AXALTA': 'AXTA',
+            'EASTMAN CHEMICAL': 'EMN',
+            'JFROG': 'FROG',
+            'GLOBANT': 'GLOB',
+            'GITLAB': 'GTLB',
+            'HASHICORP': 'HCP',
+            'SAMSARA': 'IOT',
+            'KEYSIGHT': 'KEYS',
+            'LINCOLN ELECTRIC': 'LECO',
+            'MIDDLEBY': 'MIDD',
+            'MURPHY USA': 'MUSA',
+            'NEUROCRINE': 'NBIX',
+            'NATIONAL STORAGE': 'NSA',
+            'NISOURCE': 'NI',
+            'ONESPAWORLD': 'OSW',
+            'PRESTIGE CONSUMER': 'PBH',
+            'PAR PACIFIC': 'PARR',
+            'PACKAGING CORP': 'PKG',
+            'QORVO': 'QRVO',
+            'REGENCY CENTERS': 'REG',
+            'SIMON PROPERTY': 'SPG',
+            'SEAGATE': 'STX',
+            'SANMINA': 'SANM',
+            'SHELL': 'SHEL',
+            'SELECTIVE INSURANCE': 'SIGI',
+            'STANDEX': 'SXI',
+            'STAG INDUSTRIAL': 'STAG',
+            'TERADATA': 'TDC',
+            'TERADYNE': 'TER',
+            'TREEHOUSE FOODS': 'THS',
+            'TOWER SEMICONDUCTOR': 'TSEM',
+            'TRANE': 'TT',
+            'UDR': 'UDR',
+            'VF CORP': 'VFC',
+            'VULCAN MATERIALS': 'VMC',
+            'VIPSHOP': 'VIPS',
+            'VIASAT': 'VSAT',
+            'WALGREENS': 'WBA',
+            'WABTEC': 'WAB',
+            'WORKDAY': 'WDAY',
+            'WENDY': 'WEN',
+            'WYNDHAM': 'WH',
+            'WORTHINGTON': 'WOR',
+            'XPO': 'XPO',
+            'ZIMMER': 'ZBH',
         }
         
         tickers = []
         for name in names:
             if not name:
+                tickers.append(None)
                 continue
             
             name_upper = name.upper().strip()
@@ -584,7 +1168,8 @@ class SECEdgarClient:
             
             # If no match found, keep the original name
             if not ticker_found:
-                tickers.append(name[:10])  # Truncate long names
+                # Returning a fake "ticker" here creates invalid symbols and breaks backtests.
+                tickers.append(None)
         
         return tickers
 

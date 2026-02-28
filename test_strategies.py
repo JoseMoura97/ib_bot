@@ -171,12 +171,15 @@ class TestDanMeuserStrategy(unittest.TestCase):
         """Test Dan Meuser strategy metadata."""
         meta = self.engine.strategies_meta["Dan Meuser"]
         
-        self.assertEqual(meta['type'], 'congress')
-        self.assertIn('filter', meta)
-        self.assertEqual(meta['lookback_days'], 90)
+        # Dan Meuser is implemented via the bulk congress endpoint (full history),
+        # filtered by name pattern (not a per-row 'filter' lambda).
+        self.assertEqual(meta["type"], "congress_bulk")
+        self.assertIn("name_pattern", meta)
+        self.assertEqual(meta["name_pattern"], "Meuser")
+        self.assertEqual(meta["lookback_days"], 365)
     
     def test_dan_meuser_filter_logic(self):
-        """Test that Dan Meuser filter works correctly."""
+        """Test that Dan Meuser name_pattern filtering works correctly."""
         # Create mock congress data
         mock_data = pd.DataFrame({
             'Representative': ['Dan Meuser', 'Nancy Pelosi', 'dan meuser'],
@@ -185,9 +188,11 @@ class TestDanMeuserStrategy(unittest.TestCase):
         })
         
         meta = self.engine.strategies_meta["Dan Meuser"]
-        filtered = meta['filter'](mock_data)
+        pattern = meta.get("name_pattern")
+        self.assertIsInstance(pattern, str)
+        filtered = mock_data[mock_data["Representative"].str.contains(pattern, case=False, na=False)]
         
-        # Should only keep Dan Meuser purchases
+        # Should only keep Dan Meuser rows (purchases + sales included)
         self.assertEqual(len(filtered), 2)
         self.assertTrue(all('meuser' in rep.lower() for rep in filtered['Representative']))
 

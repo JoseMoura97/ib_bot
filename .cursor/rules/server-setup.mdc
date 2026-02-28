@@ -11,28 +11,36 @@ alwaysApply: true
 - **SSH:** `ssh root@213.159.68.39`
 - **App user:** `ibbot` (home: `/home/ibbot`)
 - **Project path:** `/home/ibbot/ib_bot`
+- **Dashboard URL:** `http://213.159.68.39`
 
 ## Docker Compose Stack
 
 All services run via Docker Compose at `/home/ibbot/ib_bot`.
 Production uses two compose files: `docker-compose.yml` + `docker-compose.prod.yml`.
 
-| Service | Container | Internal Port |
-|---------|-----------|---------------|
-| PostgreSQL 16 | ib_bot-db-1 | 5432 |
-| Redis 7 | ib_bot-redis-1 | 6379 |
-| FastAPI API | ib_bot-api-1 | 8000 |
-| Celery Worker | ib_bot-worker-1 | -- |
-| Celery Beat | ib_bot-beat-1 | -- |
-| Next.js Frontend | ib_bot-web-1 | 3000 |
-| nginx | ib_bot-nginx-1 | 80, 443 |
+| Service | Container | Internal Port | Notes |
+|---------|-----------|---------------|-------|
+| PostgreSQL 16 | ib_bot-db-1 | 5432 | |
+| Redis 7 | ib_bot-redis-1 | 6379 | |
+| FastAPI API | ib_bot-api-1 | 8000 | Backend API (FastAPI, not Django) |
+| Celery Worker | ib_bot-worker-1 | -- | Runs backtests, plot data generation |
+| Celery Beat | ib_bot-beat-1 | -- | Scheduled tasks |
+| Next.js Frontend | ib_bot-web-1 | 3000 | Dashboard UI |
+| nginx | ib_bot-nginx-1 | 80, 443 | Reverse proxy |
 
 ## Key Paths on Server
 
 - `.env` — `/home/ibbot/ib_bot/.env`
 - Cache (price data) — `/home/ibbot/ib_bot/.cache`
+- Cache subdirs: `ib_prices/` (1249 files), `yf_prices/` (1717 files), `plot_data.json` (17 strategies)
 - nginx config — `/home/ibbot/ib_bot/infra/nginx/nginx.prod.conf`
 - Backups — `/home/ibbot/backups`
+- IB Gateway install — `/opt/ibgateway/` (binary at `/opt/ibgateway/ibgateway`)
+- IBC (IB Controller) — `/opt/ibc/` (config at `/opt/ibc/config.ini`)
+- IB Gateway settings — `/root/Jts/jts.ini`
+- IB Gateway startup script — `/opt/ibc/start-gateway.sh`
+- Auto-2FA script — `/opt/ibc/auto2fa.py`
+- Xvfb display — `:1` (1280x1024x24)
 
 ## SSH from Agent
 
@@ -44,6 +52,84 @@ $env:SSH_ASKPASS_REQUIRE = "force"
 $env:DISPLAY = "localhost:0"
 ssh -o StrictHostKeyChecking=no root@213.159.68.39 "<command>"
 ```
+
+**IMPORTANT:** PowerShell mangles complex inline Python/bash with quotes. For multi-line scripts, write to a local file, SCP it to `/tmp/`, fix line endings with `sed -i 's/\r//' /tmp/script.sh`, then execute.
+
+## IB Gateway (LIVE — Installed & Working)
+
+IB Gateway 10.37 runs on the **host** (not in Docker) with a headless GUI via Xvfb.
+
+### Architecture
+
+```
+IB Gateway (host, Java, listens *:4001)
+    ↑ only accepts connections from 127.0.0.1
+    |
+socat proxy (systemd: ib-socat.service, host, listens *:4003)
+    ↑ forwards to 127.0.0.1:4001
+    |
+Docker containers connect to 172.18.0.1:4003
+```
+
+### Why socat is needed
+
+IB Gateway's "Allow connections from localhost only" setting is baked into the Java runtime and ignores `TrustedIPs` in `jts.ini` for non-localhost connections. Docker containers appear as `172.18.0.x`, so they get rejected. The socat proxy accepts on port 4003 from any IP and forwards to `127.0.0.1:4001`, making the connection appear local to IB Gateway.
+
+### Key Config Values
+
+| Config | Value | Location |
+|--------|-------|----------|
+| IB_HOST | `172.18.0.1` | `.env` (Docker bridge gateway) |
+| IB_PORT | `4003` | `.env` (socat proxy port, NOT 4001) |
+| IBC IbLoginId | `jibas797` | `/opt/ibc/config.ini` |
+| IBC IbPassword | `IB97Bot!` | `/opt/ibc/config.ini` |
+| IBC TradingMode | `live` | `/opt/ibc/config.ini` |
+| Gateway Socket Port | `4001` | IB Gateway API Settings |
+| TOTP Secret | `3LIWICNOAIU3D6WOL3627WN3A3HGDEBP` | `/opt/ibc/auto2fa.py` |
+| VNC access | `213.159.68.39:5900` pw `ibbot` | x11vnc on display :1 |
+
+### IB Accounts Detected
+
+- U15721390, U23842850, U23842862, U24559484
+- `jibas797` is the test/dev account
+- `jibas.bot` (U15721390) is the main account (was rate-limited, may need cooldown)
+- `jibas.gateway` sub-user was created but is pending approval — do NOT use
+
+### Systemd Services
+
+| Service | Purpose | Status |
+|---------|---------|--------|
+| `ib-socat.service` | socat proxy 4003→4001 | enabled, auto-starts on boot |
+| `ibgateway.service` | IB Gateway + IBC | disabled (manual start preferred) |
+
+### Login Procedure (Manual via VNC)
+
+IB Gateway requires manual login with 2FA. After a restart:
+
+1. Start IB Gateway: `DISPLAY=:1 nohup /opt/ibgateway/ibgateway > /tmp/gw.log 2>&1 &`
+2. Connect via VNC: `213.159.68.39:5900` password `ibbot` (use TightVNC Viewer)
+3. Login with `jibas797` / `IB97Bot!`
+4. Enter Google Authenticator TOTP code when prompted
+5. In Gateway: Configure → Settings → API Settings → ensure "Enable ActiveX and Socket Clients" is checked, port 4001, "Allow connections from localhost only" can stay checked (socat handles it)
+
+### Known Issues & Lessons Learned
+
+- **Do NOT set `SecondFactorDevice` in `/opt/ibc/config.ini`** — IBC will repeatedly click OK on empty 2FA dialogs, causing rapid failed attempts and account lockout.
+- **IB rate-limits 2FA attempts aggressively** — after ~5 failed attempts, the account is locked for hours. Wait at least 24h before retrying a locked account.
+- **Datacenter IPs may trigger stricter IB security** — residential IPs work more reliably for initial 2FA. A WireGuard VPN was attempted but datacenter VPN IPs also fail.
+- **`xdotool` doesn't work with Java Swing** — use `xte` from `xautomation` package for typing into IB Gateway dialogs.
+- **Docker container gateway IP is `172.18.0.1`**, not `172.17.0.1` — the compose network uses a different bridge. Always verify with `docker inspect`.
+- **`.env` changes require container recreate**, not just restart: `docker compose up -d --force-recreate api`
+
+## Firewall (UFW)
+
+Open ports:
+- 22 (SSH)
+- 80 (HTTP)
+- 443 (HTTPS)
+- 5900 (VNC — for IB Gateway login)
+- 4001/tcp from 172.17.0.0/16 and 172.18.0.0/16 (Docker → IB Gateway direct, legacy)
+- 4003/tcp from 172.18.0.0/16 (Docker → socat proxy, active)
 
 ## Git-Based Deployment
 
@@ -78,21 +164,65 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 # Rebuild after code change
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
+# Force recreate (needed after .env changes)
+docker compose up -d --force-recreate api worker beat
+
 # Database access
 docker compose exec db psql -U ibbot -d ibbot
 
 # Emergency stop trading
 echo "TRADING_HALT=true" >> .env && docker compose restart api worker
+
+# Check IB Gateway status from API
+docker exec ib_bot-api-1 curl -s http://localhost:8000/ib/status
+
+# Check IB Gateway process on host
+ss -tlnp | grep 4001
+pgrep -fa java
+
+# Restart socat proxy
+systemctl restart ib-socat
+
+# Start IB Gateway (manual, then login via VNC)
+DISPLAY=:1 nohup /opt/ibgateway/ibgateway > /tmp/gw.log 2>&1 &
+
+# Kill IB Gateway
+pkill -f ibgateway
+
+# Trigger plot data refresh
+docker exec ib_bot-api-1 curl -s -X POST 'http://localhost:8000/plot-data/refresh?force=true'
 ```
 
-## IB Gateway
+## API Endpoints (FastAPI at port 8000)
 
-Not yet installed. Will run on the host (not in Docker) at port 4001 (paper) or 4002 (live).
-Containers reach the host via `IB_HOST=172.17.0.1` (Docker bridge gateway).
+The backend is FastAPI (not Django). Routes are defined in `backend/app/api/routes/`.
 
-## Firewall (UFW)
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/health` | GET | Health check |
+| `/ib/status` | GET | IB Gateway connection status + accounts |
+| `/ib/accounts` | GET | List IB accounts |
+| `/ib/accounts/{id}/snapshot` | GET | Account balances + positions |
+| `/ib/connect` | POST | Update IB connection host/port at runtime |
+| `/portfolios` | GET | List portfolios |
+| `/strategies` | GET | List strategies |
+| `/allocations` | GET | List allocations |
+| `/runs` | GET | List backtest runs |
+| `/plot-data` | GET | Get strategy equity curve data |
+| `/plot-data/refresh` | POST | Queue Celery task to regenerate plot data |
+| `/plot-data/refresh/{task_id}` | GET | Check plot data refresh progress |
+| `/live` | GET/POST | Live trading endpoints |
+| `/paper` | GET/POST | Paper trading endpoints |
 
-Open ports: 22 (SSH), 80 (HTTP), 443 (HTTPS), 5900 (VNC — close after IB Gateway setup).
+## Cache & Plot Data
+
+- `plot_data.json` contains real backtest equity curves for 17 strategies (not synthetic)
+- Generated by `generate_plot_data.py` which uses `RebalancingBacktestEngine` + yfinance prices
+- On-server generation fails because many congress-traded tickers are delisted on Yahoo Finance
+- **Workaround:** Generate locally where the cache is warm, then SCP to server:
+  ```bash
+  scp .cache/plot_data.json root@213.159.68.39:/home/ibbot/ib_bot/.cache/plot_data.json
+  ```
 
 ## SSL / Domain
 

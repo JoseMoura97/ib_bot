@@ -12,23 +12,36 @@ import numpy as np
 
 from dotenv import load_dotenv
 from quiver_signals import QuiverSignals
-from rebalancing_backtest_engine import RebalancingBacktestEngine
+from rebalancing_backtest_engine import RebalancingBacktestEngine, _ProgressBar
 
 def normalize_equity_curve(equity_curve_df, initial_value=100):
     """Normalize an equity curve to start at initial_value (e.g., 100)."""
-    if equity_curve_df.empty or 'equity' not in equity_curve_df.columns:
+    if equity_curve_df is None or equity_curve_df.empty:
         return pd.DataFrame()
     
-    first_value = equity_curve_df['equity'].iloc[0]
+    # Handle both 'equity' and 'portfolio_value' column names
+    if 'equity' in equity_curve_df.columns:
+        value_col = 'equity'
+    elif 'portfolio_value' in equity_curve_df.columns:
+        value_col = 'portfolio_value'
+    else:
+        return pd.DataFrame()
+    
+    first_value = equity_curve_df[value_col].iloc[0]
     if first_value <= 0:
         first_value = 1.0
     
     equity_curve_df = equity_curve_df.copy()
-    equity_curve_df['normalized'] = (equity_curve_df['equity'] / first_value) * initial_value
+    equity_curve_df['normalized'] = (equity_curve_df[value_col] / first_value) * initial_value
     return equity_curve_df
 
-def generate_plot_data():
-    """Generate plot data for all strategies vs SPY."""
+def generate_plot_data(use_cache_only: bool = False):
+    """Generate plot data for all strategies vs SPY.
+    
+    Args:
+        use_cache_only: If True, use only cached price data (no API calls).
+                        This runs real backtests on cached historical prices.
+    """
     print("Generating plot data for all strategies vs SPY...")
     print("="*80)
     
@@ -37,17 +50,27 @@ def generate_plot_data():
     if not api_key:
         raise SystemExit("QUIVER_API_KEY is required")
     
+    # Determine price source
+    if use_cache_only:
+        price_source = "cache_only"
+        print("Using CACHE_ONLY mode - no external API calls")
+    else:
+        price_source = os.getenv("PRICE_SOURCE", "auto")
+        print(f"Using price source: {price_source}")
+    
     qs = QuiverSignals(api_key)
     bt = RebalancingBacktestEngine(
         quiver_api_key=api_key,
         initial_capital=100000,
         transaction_cost_bps=0.0,
-        price_source=os.getenv("PRICE_SOURCE", "auto"),
+        price_source=price_source,
     )
     
     # Output structure
     plot_data = {
         "generated_at": datetime.now().isoformat(),
+        "data_source": "cached_prices" if use_cache_only else "live_api",
+        "synthetic": False,  # These are REAL backtests, not synthetic curves
         "strategies": {},
         "benchmark": None
     }
@@ -73,13 +96,17 @@ def generate_plot_data():
         "Insider Purchases",
     ]
     
-    # Get SPY benchmark data (earliest strategy starts in 2009)
+    # Get SPY benchmark data (use 2020 for faster IB data fetching)
+    overall = _ProgressBar(total=len(strategies) + 1, prefix="Plot data", width=30)
+
     print("\nFetching SPY benchmark...")
     try:
         from datetime import datetime as dt
+        # Use 2020 start date to reduce IB data fetching time
+        benchmark_start = dt(2020, 1, 1)
         spy_result = bt.run_rebalancing_backtest(
             strategy_name="SPY_Benchmark",
-            start_date=dt(2009, 1, 1),
+            start_date=benchmark_start,
             end_date=datetime.now(),
             lookback_days_override=None,
         )
@@ -94,13 +121,18 @@ def generate_plot_data():
                     "dates": spy_curve_weekly.index.strftime('%Y-%m-%d').tolist(),
                     "values": spy_curve_weekly['normalized'].round(2).tolist()
                 }
-                print(f"✓ SPY: {len(spy_curve_weekly)} weekly points from {spy_curve_weekly.index[0].date()} to {spy_curve_weekly.index[-1].date()}")
+                print(f"[OK] SPY: {len(spy_curve_weekly)} weekly points from {spy_curve_weekly.index[0].date()} to {spy_curve_weekly.index[-1].date()}")
+        overall.step(extra="SPY")
     except Exception as e:
-        print(f"✗ SPY Error: {e}")
+        print(f"[ERROR] SPY Error: {e}")
         import traceback
         traceback.print_exc()
+        overall.step(extra="SPY error")
     
     # Generate data for each strategy
+    # Use 2020 as minimum start date to reduce IB data fetching time
+    min_start_date = datetime(2020, 1, 1)
+    
     strategy_count = 0
     for strategy_name in strategies:
         try:
@@ -108,11 +140,14 @@ def generate_plot_data():
             
             info = qs.get_strategy_info(strategy_name)
             if not info or not info.get("start_date"):
-                print(f"  ✗ No strategy info found")
+                print(f"  [SKIP] No strategy info found")
+                overall.step(extra=f"skip: {strategy_name}")
                 continue
             
             start_date_str = info['start_date']
-            start_date = datetime.fromisoformat(start_date_str)
+            strategy_start = datetime.fromisoformat(start_date_str)
+            # Use the later of strategy start or 2020-01-01
+            start_date = max(strategy_start, min_start_date)
             
             # Run backtest using run_rebalancing_backtest
             result = bt.run_rebalancing_backtest(
@@ -148,18 +183,23 @@ def generate_plot_data():
                     }
                     
                     strategy_count += 1
-                    print(f"  ✓ {len(equity_curve_weekly)} weekly points, CAGR={cagr_pct:.1f}%")
+                    print(f"  [OK] {len(equity_curve_weekly)} weekly points, CAGR={cagr_pct:.1f}%")
+                    overall.step(extra=f"ok: {strategy_name}")
                 else:
-                    print(f"  ✗ Empty equity curve")
+                    print(f"  [SKIP] Empty equity curve")
+                    overall.step(extra=f"skip: {strategy_name}")
             elif 'error' in result:
-                print(f"  ✗ Backtest error: {result['error']}")
+                print(f"  [ERROR] Backtest error: {result['error']}")
+                overall.step(extra=f"error: {strategy_name}")
             else:
-                print(f"  ✗ No backtest result")
+                print(f"  [SKIP] No backtest result")
+                overall.step(extra=f"skip: {strategy_name}")
                 
         except Exception as e:
-            print(f"  ✗ Error: {e}")
+            print(f"  [ERROR] Error: {e}")
             import traceback
             traceback.print_exc()
+            overall.step(extra=f"error: {strategy_name}")
             continue
     
     print(f"\n{'='*80}")
@@ -172,7 +212,7 @@ def generate_plot_data():
     with open(output_file, 'w') as f:
         json.dump(plot_data, f, indent=2)
     
-    print(f"✓ Saved to {output_file}")
+    print(f"[OK] Saved to {output_file}")
     
     # Calculate file size
     file_size = os.path.getsize(output_file) / 1024  # KB
@@ -182,26 +222,45 @@ def generate_plot_data():
 
 if __name__ == "__main__":
     import warnings
+    import argparse
     warnings.filterwarnings('ignore')
+    
+    parser = argparse.ArgumentParser(description="Generate plot data for strategies")
+    parser.add_argument("--cache-only", action="store_true",
+                        help="Use only cached price data (no external API calls)")
+    parser.add_argument("--cache-dir", type=str, default=".cache",
+                        help="Cache directory path")
+    parser.add_argument("--no-progress", action="store_true",
+                        help="Disable progress bars")
+    args = parser.parse_args()
     
     # Set environment variables for backtesting
     os.environ['PYTHONUNBUFFERED'] = '1'
-    os.environ['PRICE_SOURCE'] = os.getenv('PRICE_SOURCE', 'auto')
-    os.environ['PROGRESS'] = '0'
+    if not args.cache_only:
+        os.environ['PRICE_SOURCE'] = os.getenv('PRICE_SOURCE', 'auto')
+    if args.no_progress:
+        os.environ['NO_PROGRESS'] = '1'
+    else:
+        # Default progress to ON unless user has explicitly disabled it.
+        if os.getenv("NO_PROGRESS", "").strip().lower() not in {"1", "true", "yes"}:
+            if os.getenv("PROGRESS", "").strip() == "":
+                os.environ["PROGRESS"] = "1"
     
     try:
-        plot_data = generate_plot_data()
+        plot_data = generate_plot_data(use_cache_only=args.cache_only)
         
         if plot_data and plot_data.get('strategies'):
-            print("\n✓ Plot data generation complete!")
+            print("\n[OK] Plot data generation complete!")
             print(f"  Strategies: {len(plot_data['strategies'])}")
+            print(f"  Data source: {plot_data.get('data_source', 'unknown')}")
+            print(f"  Synthetic: {plot_data.get('synthetic', False)}")
             if plot_data.get('benchmark'):
                 print(f"  Benchmark: SPY with {len(plot_data['benchmark']['dates'])} points")
         else:
-            print("\n✗ No plot data generated")
+            print("\n[ERROR] No plot data generated")
             sys.exit(1)
     except Exception as e:
-        print(f"\n✗ Fatal error: {e}")
+        print(f"\n[ERROR] Fatal error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

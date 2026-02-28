@@ -8,6 +8,7 @@ import numpy as np
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional
 import warnings
+import os
 warnings.filterwarnings('ignore')
 
 from quiver_strategy_rules import QuiverStrategyRules
@@ -96,8 +97,13 @@ class StrategyReplicator:
             return {
                 'type': 'portfolio_mirror',
                 'rebalance': 'on_trade',  # Rebalance when new trades filed
-                'use_reported_amounts': True,
-                'lookback_days': 365
+                # Quiver describes these as portfolio mirrors, rebalanced on trade/report.
+                # Match that by treating the portfolio as an equal-weight basket of
+                # currently-held tickers inferred from the latest buy/sell per ticker.
+                'weighting': 'equal',
+                'mirror_mode': 'latest_action',
+                # Use a long lookback so we can infer "currently held" from history.
+                'lookback_days': 3650
             }
         
         # Lobbying Strategies
@@ -162,10 +168,18 @@ class StrategyReplicator:
         
         # Hedge Fund Managers (13F)
         if strategy_name in ["Michael Burry", "Bill Ackman", "Howard Marks"]:
+            # Optional: Quiver often presents "top N holdings" style portfolios.
+            # If set, we will select only the top N holdings by (absolute) 13F Value.
+            top_n_env = os.getenv("SEC_13F_TOP_N", "").strip()
+            try:
+                top_n = int(top_n_env) if top_n_env else 0
+            except Exception:
+                top_n = 0
             return {
                 'type': 'portfolio_mirror',
                 'rebalance': 'quarterly',
                 'use_13f_weights': True,
+                'top_n': top_n,
                 'lookback_days': 120
             }
         
@@ -235,10 +249,12 @@ class StrategyReplicator:
         lookback_days: Optional[int] = None,
     ) -> Dict[str, float]:
         """
-        Apply strategy-specific weighting using only information available up to `as_of_date`
-        (and optionally limited to a rolling window of `lookback_days`).
+        Apply strategy-specific weighting for an "as of" date.
 
-        This prevents lookahead bias and matches Quiver-style rolling-window construction.
+        Important: in this codebase, **time-travel / lookahead prevention and rolling-window
+        filtering are performed by** `QuiverStrategyEngine._get_raw_data_with_metadata_at_date`.
+        As a result, this method treats `raw_data` as already filtered to what would have been
+        known at `as_of_date`, and only applies weighting logic.
         """
         if raw_data is None or raw_data.empty:
             return {}
@@ -248,37 +264,9 @@ class StrategyReplicator:
 
         # Strategy defaults (used unless caller overrides)
         config = self.get_strategy_config(strategy_name)
-        if lookback_days is None:
-            lookback_days = config.get("lookback_days")
-        if lookback_days is None:
-            # Sensible defaults by strategy family
-            if "Congress" in strategy_name or "House" in strategy_name or "Senate" in strategy_name or "Committee" in strategy_name:
-                lookback_days = 90
-            elif "Lobbying" in strategy_name or "Contract" in strategy_name:
-                lookback_days = 90
-            else:
-                lookback_days = 365
-
-        cutoff_date = as_of_date - timedelta(days=int(lookback_days))
-
-        df = raw_data.copy()
-
-        # Find the best available date column.
-        date_col = None
-        for col in ["TransactionDate", "ReportDate", "Date", "LastUpdate"]:
-            if col in df.columns:
-                date_col = col
-                break
-
-        if date_col:
-            if not pd.api.types.is_datetime64_any_dtype(df[date_col]):
-                df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
-            df = df[(df[date_col] >= cutoff_date) & (df[date_col] <= as_of_date)].copy()
-
-        if df.empty:
-            return {}
-
-        return self.apply_strategy_weights(df, strategy_name, config)
+        # `lookback_days` is handled upstream; keep the parameter for API compatibility.
+        _ = lookback_days
+        return self.apply_strategy_weights(raw_data, strategy_name, config)
     
     def _equal_weight(self, data: pd.DataFrame, config: Dict) -> Dict[str, float]:
         """Equal weight across all tickers."""
@@ -453,12 +441,68 @@ class StrategyReplicator:
         if data.empty or 'Ticker' not in data.columns:
             return {}
         
+        # Politician portfolio mirrors: infer current holdings from the latest action per ticker,
+        # then equal-weight the inferred holdings.
+        #
+        # This is a closer match to Quiver's stated methodology ("mirror the portfolio" and
+        # rebalance when new trades/reports are filed) than summing trade amounts.
+        if str(config.get("weighting", "")).lower() == "equal" and str(config.get("mirror_mode", "")).lower() == "latest_action":
+            df = data.copy()
+            # Determine best date column for ordering.
+            date_col = None
+            for col in ["ReportDate", "TransactionDate", "Date", "LastUpdate"]:
+                if col in df.columns:
+                    date_col = col
+                    break
+
+            if "Transaction" in df.columns and date_col is not None:
+                if not pd.api.types.is_datetime64_any_dtype(df[date_col]):
+                    df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
+                df = df.dropna(subset=[date_col])
+                if not df.empty:
+                    # Keep latest row per ticker.
+                    df = df.sort_values(date_col, ascending=False)
+                    latest = df.drop_duplicates(subset=["Ticker"], keep="first")
+                    tx = latest["Transaction"].astype(str).str.lower()
+                    # Treat buys/purchases as holding; sells as not holding.
+                    held = latest[tx.str.contains("purchase|buy", na=False)]
+                    tickers = held["Ticker"].dropna().astype(str).unique().tolist()
+                    if tickers:
+                        w = 1.0 / len(tickers)
+                        return {t: w for t in tickers}
+
+            # If we can't infer action, fall back to equal-weight across tickers present.
+            tickers = df["Ticker"].dropna().astype(str).unique().tolist()
+            if tickers:
+                w = 1.0 / len(tickers)
+                return {t: w for t in tickers}
+
         # For 13F filings, use reported values
+        # Supports negative values (PUT options = short exposure)
         if config.get('use_13f_weights', False) and 'Value' in data.columns:
             ticker_values = data.groupby('Ticker')['Value'].sum()
-            total = ticker_values.sum()
-            if total > 0:
-                return (ticker_values / total).to_dict()
+
+            # Optional: concentrate into top-N holdings (by absolute value).
+            top_n = int(config.get("top_n") or 0)
+            if top_n > 0 and len(ticker_values) > top_n:
+                ticker_values = ticker_values.reindex(ticker_values.abs().sort_values(ascending=False).head(top_n).index)
+            
+            # Check if we have any negative values (shorts)
+            has_shorts = (ticker_values < 0).any()
+            
+            if has_shorts:
+                # For long-short portfolios, normalize by GROSS exposure
+                # This preserves the relative sizing of long and short positions
+                gross_exposure = ticker_values.abs().sum()
+                if gross_exposure > 0:
+                    # Weights: positive for longs, negative for shorts
+                    # Sum of absolute weights = 1.0
+                    return (ticker_values / gross_exposure).to_dict()
+            else:
+                # Long-only: normalize by sum
+                total = ticker_values.sum()
+                if total > 0:
+                    return (ticker_values / total).to_dict()
         
         # For congressional trades, estimate position sizes
         if 'Amount' in data.columns:

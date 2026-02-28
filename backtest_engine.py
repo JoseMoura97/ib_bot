@@ -13,6 +13,7 @@ import os
 import time
 import random
 import logging
+import asyncio
 warnings.filterwarnings('ignore')
 
 # Try to import yfinance, make it optional
@@ -25,6 +26,13 @@ except ImportError:
 
 try:
     # Optional Interactive Brokers price source
+    # Some Python versions (notably newer Windows builds) do not create a default
+    # asyncio event loop for the main thread, which can cause ib_insync/eventkit
+    # imports to fail at import time. Ensure a loop exists.
+    try:
+        asyncio.get_event_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
     from ib_insync import IB, Stock, util  # type: ignore
     IB_AVAILABLE = True
 except Exception:
@@ -44,6 +52,7 @@ class BacktestEngine:
         self.results = None
         self.trades = []
         self.equity_curve = []
+        # price_source: 'yfinance', 'ib', 'auto', or 'cache_only'
         self.price_source = (price_source or "yfinance").lower().strip()
 
         # IB connection is created lazily
@@ -196,6 +205,9 @@ class BacktestEngine:
             if ticker in _yf_ticker_cache and isinstance(_yf_ticker_cache[ticker], pd.DataFrame):
                 df = _yf_ticker_cache[ticker]
                 if not df.empty:
+                    # Prefer adjusted pricing for backtests (splits/dividends).
+                    if "Adj Close" in df.columns and "Close" in df.columns:
+                        df["Close"] = df["Adj Close"]
                     return df
             path = self._yf_cache_path(ticker)
             if os.path.exists(path):
@@ -204,6 +216,9 @@ class BacktestEngine:
                     if not isinstance(df.index, pd.DatetimeIndex):
                         df.index = pd.to_datetime(df.index, errors="coerce")
                     df = df.sort_index()
+                    # Prefer adjusted pricing for backtests (splits/dividends).
+                    if "Adj Close" in df.columns and "Close" in df.columns:
+                        df["Close"] = df["Adj Close"]
                     _yf_ticker_cache[ticker] = df
                     return df
         except Exception:
@@ -244,7 +259,17 @@ class BacktestEngine:
         df = None
         for attempt in range(3):
             try:
-                df = yf.download(ticker, start=start_date, end=end_date, progress=False, threads=False)
+                # Use adjusted prices so splits/dividends do not appear as returns.
+                # This avoids pathological jumps for names with reverse splits (e.g., XXII).
+                df = yf.download(
+                    ticker,
+                    start=start_date,
+                    end=end_date,
+                    progress=False,
+                    threads=False,
+                    auto_adjust=True,
+                    actions=False,
+                )
                 break
             except Exception as e:
                 msg = str(e)
@@ -259,6 +284,10 @@ class BacktestEngine:
         if not isinstance(df.index, pd.DatetimeIndex):
             df.index = pd.to_datetime(df.index, errors="coerce")
         df = df.sort_index()
+
+        # Prefer adjusted close for return calculations (handles splits/dividends in one series).
+        if "Adj Close" in df.columns and "Close" in df.columns:
+            df["Close"] = df["Adj Close"]
 
         merged = df
         if cached is not None and not cached.empty:
@@ -310,13 +339,22 @@ class BacktestEngine:
         cached = self._load_ib_cache(ticker)
         if cached is not None and not cached.empty:
             # If cache covers range, slice and return
-            if cached.index.min().to_pydatetime() <= start and cached.index.max().to_pydatetime() >= end - timedelta(days=1):
+            # NOTE: IB daily bars end on the last trading day <= end_date.
+            # If end_date is a weekend/holiday (or intraday on a trading day),
+            # cached max may be a few days before `end`. Treat cache as "covered"
+            # if it reaches near the requested end window.
+            if cached.index.min().to_pydatetime() <= start and cached.index.max().to_pydatetime() >= end - timedelta(days=7):
                 return cached.loc[(cached.index >= start) & (cached.index <= end)].copy()
 
         if not self._ib_connect() or self._ib is None:
             return pd.DataFrame()
 
         ib_symbol = self._normalize_symbol_for_ib(ticker)
+        # Use split-adjusted prices by default to avoid artificial jumps on splits/reverse-splits.
+        # IB supports whatToShow="ADJUSTED_LAST" for many stock contracts.
+        what_to_show = os.getenv("IB_WHAT_TO_SHOW", "").strip().upper() or "ADJUSTED_LAST"
+        if what_to_show not in {"TRADES", "ADJUSTED_LAST"}:
+            what_to_show = "ADJUSTED_LAST"
         try:
             contract = self._ib_contract_cache.get(ib_symbol)
             if contract is None:
@@ -326,70 +364,37 @@ class BacktestEngine:
         except Exception:
             return pd.DataFrame()
 
-        # Quick probe: if IB cannot provide even a short tail window, don't waste time.
+        # NOTE: Passing Python datetime objects to endDateTime is unreliable on some
+        # environments (can return 0 bars). Using endDateTime='' is consistently
+        # supported; we then slice to [start, end]. This also reduces calls vs.
+        # chunking backwards per ticker.
         try:
-            probe = self._ib.reqHistoricalData(
+            anchor_end = datetime.now()
+            span_days = max(1, int((anchor_end - start).days))
+            if span_days >= 365:
+                years = int(min(10, max(1, (span_days + 364) // 365)))
+                duration_str = f"{years} Y"
+            else:
+                duration_str = f"{span_days} D"
+
+            bars = self._ib.reqHistoricalData(
                 contract,
-                endDateTime=end,
-                durationStr="30 D",
+                endDateTime="",
+                durationStr=duration_str,
                 barSizeSetting="1 day",
-                whatToShow="TRADES",
+                whatToShow=what_to_show,
                 useRTH=self._ib_use_rth,
                 formatDate=1,
                 keepUpToDate=False,
             )
-            probe_df = self._bars_to_df(probe)
-            if probe_df.empty:
-                return pd.DataFrame()
         except Exception:
             return pd.DataFrame()
 
-        # Pull in chunks to respect pacing (work backwards from end).
-        # Use larger duration strings when possible to reduce API calls.
-        out_parts = []
-        cur_end = end
-        safety = 0
-        while cur_end > start and safety < 200:
-            safety += 1
-            remaining_days = max(1, int((cur_end - start).days))
-            # Use up to 10 years per request for daily bars to reduce call count.
-            if remaining_days >= 365:
-                years = int(min(10, max(1, (remaining_days + 364) // 365)))
-                duration_str = f"{years} Y"
-            else:
-                duration_str = f"{remaining_days} D"
-            try:
-                bars = self._ib.reqHistoricalData(
-                    contract,
-                    endDateTime=cur_end,
-                    durationStr=duration_str,
-                    barSizeSetting="1 day",
-                    whatToShow="TRADES",
-                    useRTH=self._ib_use_rth,
-                    formatDate=1,
-                    keepUpToDate=False,
-                )
-            except Exception:
-                break
-
-            df_chunk = self._bars_to_df(bars)
-            if df_chunk.empty:
-                break
-
-            out_parts.append(df_chunk)
-            earliest = df_chunk.index.min().to_pydatetime()
-            # Step back one day to avoid duplicates
-            cur_end = earliest - timedelta(days=1)
-            time.sleep(self._ib_pace_sleep_s)
-
-        if not out_parts:
+        df_all = self._bars_to_df(bars)
+        if df_all.empty:
             return pd.DataFrame()
 
-        df_all = pd.concat(out_parts).sort_index()
-        # De-dup index if overlaps occurred
-        df_all = df_all[~df_all.index.duplicated(keep="last")]
-
-        # Merge with cache
+        # Merge with cache (keep newest for overlaps)
         if cached is not None and not cached.empty:
             merged = pd.concat([cached, df_all]).sort_index()
             merged = merged[~merged.index.duplicated(keep="last")]
@@ -400,6 +405,39 @@ class BacktestEngine:
         self._save_ib_cache(ticker, cached)
         return cached.loc[(cached.index >= start) & (cached.index <= end)].copy()
 
+    def _fetch_from_cache_only(
+        self, tickers: List[str], start_date: str, end_date: str, progress_callback=None
+    ) -> Dict[str, pd.DataFrame]:
+        """
+        Fetch data only from disk cache (yf_prices and ib_prices).
+        No API calls are made. Returns empty dict for tickers not in cache.
+        """
+        start = pd.to_datetime(start_date)
+        end = pd.to_datetime(end_date)
+        data: Dict[str, pd.DataFrame] = {}
+        
+        for i, ticker in enumerate(tickers):
+            if progress_callback:
+                progress_callback(i / max(1, len(tickers)), f"Loading cache: {ticker} ({i+1}/{len(tickers)})")
+            
+            # Try yfinance cache first
+            df = self._load_yf_cache(ticker)
+            if df is None or df.empty:
+                # Try IB cache
+                df = self._load_ib_cache(ticker)
+            
+            if df is not None and not df.empty and "Close" in df.columns:
+                # Slice to date range
+                mask = (df.index >= start) & (df.index <= end)
+                df_slice = df.loc[mask].copy()
+                if len(df_slice) > 1:
+                    data[ticker] = df_slice
+        
+        if progress_callback:
+            progress_callback(1.0, f"Loaded {len(data)}/{len(tickers)} tickers from cache")
+        
+        return data
+
     def fetch_historical_data(self, tickers: List[str], start_date: str, end_date: str, progress_callback=None) -> Dict[str, pd.DataFrame]:
         """
         Fetch historical OHLCV data for a list of tickers.
@@ -408,6 +446,7 @@ class BacktestEngine:
           - 'yfinance': Yahoo via yfinance
           - 'ib': Interactive Brokers (reqHistoricalData)
           - 'auto': try IB first, fallback to yfinance
+          - 'cache_only': only use cached data, no API calls (fast, offline mode)
         """
         if not tickers:
             return {}
@@ -418,8 +457,16 @@ class BacktestEngine:
             return {}
 
         src = self.price_source
-        if src not in {"yfinance", "ib", "auto"}:
+        if src not in {"yfinance", "ib", "auto", "cache_only"}:
             src = "yfinance"
+
+        # If caller explicitly requests IB-only pricing, never fall back to Yahoo.
+        if src == "ib" and not IB_AVAILABLE:
+            return {}
+        
+        # Cache-only mode: load from disk cache without any API calls
+        if src == "cache_only":
+            return self._fetch_from_cache_only(tickers, start_date, end_date, progress_callback)
 
         ib_data: Dict[str, pd.DataFrame] = {}
         if src in {"ib", "auto"} and IB_AVAILABLE:
@@ -436,6 +483,9 @@ class BacktestEngine:
 
             if src == "ib":
                 return ib_data
+        elif src == "ib":
+            # Explicit IB-only request but IB is unavailable or disabled.
+            return {}
 
         # yfinance path
         if not YFINANCE_AVAILABLE:
@@ -456,7 +506,17 @@ class BacktestEngine:
                     progress_callback(bi / max(1, len(batches)), f"Yahoo batch {bi+1}/{len(batches)} ({len(batch)} tickers)")
                 try:
                     ticker_string = " ".join(batch)
-                    batch_df = yf.download(ticker_string, start=start_date, end=end_date, progress=False, group_by="ticker", threads=False)
+                    # Use adjusted prices so splits/dividends do not appear as returns.
+                    batch_df = yf.download(
+                        ticker_string,
+                        start=start_date,
+                        end=end_date,
+                        progress=False,
+                        group_by="ticker",
+                        threads=False,
+                        auto_adjust=True,
+                        actions=False,
+                    )
                 except Exception:
                     batch_df = pd.DataFrame()
 

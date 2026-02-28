@@ -24,6 +24,9 @@ class QuiverStrategyEngine:
         "Lobbying Spending Growth": "Lobby QoQ Growth",
         "Top Lobbying Spenders": "Lobby Top10",
         "Sector Weighted DC Insider": "DCInsiderTrades",
+        # Committee holdings names used by /beta/strategies/holdings
+        "Energy and Commerce Committee (House)": "House Energy and Commerce Committee",
+        "Homeland Security Committee (Senate)": "Senate Homeland Security Committee",
         # Additional available strategies from API
         "Congress Sells": "Congress Sells",
         "Congress Long-Short": "Congress_LS",
@@ -122,9 +125,9 @@ class QuiverStrategyEngine:
             "Nancy Pelosi": {
                 "type": "congress_bulk",
                 "name_pattern": "Pelosi",
-                # Include purchases from extended period to get meaningful portfolio
-                "filter": lambda df: df[df['Transaction'].str.lower().str.contains('purchase|buy', na=False)],
-                "lookback_days": 730,  # 2 years for more data
+                # Portfolio mirror: include buys + sells; weighting handled in StrategyReplicator
+                # (Quiver: rebalance when new trades or annual reports are reported).
+                "lookback_days": 3650,  # ~10 years to better approximate full portfolio history
                 "category": "experimental"
             },
             "Sheldon Whitehouse": {
@@ -198,7 +201,8 @@ class QuiverStrategyEngine:
                 elif strat_type == "insider":
                     df = self.quiver.insiders()
                 elif strat_type == "sec13F":
-                    df = self.quiver.sec13F(*meta['args'])
+                    # EDGAR-first: Quiver 13F can require premium; only try it if EDGAR isn't available.
+                    df = None
                 elif strat_type == "lobbying":
                     df = self.quiver.lobbying()
             except Exception as lib_e:
@@ -206,11 +210,13 @@ class QuiverStrategyEngine:
                 df = None
 
             if df is None or (isinstance(df, pd.DataFrame) and df.empty):
-                # Try direct requests if the library fails
-                df = self._fetch_raw_via_api(strat_type, meta.get('args', []))
+                # Try direct requests if the library fails.
+                # NOTE: For sec13F, prefer EDGAR and avoid Quiver premium endpoints unless EDGAR is unavailable.
+                if not (strat_type == "sec13F" and self.sec_edgar):
+                    df = self._fetch_raw_via_api(strat_type, meta.get('args', []))
 
-            # SEC EDGAR fallback specifically for 13F strategies (end-to-end: runtime + backtests)
-            if (df is None or (isinstance(df, pd.DataFrame) and df.empty)) and strat_type == "sec13F" and self.sec_edgar:
+            # EDGAR-first specifically for 13F strategies (end-to-end: runtime + backtests)
+            if strat_type == "sec13F" and self.sec_edgar:
                 try:
                     fund_name = None
                     args = meta.get("args") or []
@@ -226,6 +232,14 @@ class QuiverStrategyEngine:
                             return self._clean_ticker_list(tickers)
                 except Exception as e:
                     logging.warning(f"SEC EDGAR fallback failed for {strategy_name}: {e}")
+
+            # If EDGAR is unavailable/empty, try Quiver 13F as a best-effort.
+            if (df is None or (isinstance(df, pd.DataFrame) and df.empty)) and strat_type == "sec13F":
+                try:
+                    df = self.quiver.sec13F(*meta.get("args", []))
+                except Exception as e:
+                    logging.warning(f"Quiver sec13F call failed for {strategy_name}: {e}")
+                    df = None
 
             if df is not None and isinstance(df, pd.DataFrame) and not df.empty:
                 return self._process_raw_df(df, meta)
@@ -403,7 +417,13 @@ class QuiverStrategyEngine:
             holdings_data = self._get_holdings_data()
             if holdings_data is not None:
                 api_strategy_name = self.STRATEGY_NAME_MAP.get(strategy_name, strategy_name)
-                snap = self._extract_holdings_weights_at_date(holdings_data, api_strategy_name, as_of_date)
+                # Avoid same-day lookahead: treat holdings rows as known after the date closes.
+                # Prefer the latest holdings with Date <= (as_of_date - 1 day); if none, fall back.
+                snap = self._extract_holdings_weights_at_date(
+                    holdings_data, api_strategy_name, as_of_date - timedelta(days=1)
+                )
+                if snap is None or snap.empty:
+                    snap = self._extract_holdings_weights_at_date(holdings_data, api_strategy_name, as_of_date)
                 if snap is not None and not snap.empty:
                     return snap
 
@@ -437,7 +457,11 @@ class QuiverStrategyEngine:
             holdings_data = self._get_holdings_data()
             if holdings_data is not None:
                 api_strategy_name = self.STRATEGY_NAME_MAP.get(strategy_name, strategy_name)
-                snap = self._extract_holdings_weights_at_date(holdings_data, api_strategy_name, as_of_date)
+                snap = self._extract_holdings_weights_at_date(
+                    holdings_data, api_strategy_name, as_of_date - timedelta(days=1)
+                )
+                if snap is None or snap.empty:
+                    snap = self._extract_holdings_weights_at_date(holdings_data, api_strategy_name, as_of_date)
                 if snap is not None and not snap.empty:
                     return snap
 
@@ -471,11 +495,26 @@ class QuiverStrategyEngine:
                 except Exception as e:
                     logging.warning(f"Date-aware filter failed for {strategy_name}: {e}")
 
-            # Ensure TransactionDate is datetime and apply rolling window
-            if "TransactionDate" in df.columns:
-                if not pd.api.types.is_datetime64_any_dtype(df["TransactionDate"]):
-                    df["TransactionDate"] = pd.to_datetime(df["TransactionDate"], errors="coerce")
-                df = df[(df["TransactionDate"] >= cutoff_date) & (df["TransactionDate"] <= as_of_date)].copy()
+            # Apply rolling window using the best available "known at" date.
+            # For portfolio-mirror politician strategies, Quiver rebalances when trades/reports are *reported*,
+            # so prefer ReportDate when present to avoid lookahead on TransactionDate.
+            preferred = []
+            if meta.get("name_pattern"):
+                preferred = ["ReportDate", "TransactionDate", "Date", "LastUpdate"]
+            else:
+                preferred = ["TransactionDate", "ReportDate", "Date", "LastUpdate"]
+
+            date_col = None
+            for col in preferred:
+                if col in df.columns:
+                    date_col = col
+                    break
+
+            if date_col:
+                if not pd.api.types.is_datetime64_any_dtype(df[date_col]):
+                    df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
+                df = df.dropna(subset=[date_col])
+                df = df[(df[date_col] >= cutoff_date) & (df[date_col] <= as_of_date)].copy()
 
             # Parse transaction amount (for weighting)
             if "Range" in df.columns and "Amount" not in df.columns:
@@ -544,6 +583,12 @@ class QuiverStrategyEngine:
                     df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
                 df = df[(df[date_col] >= cutoff_date) & (df[date_col] <= as_of_date)].copy()
             return df
+
+        # For sec13F strategies, SEC EDGAR is the definitive source for time-travel.
+        # Do NOT fall through to _get_raw_data_with_metadata (which tries the Quiver
+        # premium sec13F endpoint and causes repeated "Access denied" errors).
+        if strat_type == "sec13F":
+            return pd.DataFrame()
 
         # Fallback: use existing method (note: may not be time-accurate for all sources)
         df = self._get_raw_data_with_metadata(strategy_name)

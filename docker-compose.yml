@@ -24,9 +24,16 @@ services:
       REDIS_URL: redis://redis:6379/0
       # Optional (set in your environment / VM):
       QUIVER_API_KEY: ${QUIVER_API_KEY-}
-      IB_HOST: ${IB_HOST-127.0.0.1}
+      # 13F replication defaults (production-safe / no-lookahead)
+      USE_13F_FILED_DATES: "1"
+      SEC_13F_OPTIONS_MODE: filter
+      # If IB Gateway/TWS runs on the host, Docker Desktop can reach it via host.docker.internal
+      IB_HOST: ${IB_HOST-host.docker.internal}
       IB_PORT: ${IB_PORT-4001}
-      PRICE_SOURCE: ${PRICE_SOURCE-auto}
+      # Default to IB for pricing in the stack (no Yahoo fallback unless you set PRICE_SOURCE=auto/yfinance).
+      PRICE_SOURCE: ${PRICE_SOURCE-ib}
+      # Prefer split-adjusted bars from IB for backtests
+      IB_WHAT_TO_SHOW: ${IB_WHAT_TO_SHOW-ADJUSTED_LAST}
     depends_on:
       - db
       - redis
@@ -43,9 +50,13 @@ services:
       DATABASE_URL: postgresql+psycopg://ibbot:ibbot@db:5432/ibbot
       REDIS_URL: redis://redis:6379/0
       QUIVER_API_KEY: ${QUIVER_API_KEY-}
-      IB_HOST: ${IB_HOST-127.0.0.1}
+      # 13F replication defaults (production-safe / no-lookahead)
+      USE_13F_FILED_DATES: "1"
+      SEC_13F_OPTIONS_MODE: filter
+      IB_HOST: ${IB_HOST-host.docker.internal}
       IB_PORT: ${IB_PORT-4001}
-      PRICE_SOURCE: ${PRICE_SOURCE-auto}
+      PRICE_SOURCE: ${PRICE_SOURCE-ib}
+      IB_WHAT_TO_SHOW: ${IB_WHAT_TO_SHOW-ADJUSTED_LAST}
     depends_on:
       - db
       - redis
@@ -61,9 +72,13 @@ services:
       DATABASE_URL: postgresql+psycopg://ibbot:ibbot@db:5432/ibbot
       REDIS_URL: redis://redis:6379/0
       QUIVER_API_KEY: ${QUIVER_API_KEY-}
-      IB_HOST: ${IB_HOST-127.0.0.1}
+      # 13F replication defaults (production-safe / no-lookahead)
+      USE_13F_FILED_DATES: "1"
+      SEC_13F_OPTIONS_MODE: filter
+      IB_HOST: ${IB_HOST-host.docker.internal}
       IB_PORT: ${IB_PORT-4001}
-      PRICE_SOURCE: ${PRICE_SOURCE-auto}
+      PRICE_SOURCE: ${PRICE_SOURCE-ib}
+      IB_WHAT_TO_SHOW: ${IB_WHAT_TO_SHOW-ADJUSTED_LAST}
     depends_on:
       - db
       - redis
@@ -82,6 +97,14 @@ services:
       - api
     ports:
       - "3000:3000"
+
+  web-lint:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      target: lint
+    environment:
+      NEXT_PUBLIC_API_BASE: /api
 
   nginx:
     image: nginx:1.27

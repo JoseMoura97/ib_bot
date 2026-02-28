@@ -31,6 +31,9 @@ from metrics_utils import period_return_from_equity, regression_vs_benchmark, wi
 class RebalanceEvent:
     date: datetime
     weights: Dict[str, float]  # ticker -> weight (may be negative)
+    # If True, treat this rebalance as an explicit liquidation to cash (0% return)
+    # rather than "missing weights, carry previous".
+    liquidate_to_cash: bool = False
 
 
 class RebalancingBacktestEngine:
@@ -70,6 +73,43 @@ class RebalancingBacktestEngine:
         return pd.to_datetime(d).to_pydatetime()
 
     @staticmethod
+    def _sanitize_returns_for_splits(returns: pd.DataFrame) -> pd.DataFrame:
+        """
+        Remove artificial split/reverse-split jumps from daily returns.
+
+        Even when using adjusted sources (e.g. IB whatToShow=ADJUSTED_LAST), some microcaps can
+        exhibit enormous single-day "returns" that are actually corporate actions (reverse splits).
+        Those should contribute ~0 return to a buy-and-hold portfolio.
+
+        Heuristic:
+        - If the price ratio (1 + r) is close to an integer factor (e.g. ~15x) or its reciprocal
+          (e.g. ~1/10), treat it as a split and set that day's return to 0.
+        """
+        if returns is None or returns.empty:
+            return returns
+
+        tol = float(os.getenv("SPLIT_DETECT_TOL", "0.05"))  # 5% tolerance on factor
+        min_factor = int(os.getenv("SPLIT_DETECT_MIN_FACTOR", "2"))
+        max_factor = int(os.getenv("SPLIT_DETECT_MAX_FACTOR", "200"))
+
+        out = returns.copy()
+        ratio = (1.0 + out).replace([np.inf, -np.inf], np.nan)
+
+        # Forward split-like (ratio ~ N)
+        n = ratio.round().clip(lower=min_factor, upper=max_factor)
+        forward = (ratio >= float(min_factor)) & ratio.notna() & (n != 0) & ((ratio / n - 1.0).abs() <= tol)
+
+        # Reverse split-like (ratio ~ 1/N)
+        inv = (1.0 / ratio).replace([np.inf, -np.inf], np.nan)
+        m = inv.round().clip(lower=min_factor, upper=max_factor)
+        reverse = (ratio <= (1.0 / float(min_factor))) & ratio.notna() & inv.notna() & (m != 0) & ((inv / m - 1.0).abs() <= tol)
+
+        split_mask = forward | reverse
+        if split_mask.values.any():
+            out = out.mask(split_mask, 0.0)
+        return out
+
+    @staticmethod
     def _date_range_mask(index: pd.DatetimeIndex, start: datetime, end: datetime) -> pd.Series:
         # inclusive start, exclusive end (end is next rebalance)
         start_ts = pd.Timestamp(start)
@@ -82,20 +122,34 @@ class RebalancingBacktestEngine:
         available_tickers: List[str],
         long_target: Optional[float] = None,
         short_target: Optional[float] = None,
+        missing_ticker_policy: str = "renormalize",
     ) -> Dict[str, float]:
         """
         Normalize weights to account for missing tickers (delisted/unpriced).
 
-        - Long-only: weights re-normalized to sum to 1.0 across available tickers.
-        - Long-short: long and short legs re-normalized separately to match targets
-          (default targets = original exposures if not provided).
+        Missing ticker policy:
+        - "renormalize" (default): redistribute missing weight across available tickers.
+        - "cash": keep original weights for available tickers; missing tickers become cash (0 return).
+
+        - Long-only: renormalize -> sum to 1.0 across available tickers; cash -> sum <= 1.0.
+        - Long-short: renormalize -> legs re-normalized separately to match targets; cash -> preserve provided exposures.
         """
         if not weights:
             return {}
 
+        policy = str(missing_ticker_policy or "renormalize").strip().lower()
+        if policy not in {"renormalize", "cash"}:
+            policy = "renormalize"
+
         w = {t: float(weights.get(t, 0.0)) for t in available_tickers if t in weights}
         if not w:
             return {}
+
+        # Cash policy: do not scale; missing tickers implicitly become cash.
+        # This is especially important for cache-only pricing, where missing tickers
+        # represent data gaps and renormalizing can dramatically inflate returns.
+        if policy == "cash":
+            return w
 
         has_shorts = any(v < 0 for v in w.values())
         if not has_shorts:
@@ -196,7 +250,13 @@ class RebalancingBacktestEngine:
                 lookback_days=full_lookback,
             )
             date_col = None
-            for c in ["TransactionDate", "ReportDate", "Date", "LastUpdate"]:
+            # Portfolio mirrors should rebalance when a trade/report is *reported* (ReportDate),
+            # not when the trade occurred (TransactionDate), to avoid lookahead.
+            preferred_cols = ["TransactionDate", "ReportDate", "Date", "LastUpdate"]
+            if cfg.get("type") == "portfolio_mirror":
+                preferred_cols = ["ReportDate", "TransactionDate", "Date", "LastUpdate"]
+
+            for c in preferred_cols:
                 if c in raw_full.columns:
                     date_col = c
                     break
@@ -215,7 +275,48 @@ class RebalancingBacktestEngine:
             else:
                 scheduled = []
         else:
-            scheduled = QuiverStrategyRules.get_rebalance_dates(strategy_name, start, end)
+            # For 13F hedge fund mirrors, Quiver describes rebalancing "when new filings are reported".
+            #
+            # For accuracy / no-lookahead, we default to using actual filing dates (filed_date),
+            # because that is the first time the market can know the new holdings.
+            #
+            # Env override:
+            # - USE_13F_FILED_DATES=1/true/yes -> force filed-date schedule
+            # - USE_13F_FILED_DATES=0/false/no -> force fixed quarter+offset schedule
+            use_filed_dates_env = os.getenv("USE_13F_FILED_DATES", "").strip().lower()
+            if use_filed_dates_env in {"0", "false", "no"}:
+                use_filed_dates = False
+            elif use_filed_dates_env in {"1", "true", "yes"}:
+                use_filed_dates = True
+            else:
+                use_filed_dates = bool(rules.get("type") == "13f_mirror" and rules.get("fund"))
+            if (
+                use_filed_dates
+                and rules.get("type") == "13f_mirror"
+                and rules.get("fund")
+                and getattr(self.quiver, "sec_edgar", None) is not None
+            ):
+                try:
+                    fund_name = str(rules.get("fund"))
+                    sec = self.quiver.sec_edgar
+                    cik = sec.get_cik_by_name(fund_name)
+                    filings = sec.get_13f_filings(cik, limit=300) if cik else []
+                    filed = []
+                    for f in filings or []:
+                        fd = f.get("filed_date")
+                        if not fd:
+                            continue
+                        dt = pd.to_datetime(fd, errors="coerce")
+                        if pd.isna(dt):
+                            continue
+                        d = dt.to_pydatetime()
+                        if start <= d <= end:
+                            filed.append(d)
+                    scheduled = sorted(set(filed))
+                except Exception:
+                    scheduled = []
+            else:
+                scheduled = QuiverStrategyRules.get_rebalance_dates(strategy_name, start, end)
 
         # Ensure we always have a rebalance at the start date.
         dates = sorted({start, *scheduled})
@@ -223,21 +324,42 @@ class RebalancingBacktestEngine:
         events: List[RebalanceEvent] = []
         prog = _ProgressBar(total=len(dates), prefix=f"{strategy_name} | events")
         for d in dates:
+            # Portfolio mirrors need long history to infer current holdings from the
+            # latest action per ticker (buy vs sell). Expand lookback as we move forward.
+            lb = lookback_days
+            if cfg.get("type") == "portfolio_mirror":
+                try:
+                    lb = max(int(lb), int((d - start).days) + 30)
+                except Exception:
+                    lb = lookback_days
+
             raw = self.quiver._get_raw_data_with_metadata_at_date(
                 strategy_name=strategy_name,
                 as_of_date=d,
-                lookback_days=lookback_days,
+                lookback_days=lb,
             )
 
             weights = self.replicator.apply_strategy_weights_at_date(
                 raw_data=raw,
                 strategy_name=strategy_name,
                 as_of_date=d,
-                lookback_days=lookback_days,
+                lookback_days=lb,
             )
 
             weights = self._clean_weight_map(weights)
-            events.append(RebalanceEvent(date=d, weights=weights))
+            # If this is a 13F mirror strategy and we have a filing "known as of" d,
+            # but it yields zero common-stock holdings after filtering, we should
+            # liquidate to cash (not carry the previous portfolio).
+            liquidate = False
+            try:
+                had_filing = bool(getattr(raw, "attrs", {}).get("sec_edgar_had_filing"))
+                is_13f = bool(rules.get("type") == "13f_mirror" and rules.get("fund"))
+                if is_13f and had_filing and (raw is None or raw.empty):
+                    liquidate = True
+            except Exception:
+                liquidate = False
+
+            events.append(RebalanceEvent(date=d, weights=weights, liquidate_to_cash=liquidate))
             prog.step(extra=f"{pd.Timestamp(d).date()} (n={len(weights)})")
 
         return events
@@ -310,23 +432,53 @@ class RebalancingBacktestEngine:
 
         if prices_full is not None and not prices_full.empty:
             prices_full = prices_full.sort_index().ffill()
-            precomputed_returns = prices_full.pct_change()
+            precomputed_returns = self._sanitize_returns_for_splits(prices_full.pct_change())
 
         portfolio_value = self.initial_capital
-        equity_dates: List[pd.Timestamp] = []
-        equity_values: List[float] = []
+        # Always include an initial point at the intended start date.
+        equity_dates: List[pd.Timestamp] = [pd.Timestamp(start)]
+        equity_values: List[float] = [portfolio_value]
         daily_portfolio_returns: List[float] = []
 
         prev_weights: Dict[str, float] = {}
 
         # Walk each rebalance segment.
         seg_prog = _ProgressBar(total=max(1, len(events)), prefix=f"{strategy_name} | segments")
+
+        # Missing ticker policy:
+        # - Default to "cash" for cache-only pricing to avoid survivorship / renormalization blowups.
+        # - Otherwise default to "renormalize" (fully invested), unless overridden.
+        mtp = os.getenv("MISSING_TICKER_POLICY", "").strip().lower()
+        if mtp not in {"cash", "renormalize"}:
+            mtp = "cash" if getattr(self.pricer, "price_source", "").lower().strip() == "cache_only" else "renormalize"
         for i, ev in enumerate(events):
             seg_start = ev.date
             seg_end = events[i + 1].date if i + 1 < len(events) else end
 
-            # If we got no weights for this rebalance, carry the previous portfolio.
-            raw_weights = ev.weights if ev.weights else prev_weights
+            # If we got no weights for this rebalance:
+            # - If it's an explicit liquidation event (e.g., 13F filing exists but holds no common stock),
+            #   go to cash for the segment (0% return).
+            # - Otherwise, carry the previous portfolio (missing data / mapping gaps).
+            if not ev.weights:
+                if ev.liquidate_to_cash:
+                    prev_weights = {}
+                    # Walk the segment dates and apply 0% return to keep equity curve continuous.
+                    date_index = precomputed_returns.index if precomputed_returns is not None else prefetched_index
+                    if date_index is not None:
+                        mask = self._date_range_mask(date_index, seg_start, seg_end)
+                        seg_idx = date_index[mask]
+                        for dt in seg_idx:
+                            if equity_dates and equity_dates[-1] == dt:
+                                continue
+                            equity_dates.append(dt)
+                            equity_values.append(portfolio_value)
+                            daily_portfolio_returns.append(0.0)
+                    seg_prog.step(extra=f"{i+1}/{len(events)} {pd.Timestamp(seg_start).date()}->{pd.Timestamp(seg_end).date()} (cash)")
+                    continue
+                raw_weights = prev_weights
+            else:
+                raw_weights = ev.weights
+
             if not raw_weights:
                 continue
 
@@ -349,7 +501,7 @@ class RebalancingBacktestEngine:
                     seg_prog.step(extra=f"{i+1}/{len(events)} (no prices)")
                     continue
                 prices = prices.sort_index().ffill()
-                returns = prices.pct_change()
+                returns = self._sanitize_returns_for_splits(prices.pct_change())
             else:
                 # Fetch only the tickers we need for this segment.
                 # Pull a few extra days before seg_start so pct_change has a prior close.
@@ -373,7 +525,7 @@ class RebalancingBacktestEngine:
                     if not s.empty:
                         prices[t] = s
                 prices = prices.sort_index().ffill()
-                returns = prices.pct_change()
+                returns = self._sanitize_returns_for_splits(prices.pct_change())
 
             # Determine availability in this segment.
             mask = self._date_range_mask(returns.index, seg_start, seg_end)
@@ -390,10 +542,25 @@ class RebalancingBacktestEngine:
             prev_weights = raw_weights
 
             # For long-short strategies, preserve intended leg exposures.
+            #
+            # Important: Some strategies (e.g. 13F portfolio mirrors) can legitimately produce
+            # negative weights (short exposure via put options) but are NOT a 130/30 long-short
+            # strategy. In those cases we should preserve the strategy's intended gross exposures
+            # (derived from the weights themselves), not force a 130/30 target.
             cfg = self.replicator.get_strategy_config(strategy_name)
-            is_long_short = cfg.get("type") == "long_short" or any(v < 0 for v in raw_weights.values())
-            long_target = cfg.get("long_weight", 1.30) if is_long_short else None
-            short_target = cfg.get("short_weight", 0.30) if is_long_short else None
+            cfg_type = str(cfg.get("type") or "")
+            has_shorts = any(v < 0 for v in raw_weights.values())
+            is_long_short = cfg_type == "long_short"
+            if is_long_short:
+                long_target = cfg.get("long_weight", 1.30)
+                short_target = cfg.get("short_weight", 0.30)
+            elif has_shorts:
+                # Preserve original exposures (defaults inside _normalize_weights_for_available_tickers)
+                long_target = None
+                short_target = None
+            else:
+                long_target = None
+                short_target = None
 
             tickers_in_segment = [t for t in seg_returns.columns if t in raw_weights]
             if not tickers_in_segment:
@@ -404,6 +571,7 @@ class RebalancingBacktestEngine:
                 available_tickers=tickers_in_segment,
                 long_target=long_target,
                 short_target=short_target,
+                missing_ticker_policy=mtp,
             )
             if not weights:
                 continue
@@ -424,6 +592,7 @@ class RebalancingBacktestEngine:
                         available_tickers=todays,
                         long_target=long_target,
                         short_target=short_target,
+                        missing_ticker_policy=mtp,
                     )
                     w_day = np.array([day_weights.get(t, 0.0) for t in todays], dtype=float)
                     r_day = r[ok_mask]
@@ -442,10 +611,9 @@ class RebalancingBacktestEngine:
             return {"error": "Insufficient overlapping price data for rebalancing backtest"}
 
         daily_returns = np.array(daily_portfolio_returns, dtype=float)
-        # Use actual elapsed time for CAGR to avoid inflating results when some days are skipped
-        first_dt = pd.to_datetime(equity_dates[0])
-        last_dt = pd.to_datetime(equity_dates[-1])
-        elapsed_days = max(1, int((last_dt - first_dt).days))
+        # Use intended backtest window (start->end) for CAGR. This prevents inflating CAGR
+        # when early periods are skipped due to missing holdings/prices (portfolio is flat).
+        elapsed_days = max(1, int((pd.Timestamp(end) - pd.Timestamp(start)).days))
         n_years = elapsed_days / 365.25
         total_return = (equity_values[-1] / self.initial_capital) - 1.0
         cagr = (equity_values[-1] / self.initial_capital) ** (1.0 / n_years) - 1.0 if n_years > 0 else 0.0
@@ -463,7 +631,12 @@ class RebalancingBacktestEngine:
         )
 
         # ---- Additional metrics (with SPY benchmark) ----
-        returns_index = pd.DatetimeIndex(equity_dates)
+        # `daily_portfolio_returns` is appended only when we append a post-return equity point,
+        # so it is typically 1 shorter than `equity_dates` due to the initial seed point.
+        if len(daily_returns) == len(equity_dates) - 1:
+            returns_index = pd.DatetimeIndex(equity_dates[1:])
+        else:
+            returns_index = pd.DatetimeIndex(equity_dates[-len(daily_returns):])
         returns_series = pd.Series(daily_returns, index=returns_index).sort_index()
 
         # Win/loss stats

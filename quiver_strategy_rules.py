@@ -5,6 +5,7 @@ Implements Quiver's exact methodology for each strategy
 
 from typing import Dict, List, Tuple
 from datetime import datetime, timedelta
+import os
 
 class QuiverStrategyRules:
     """
@@ -308,6 +309,15 @@ class QuiverStrategyRules:
         elif frequency == 'quarterly':
             # Quarterly rebalancing (45-47 days after quarter end)
             offset_days = rules.get('rebalance_offset_days', 45)
+            # Optional override for 13F strategies. Useful to test whether published
+            # benchmarks assume quarter-end (lookahead) or filing-date (realistic) rebalancing.
+            if rules.get("type") == "13f_mirror":
+                od = os.getenv("SEC_13F_REBALANCE_OFFSET_DAYS", "").strip()
+                if od:
+                    try:
+                        offset_days = int(od)
+                    except Exception:
+                        pass
             
             # Quarter end dates
             quarter_ends = []

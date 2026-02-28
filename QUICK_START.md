@@ -90,34 +90,44 @@ Shows side-by-side:
 
 ## Available Strategies
 
-### Congressional (11 strategies)
-- Congress Buys ✓
-- Congress Long-Short ✓
-- Dan Meuser ✓
-- Nancy Pelosi ✓
-- Josh Gottheimer ✓
-- And 6 more...
+### Works Without API Key (via SEC EDGAR) - 3 strategies
+- **Michael Burry** ✓ - Scion Asset Management 13F
+- **Bill Ackman** ✓ - Pershing Square 13F  
+- **Howard Marks** ✓ - Oaktree Capital 13F
 
-### Lobbying & Contracts (4 strategies)
-- Lobbying Spending Growth ✓ **(Best improvement: +1.58%)**
-- Top Lobbying Spenders ✓
-- Top Gov Contract Recipients ✓
-- Sector Weighted DC Insider ✓
+### Requires Quiver API Key - 18 strategies
 
-### Hedge Funds (3 strategies)
-- Michael Burry (requires subscription)
-- Bill Ackman (requires subscription)
-- Howard Marks (requires subscription)
+#### Congressional (11 strategies)
+- Congress Buys
+- Congress Sells
+- Congress Long-Short
+- Dan Meuser
+- Nancy Pelosi
+- Josh Gottheimer
+- Donald Beyer
+- Sheldon Whitehouse
+- Transportation & Infrastructure Committee
+- Energy and Commerce Committee
+- Homeland Security Committee
 
-### Committees (3 strategies)
-- Transportation & Infrastructure ✓
-- Energy and Commerce ✓
-- Homeland Security ✓
+#### Lobbying & Contracts (4 strategies)
+- Lobbying Spending Growth
+- Top Lobbying Spenders
+- Top Gov Contract Recipients
+- Sector Weighted DC Insider
 
-### Other (1 strategy)
-- Insider Purchases ✓
+#### Other (3 strategies)
+- U.S. House Long-Short
+- Insider Purchases
+- Analyst Buys
 
-**Total: 22 strategies, 15 working (68%)**
+### Requires Premium Subscription - 1 strategy
+- Wall Street Conviction
+
+**Total: 22 strategies**
+- **3 work without any API key** (via free SEC EDGAR API)
+- **18 require QUIVER_API_KEY** environment variable
+- **1 requires premium Quiver subscription**
 
 ## Strategy Configurations
 
@@ -223,10 +233,15 @@ Each strategy automatically uses its proper methodology:
 ## Summary
 
 ✅ 22 strategies with full metadata
-✅ 15 strategies working (68%)
+✅ 3 strategies work without API key (via SEC EDGAR: Michael Burry, Bill Ackman, Howard Marks)
+✅ 18 strategies work with QUIVER_API_KEY set
 ✅ Equal-weight backtesting proven
 ✅ Weighted replication implemented  
-✅ +1.58% improvement demonstrated
+✅ SEC EDGAR integration for free 13F hedge fund replication
 ✅ Production-ready system
+
+**To get started:**
+1. For 13F hedge fund strategies (Burry, Ackman, Marks) - works immediately
+2. For congressional/lobbying strategies - set `QUIVER_API_KEY` environment variable
 
 **You're ready to replicate Quiver strategies locally!**
