@@ -1,0 +1,130 @@
+{
+  "generated_at": "2026-03-02T16:46:03.170183",
+  "results": [
+    {
+      "strategy": "Dan Meuser",
+      "weighting": "equal",
+      "cagr": 11.12687023783221,
+      "sharpe": 0.6540295149206764,
+      "max_drawdown": -30.49035849020129,
+      "volatility": 13.954829299927168,
+      "n_days": 1644,
+      "start_date": "2019-08-14",
+      "end_date": "2026-03-02"
+    },
+    {
+      "strategy": "Dan Meuser",
+      "weighting": "amount",
+      "cagr": 17.773658459534847,
+      "sharpe": 0.6225408966262436,
+      "max_drawdown": -37.114174745175035,
+      "volatility": 25.33754576609755,
+      "n_days": 1644,
+      "start_date": "2019-08-14",
+      "end_date": "2026-03-02"
+    },
+    {
+      "strategy": "Josh Gottheimer",
+      "weighting": "equal",
+      "cagr": 19.254412088844507,
+      "sharpe": 0.7784470238989762,
+      "max_drawdown": -37.868533341826634,
+      "volatility": 22.165171885972445,
+      "n_days": 1799,
+      "start_date": "2019-01-01",
+      "end_date": "2026-03-02"
+    },
+    {
+      "strategy": "Josh Gottheimer",
+      "weighting": "amount",
+      "cagr": 19.254412586815263,
+      "sharpe": 0.7784470364937307,
+      "max_drawdown": -37.86853501231609,
+      "volatility": 22.1651721670524,
+      "n_days": 1799,
+      "start_date": "2019-01-01",
+      "end_date": "2026-03-02"
+    },
+    {
+      "strategy": "Donald Beyer",
+      "weighting": "equal",
+      "cagr": 10.893064026989796,
+      "sharpe": 0.42600992241622504,
+      "max_drawdown": -29.417150179466717,
+      "volatility": 20.875250925026563,
+      "n_days": 1577,
+      "start_date": "2016-05-09",
+      "end_date": "2026-03-02"
+    },
+    {
+      "strategy": "Donald Beyer",
+      "weighting": "amount",
+      "cagr": 10.893063955347039,
+      "sharpe": 0.42600999008411333,
+      "max_drawdown": -29.41714872665911,
+      "volatility": 20.875247441007545,
+      "n_days": 1577,
+      "start_date": "2016-05-09",
+      "end_date": "2026-03-02"
+    },
+    {
+      "strategy": "Sheldon Whitehouse",
+      "weighting": "equal",
+      "cagr": 13.229971884643188,
+      "sharpe": 0.6685089408247795,
+      "max_drawdown": -32.77187351713749,
+      "volatility": 16.798536562260633,
+      "n_days": 3018,
+      "start_date": "2014-02-28",
+      "end_date": "2026-03-02"
+    },
+    {
+      "strategy": "Sheldon Whitehouse",
+      "weighting": "amount",
+      "cagr": 13.229972021243274,
+      "sharpe": 0.668508955775397,
+      "max_drawdown": -32.771873939892735,
+      "volatility": 16.79853639091153,
+      "n_days": 3018,
+      "start_date": "2014-02-28",
+      "end_date": "2026-03-02"
+    },
+    {
+      "strategy": "Congress Buys",
+      "weighting": "default",
+      "cagr": 29.413685772012133,
+      "sharpe": 1.154205892236664,
+      "max_drawdown": -33.42160961332187,
+      "volatility": 23.75112270384346,
+      "n_days": 1485,
+      "start_date": "2020-04-01",
+      "end_date": "2026-03-02"
+    }
+  ],
+  "quiver_reference": {
+    "Nancy Pelosi": {
+      "cagr": 34.99
+    },
+    "Dan Meuser": {
+      "cagr": 38.16
+    },
+    "Josh Gottheimer": {
+      "cagr": 23.48
+    },
+    "Donald Beyer": {
+      "cagr": 18.22
+    },
+    "Sheldon Whitehouse": {
+      "cagr": 15.7
+    },
+    "Congress Buys": {
+      "cagr": 33.44
+    },
+    "Congress Sells": {
+      "cagr": 35.14
+    },
+    "Congress Long-Short": {
+      "cagr": 20.17
+    }
+  }
+}

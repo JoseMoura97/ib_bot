@@ -98,9 +98,10 @@ class StrategyReplicator:
                 'type': 'portfolio_mirror',
                 'rebalance': 'on_trade',  # Rebalance when new trades filed
                 # Quiver describes these as portfolio mirrors, rebalanced on trade/report.
-                # Match that by treating the portfolio as an equal-weight basket of
-                # currently-held tickers inferred from the latest buy/sell per ticker.
-                'weighting': 'equal',
+                # Use amount-weighting (Range midpoints) when available; falls back to
+                # equal-weight when Range data is missing.  Amount-weighting better
+                # matches QuiverQuant's published CAGRs (tested via compare_weighting.py).
+                'weighting': 'amount',
                 'mirror_mode': 'latest_action',
                 # Use a long lookback so we can infer "currently held" from history.
                 'lookback_days': 3650

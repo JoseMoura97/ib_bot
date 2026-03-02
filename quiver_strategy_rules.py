@@ -51,7 +51,7 @@ class QuiverStrategyRules:
         # Individual Politicians (Event-Driven)
         "Nancy Pelosi": {
             "type": "portfolio_mirror",
-            "weighting": "equal",  # Equal weight portfolio
+            "weighting": "amount",  # Amount-weighted (Range midpoints); falls back to equal
             "rebalance_frequency": "on_trade",  # When new trade filed
             "min_rebalance_days": 1,  # Check daily for new trades
             "include_family": True,
@@ -59,7 +59,7 @@ class QuiverStrategyRules:
         
         "Dan Meuser": {
             "type": "portfolio_mirror",
-            "weighting": "equal",
+            "weighting": "amount",
             "rebalance_frequency": "on_trade",
             "min_rebalance_days": 1,
             "include_family": True,
@@ -67,7 +67,7 @@ class QuiverStrategyRules:
         
         "Josh Gottheimer": {
             "type": "portfolio_mirror",
-            "weighting": "equal",
+            "weighting": "amount",
             "rebalance_frequency": "on_trade",
             "min_rebalance_days": 1,
             "include_family": True,
@@ -75,7 +75,7 @@ class QuiverStrategyRules:
         
         "Sheldon Whitehouse": {
             "type": "portfolio_mirror",
-            "weighting": "equal",
+            "weighting": "amount",
             "rebalance_frequency": "on_trade",
             "min_rebalance_days": 1,
             "include_family": True,
@@ -83,7 +83,7 @@ class QuiverStrategyRules:
         
         "Donald Beyer": {
             "type": "portfolio_mirror",
-            "weighting": "equal",
+            "weighting": "amount",
             "rebalance_frequency": "on_trade",
             "min_rebalance_days": 1,
             "include_family": True,
