@@ -98,14 +98,13 @@ def generate_plot_data(use_cache_only: bool = False):
         "Howard Marks",
     ]
     
-    # Get SPY benchmark data (use 2020 for faster IB data fetching)
+    # Get SPY benchmark data — start from earliest strategy date for fair comparison
     overall = _ProgressBar(total=len(strategies) + 1, prefix="Plot data", width=30)
 
     print("\nFetching SPY benchmark...")
     try:
         from datetime import datetime as dt
-        # Use 2020 start date to reduce IB data fetching time
-        benchmark_start = dt(2020, 1, 1)
+        benchmark_start = dt(2014, 1, 1)
         spy_result = bt.run_rebalancing_backtest(
             strategy_name="SPY_Benchmark",
             start_date=benchmark_start,
@@ -131,9 +130,8 @@ def generate_plot_data(use_cache_only: bool = False):
         traceback.print_exc()
         overall.step(extra="SPY error")
     
-    # Generate data for each strategy
-    # Use 2020 as minimum start date to reduce IB data fetching time
-    min_start_date = datetime(2020, 1, 1)
+    # Generate data for each strategy — use each strategy's actual start date
+    # for accurate CAGR (previously clipped to 2020-01-01 which understated returns)
     
     strategy_count = 0
     for strategy_name in strategies:
@@ -147,9 +145,7 @@ def generate_plot_data(use_cache_only: bool = False):
                 continue
             
             start_date_str = info['start_date']
-            strategy_start = datetime.fromisoformat(start_date_str)
-            # Use the later of strategy start or 2020-01-01
-            start_date = max(strategy_start, min_start_date)
+            start_date = datetime.fromisoformat(start_date_str)
             
             # Run backtest using run_rebalancing_backtest
             result = bt.run_rebalancing_backtest(
