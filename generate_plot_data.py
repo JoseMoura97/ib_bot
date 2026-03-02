@@ -93,7 +93,9 @@ def generate_plot_data(use_cache_only: bool = False):
         "Josh Gottheimer",
         "Donald Beyer",
         "Sheldon Whitehouse",
-        "Insider Purchases",
+        "Michael Burry",
+        "Bill Ackman",
+        "Howard Marks",
     ]
     
     # Get SPY benchmark data (use 2020 for faster IB data fetching)

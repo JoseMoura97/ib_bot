@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     live_max_price_deviation: float = Field(default=0.2, validation_alias="LIVE_MAX_PRICE_DEVIATION")
     live_max_spread_pct: float = Field(default=0.05, validation_alias="LIVE_MAX_SPREAD_PCT")
     live_max_abs_price: float = Field(default=100000.0, validation_alias="LIVE_MAX_ABS_PRICE")
+    live_max_daily_loss_pct: float = Field(default=0.02, validation_alias="LIVE_MAX_DAILY_LOSS_PCT")
 
     shadow_preview_accounts: str | None = Field(default=None, validation_alias="SHADOW_PREVIEW_ACCOUNTS")
     shadow_preview_portfolios: str | None = Field(default=None, validation_alias="SHADOW_PREVIEW_PORTFOLIOS")

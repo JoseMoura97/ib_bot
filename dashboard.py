@@ -1,3 +1,8 @@
+"""
+LEGACY FILE: Standalone Streamlit dashboard. Uses legacy SQLite-based paper trading
+(paper_trading.py was removed). Paper tab is disabled; use the FastAPI/PostgreSQL
+paper trading API instead.
+"""
 import nest_asyncio
 import asyncio
 
@@ -22,7 +27,10 @@ import os
 import json
 import logging
 from quiver_signals import QuiverSignals
-from paper_trading import PaperTradingEngine
+try:
+    from paper_trading import PaperTradingEngine
+except ImportError:
+    PaperTradingEngine = None  # Legacy SQLite paper_trading.py removed; use API/PostgreSQL paper trading
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -160,7 +168,8 @@ else:
         st.rerun()
 
 # Initialize Paper Trading Engine (works with or without IB connection)
-paper_engine = PaperTradingEngine(ib_connection=ib if ib_connected else None)
+# Legacy SQLite paper_trading.py was removed; paper_engine is None if import failed
+paper_engine = PaperTradingEngine(ib_connection=ib if ib_connected else None) if PaperTradingEngine else None
 
 # Tabs for different sections
 tab_portfolio, tab_paper, tab_backtest, tab_strategies, tab_margins, tab_strategy_dashboard = st.tabs([
@@ -493,7 +502,11 @@ with tab_paper:
     st.markdown("### 📝 Paper Trading Mode")
     st.markdown("*Simulate trades without real money. Uses real market prices when connected to IBKR.*")
     st.markdown('</div>', unsafe_allow_html=True)
-    
+
+    if paper_engine is None:
+        st.warning("Legacy SQLite-based paper trading has been removed. Use the FastAPI paper trading API (PostgreSQL) instead.")
+        st.stop()
+
     # Paper Portfolio Value
     portfolio = paper_engine.get_portfolio_value()
     

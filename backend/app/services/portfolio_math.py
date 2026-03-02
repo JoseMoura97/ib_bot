@@ -77,6 +77,33 @@ def _portfolio_stats(
     return {"annual_return": port_return, "annual_vol": port_vol, "sharpe": sharpe}
 
 
+def _diversification_ratio(weights: np.ndarray, cov_matrix: np.ndarray) -> float:
+    """Ratio of weighted-average vol to portfolio vol. Higher = more diversified."""
+    vols = np.sqrt(np.diag(cov_matrix))
+    weighted_avg_vol = np.dot(weights, vols)
+    port_vol = np.sqrt(weights @ cov_matrix @ weights)
+    if port_vol < 1e-12:
+        return 1.0
+    return float(weighted_avg_vol / port_vol)
+
+
+def _max_pairwise_correlation(weights: np.ndarray, cov_matrix: np.ndarray, threshold: float = 0.0) -> float:
+    """Max pairwise correlation among positions with weight > threshold."""
+    n = len(weights)
+    vols = np.sqrt(np.diag(cov_matrix))
+    max_corr = 0.0
+    for i in range(n):
+        if weights[i] <= threshold:
+            continue
+        for j in range(i + 1, n):
+            if weights[j] <= threshold:
+                continue
+            if vols[i] > 1e-12 and vols[j] > 1e-12:
+                corr = cov_matrix[i, j] / (vols[i] * vols[j])
+                max_corr = max(max_corr, abs(corr))
+    return max_corr
+
+
 # ---------------------------------------------------------------------------
 # Optimization methods
 # ---------------------------------------------------------------------------
@@ -87,6 +114,8 @@ def optimize_equal_weight(
     *,
     max_weight: float = 0.30,
     min_weight: float = 0.02,
+    min_diversification: float = 1.0,
+    max_correlation: float = 0.95,
 ) -> dict:
     """Equal-weight across all strategies."""
     names = sorted(curves.keys())
@@ -102,6 +131,9 @@ def optimize_equal_weight(
         cov = returns_df.cov().values
         w_arr = np.array([weights[n] for n in returns_df.columns])
         stats = _portfolio_stats(w_arr, mean_r, cov)
+        cov_ann = returns_df.cov().values * 252
+        stats["diversification_ratio"] = _diversification_ratio(w_arr, cov_ann)
+        stats["max_pairwise_correlation"] = _max_pairwise_correlation(w_arr, cov_ann)
     return {"method": "equal_weight", "weights": weights, "stats": stats}
 
 
@@ -110,6 +142,8 @@ def optimize_inverse_volatility(
     *,
     max_weight: float = 0.30,
     min_weight: float = 0.02,
+    min_diversification: float = 1.0,
+    max_correlation: float = 0.95,
 ) -> dict:
     """Weight inversely proportional to annualized volatility."""
     returns_df = _build_returns_matrix(curves)
@@ -130,6 +164,10 @@ def optimize_inverse_volatility(
     mean_r = returns_df.mean().values
     cov = returns_df.cov().values
     stats = _portfolio_stats(raw, mean_r, cov)
+    if not returns_df.empty:
+        cov_ann = returns_df.cov().values * 252
+        stats["diversification_ratio"] = _diversification_ratio(raw, cov_ann)
+        stats["max_pairwise_correlation"] = _max_pairwise_correlation(raw, cov_ann)
     return {"method": "inverse_volatility", "weights": weights, "stats": stats}
 
 
@@ -138,6 +176,8 @@ def optimize_risk_parity(
     *,
     max_weight: float = 0.30,
     min_weight: float = 0.02,
+    min_diversification: float = 1.0,
+    max_correlation: float = 0.95,
 ) -> dict:
     """
     Risk-parity: equalize risk contribution per strategy.
@@ -186,6 +226,10 @@ def optimize_risk_parity(
 
     weights = {name: round(float(raw[i]), 6) for i, name in enumerate(names)}
     stats = _portfolio_stats(raw, mean_r, cov / 252)
+    if not returns_df.empty:
+        cov_ann = returns_df.cov().values * 252
+        stats["diversification_ratio"] = _diversification_ratio(raw, cov_ann)
+        stats["max_pairwise_correlation"] = _max_pairwise_correlation(raw, cov_ann)
     return {"method": "risk_parity", "weights": weights, "stats": stats}
 
 
@@ -195,6 +239,8 @@ def optimize_max_sharpe(
     max_weight: float = 0.30,
     min_weight: float = 0.02,
     risk_free_rate: float = 0.04,
+    min_diversification: float = 1.0,
+    max_correlation: float = 0.95,
 ) -> dict:
     """
     Mean-variance optimization: maximize Sharpe ratio.
@@ -232,6 +278,10 @@ def optimize_max_sharpe(
 
     weights = {name: round(float(raw[i]), 6) for i, name in enumerate(names)}
     stats = _portfolio_stats(raw, returns_df.mean().values, returns_df.cov().values)
+    if not returns_df.empty:
+        cov_ann = returns_df.cov().values * 252
+        stats["diversification_ratio"] = _diversification_ratio(raw, cov_ann)
+        stats["max_pairwise_correlation"] = _max_pairwise_correlation(raw, cov_ann)
     return {"method": "max_sharpe", "weights": weights, "stats": stats}
 
 
@@ -253,13 +303,15 @@ def optimize_portfolio(
     *,
     max_weight: float = 0.30,
     min_weight: float = 0.02,
+    min_diversification: float = 1.0,
+    max_correlation: float = 0.95,
     risk_free_rate: float = 0.04,
 ) -> dict:
     """Run a single optimization method."""
     fn = OPTIMIZATION_METHODS.get(method)
     if fn is None:
         return {"error": f"Unknown method '{method}'. Available: {list(OPTIMIZATION_METHODS.keys())}"}
-    kwargs: dict = {"max_weight": max_weight, "min_weight": min_weight}
+    kwargs: dict = {"max_weight": max_weight, "min_weight": min_weight, "min_diversification": min_diversification, "max_correlation": max_correlation}
     if method == "max_sharpe":
         kwargs["risk_free_rate"] = risk_free_rate
     return fn(curves, **kwargs)
@@ -270,6 +322,8 @@ def compare_all_methods(
     *,
     max_weight: float = 0.30,
     min_weight: float = 0.02,
+    min_diversification: float = 1.0,
+    max_correlation: float = 0.95,
     risk_free_rate: float = 0.04,
 ) -> list[dict]:
     """Run all 4 optimization methods and return results side-by-side."""
@@ -277,7 +331,9 @@ def compare_all_methods(
     for method_name in OPTIMIZATION_METHODS:
         r = optimize_portfolio(
             curves, method_name,
-            max_weight=max_weight, min_weight=min_weight, risk_free_rate=risk_free_rate,
+            max_weight=max_weight, min_weight=min_weight,
+            min_diversification=min_diversification, max_correlation=max_correlation,
+            risk_free_rate=risk_free_rate,
         )
         results.append(r)
     return results
