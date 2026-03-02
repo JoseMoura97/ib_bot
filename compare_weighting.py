@@ -57,7 +57,7 @@ def run_backtest_with_weighting(bt, qs, strategy_name, weighting_mode):
     start_date = datetime.fromisoformat(info["start_date"])
     end_date = datetime.now()
 
-    original_fn = StrategyReplicator.get_strategy_config.__func__
+    original_fn = StrategyReplicator.get_strategy_config
 
     def patched_config(strategy_nm):
         cfg = original_fn(strategy_nm)
