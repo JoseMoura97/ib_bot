@@ -98,31 +98,32 @@ def generate_plot_data(use_cache_only: bool = False):
         "Howard Marks",
     ]
     
-    # Get SPY benchmark data — start from earliest strategy date for fair comparison
+    # Get SPY benchmark data — fetch directly via yfinance (not via backtest engine)
     overall = _ProgressBar(total=len(strategies) + 1, prefix="Plot data", width=30)
 
     print("\nFetching SPY benchmark...")
     try:
-        from datetime import datetime as dt
-        benchmark_start = dt(2014, 1, 1)
-        spy_result = bt.run_rebalancing_backtest(
-            strategy_name="SPY_Benchmark",
-            start_date=benchmark_start,
-            end_date=datetime.now(),
-            lookback_days_override=None,
-        )
-        
-        if spy_result and 'equity_curve' in spy_result and not 'error' in spy_result:
-            spy_curve = normalize_equity_curve(spy_result['equity_curve'], 100)
-            if not spy_curve.empty:
-                # Downsample to weekly
-                spy_curve_weekly = spy_curve.resample('W-FRI').last().ffill()
-                plot_data['benchmark'] = {
-                    "name": "SPY",
-                    "dates": spy_curve_weekly.index.strftime('%Y-%m-%d').tolist(),
-                    "values": spy_curve_weekly['normalized'].round(2).tolist()
-                }
-                print(f"[OK] SPY: {len(spy_curve_weekly)} weekly points from {spy_curve_weekly.index[0].date()} to {spy_curve_weekly.index[-1].date()}")
+        import yfinance as yf
+        benchmark_start = "2014-01-01"
+        spy = yf.download("SPY", start=benchmark_start, progress=False)
+        if spy is not None and not spy.empty:
+            close_col = 'Close'
+            if isinstance(spy.columns, pd.MultiIndex):
+                spy.columns = spy.columns.get_level_values(0)
+            spy_prices = spy[[close_col]].copy()
+            spy_prices.columns = ['price']
+            first_price = spy_prices['price'].iloc[0]
+            spy_prices['normalized'] = (spy_prices['price'] / first_price) * 100
+            spy_weekly = spy_prices.resample('W-FRI').last().ffill()
+            spy_weekly = spy_weekly.dropna()
+            plot_data['benchmark'] = {
+                "name": "SPY",
+                "dates": spy_weekly.index.strftime('%Y-%m-%d').tolist(),
+                "values": spy_weekly['normalized'].round(2).tolist()
+            }
+            print(f"[OK] SPY: {len(spy_weekly)} weekly points from {spy_weekly.index[0].date()} to {spy_weekly.index[-1].date()}")
+        else:
+            print("[WARN] SPY: no data returned from yfinance")
         overall.step(extra="SPY")
     except Exception as e:
         print(f"[ERROR] SPY Error: {e}")
