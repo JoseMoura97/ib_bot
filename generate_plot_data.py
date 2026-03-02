@@ -116,7 +116,7 @@ def generate_plot_data(use_cache_only: bool = False):
             spy_curve = normalize_equity_curve(spy_result['equity_curve'], 100)
             if not spy_curve.empty:
                 # Downsample to weekly
-                spy_curve_weekly = spy_curve.resample('W-FRI').last().fillna(method='ffill')
+                spy_curve_weekly = spy_curve.resample('W-FRI').last().ffill()
                 plot_data['benchmark'] = {
                     "name": "SPY",
                     "dates": spy_curve_weekly.index.strftime('%Y-%m-%d').tolist(),
@@ -160,7 +160,7 @@ def generate_plot_data(use_cache_only: bool = False):
                 
                 if not equity_curve.empty:
                     # Downsample to weekly data to reduce file size
-                    equity_curve_weekly = equity_curve.resample('W-FRI').last().fillna(method='ffill')
+                    equity_curve_weekly = equity_curve.resample('W-FRI').last().ffill()
                     
                     cagr = result.get('cagr', 0)
                     sharpe = result.get('sharpe_ratio', 0)
