@@ -205,18 +205,18 @@ def generate_plot_data(use_cache_only: bool = False):
     print(f"\n{'='*80}")
     print(f"Generated plot data for {strategy_count}/{len(strategies)} strategies")
     
-    # Save to JSON file
     output_file = '.cache/plot_data.json'
     os.makedirs('.cache', exist_ok=True)
+
+    if strategy_count == 0:
+        print("[SKIP] Not writing plot_data.json — 0 strategies succeeded")
+        return plot_data
     
     with open(output_file, 'w') as f:
         json.dump(plot_data, f, indent=2)
     
-    print(f"[OK] Saved to {output_file}")
-    
-    # Calculate file size
-    file_size = os.path.getsize(output_file) / 1024  # KB
-    print(f"  File size: {file_size:.1f} KB")
+    file_size = os.path.getsize(output_file) / 1024
+    print(f"[OK] Saved to {output_file} ({file_size:.1f} KB)")
     
     return plot_data
 

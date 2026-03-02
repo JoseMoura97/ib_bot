@@ -359,6 +359,11 @@ def refresh_plot_data_task(self, force: bool = True, max_age_hours: int = 24) ->
         detail = stderr or stdout or f"generate_plot_data.py exited with code {result.returncode}"
         raise RuntimeError(f"{detail}; backup restored")
 
+    if not out_path.exists():
+        _restore_backup()
+        if not out_path.exists():
+            raise RuntimeError("generate_plot_data.py produced no output and no backup available")
+
     payload, _ = _validate_output()
 
     strategies = payload.get("strategies", {})
