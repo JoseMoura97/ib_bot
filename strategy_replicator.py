@@ -433,6 +433,36 @@ class StrategyReplicator:
         
         return weights
     
+    def _infer_held_tickers(self, data: pd.DataFrame) -> Tuple[List[str], pd.DataFrame, Optional[str]]:
+        """
+        Infer currently-held tickers from latest buy/sell action per ticker.
+
+        Returns:
+            (held_ticker_list, dataframe_copy, date_col_name)
+            held_ticker_list may be empty if inference fails.
+        """
+        df = data.copy()
+        date_col = None
+        for col in ["ReportDate", "TransactionDate", "Date", "LastUpdate"]:
+            if col in df.columns:
+                date_col = col
+                break
+
+        if "Transaction" in df.columns and date_col is not None:
+            if not pd.api.types.is_datetime64_any_dtype(df[date_col]):
+                df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
+            df = df.dropna(subset=[date_col])
+            if not df.empty:
+                df = df.sort_values(date_col, ascending=False)
+                latest = df.drop_duplicates(subset=["Ticker"], keep="first")
+                tx = latest["Transaction"].astype(str).str.lower()
+                held = latest[tx.str.contains("purchase|buy", na=False)]
+                tickers = held["Ticker"].dropna().astype(str).unique().tolist()
+                return tickers, df, date_col
+
+        tickers = df["Ticker"].dropna().astype(str).unique().tolist()
+        return tickers, df, date_col
+
     def _portfolio_mirror(self, data: pd.DataFrame, config: Dict) -> Dict[str, float]:
         """
         Mirror a portfolio (politician or hedge fund).
@@ -441,41 +471,53 @@ class StrategyReplicator:
         if data.empty or 'Ticker' not in data.columns:
             return {}
         
-        # Politician portfolio mirrors: infer current holdings from the latest action per ticker,
-        # then equal-weight the inferred holdings.
-        #
-        # This is a closer match to Quiver's stated methodology ("mirror the portfolio" and
-        # rebalance when new trades/reports are filed) than summing trade amounts.
-        if str(config.get("weighting", "")).lower() == "equal" and str(config.get("mirror_mode", "")).lower() == "latest_action":
-            df = data.copy()
-            # Determine best date column for ordering.
-            date_col = None
-            for col in ["ReportDate", "TransactionDate", "Date", "LastUpdate"]:
-                if col in df.columns:
-                    date_col = col
-                    break
+        weighting = str(config.get("weighting", "")).lower()
+        mirror_mode = str(config.get("mirror_mode", "")).lower()
 
-            if "Transaction" in df.columns and date_col is not None:
-                if not pd.api.types.is_datetime64_any_dtype(df[date_col]):
-                    df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
-                df = df.dropna(subset=[date_col])
-                if not df.empty:
-                    # Keep latest row per ticker.
-                    df = df.sort_values(date_col, ascending=False)
-                    latest = df.drop_duplicates(subset=["Ticker"], keep="first")
-                    tx = latest["Transaction"].astype(str).str.lower()
-                    # Treat buys/purchases as holding; sells as not holding.
-                    held = latest[tx.str.contains("purchase|buy", na=False)]
-                    tickers = held["Ticker"].dropna().astype(str).unique().tolist()
-                    if tickers:
-                        w = 1.0 / len(tickers)
-                        return {t: w for t in tickers}
+        # Politician portfolio mirrors: infer current holdings from the latest action
+        # per ticker, then weight the inferred holdings.
+        if mirror_mode == "latest_action" and weighting in ("equal", "amount"):
+            held_tickers, df, date_col = self._infer_held_tickers(data)
 
-            # If we can't infer action, fall back to equal-weight across tickers present.
-            tickers = df["Ticker"].dropna().astype(str).unique().tolist()
-            if tickers:
-                w = 1.0 / len(tickers)
-                return {t: w for t in tickers}
+            if not held_tickers:
+                tickers = df["Ticker"].dropna().astype(str).unique().tolist()
+                if tickers:
+                    w = 1.0 / len(tickers)
+                    return {t: w for t in tickers}
+                return {}
+
+            if weighting == "amount":
+                # Weight by accumulated Range midpoint amounts for held tickers.
+                # Only sum purchase transactions to approximate current position size.
+                held_df = df[df["Ticker"].isin(held_tickers)].copy()
+                if "Transaction" in held_df.columns:
+                    tx_lower = held_df["Transaction"].astype(str).str.lower()
+                    held_df = held_df[tx_lower.str.contains("purchase|buy", na=False)]
+
+                if "Range" in held_df.columns and not held_df.empty:
+                    held_df["amount_estimate"] = held_df["Range"].apply(self._parse_amount_range)
+                    ticker_amounts = held_df.groupby("Ticker")["amount_estimate"].sum()
+                    ticker_amounts = ticker_amounts[ticker_amounts > 0]
+                    if not ticker_amounts.empty:
+                        total = ticker_amounts.sum()
+                        weights = (ticker_amounts / total).to_dict()
+                        # Include held tickers that had no Range data with a minimum weight
+                        missing = [t for t in held_tickers if t not in weights]
+                        if missing and weights:
+                            min_w = min(weights.values()) * 0.5
+                            for t in missing:
+                                weights[t] = min_w
+                            total = sum(weights.values())
+                            weights = {t: v / total for t, v in weights.items()}
+                        return weights
+
+                # Fall back to equal-weight if no Range data available
+                w = 1.0 / len(held_tickers)
+                return {t: w for t in held_tickers}
+
+            # weighting == "equal"
+            w = 1.0 / len(held_tickers)
+            return {t: w for t in held_tickers}
 
         # For 13F filings, use reported values
         # Supports negative values (PUT options = short exposure)
