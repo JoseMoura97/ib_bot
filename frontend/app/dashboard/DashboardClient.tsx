@@ -489,7 +489,7 @@ export function DashboardClient(props: { onRequestRefresh?: () => Promise<void> 
     <div className="space-y-6">
       <PageHeader
         title="Strategy Dashboard"
-        description="Compare historical performance of political and insider trading strategies"
+        description={subline}
         right={
           <div className="flex flex-wrap items-center gap-2">
             <Link href="/dashboard/guide">

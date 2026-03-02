@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-import random
-from datetime import datetime, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -24,101 +22,6 @@ def _plot_data_path() -> Path:
 def _validation_results_path() -> Path:
     p = os.getenv("VALIDATION_RESULTS_PATH") or "/app/.cache/last_validation_results.json"
     return Path(p)
-
-
-def _make_weekly_dates(start: datetime, end: datetime) -> list[str]:
-    out: list[str] = []
-    cur = start
-    while cur <= end:
-        out.append(cur.strftime("%Y-%m-%d"))
-        cur += timedelta(days=7)
-    return out
-
-
-def _synthetic_curve(
-    *,
-    dates: list[str],
-    annual_return: float,
-    annual_vol: float,
-    seed: int,
-    base: float = 100.0,
-) -> list[float]:
-    """
-    Quick synthetic curve generator (weekly lognormal-ish).
-    annual_return and annual_vol are decimals (0.15 = 15%).
-    """
-    if not dates:
-        return []
-    rnd = random.Random(int(seed) & 0xFFFFFFFF)
-    weeks = max(1, len(dates) - 1)
-    mu_w = float(annual_return) / 52.0
-    sigma_w = float(annual_vol) / (52.0**0.5)
-    v = float(base)
-    out = [v]
-    prev = 0.0
-    for _ in range(weeks):
-        # Mild autocorrelation for realism
-        shock = rnd.gauss(mu_w, sigma_w)
-        shock = 0.7 * shock + 0.3 * prev
-        prev = shock
-        v *= max(0.01, 1.0 + shock)
-        out.append(v)
-    return out
-
-
-def _build_sample_plot_data_from_validation(validation: dict, *, price_source: str) -> dict:
-    """
-    Build sample plot data quickly from validation metrics.
-    This is a fallback when real plot_data generation produces an empty file.
-    """
-    now = datetime.utcnow()
-    dates = _make_weekly_dates(datetime(2020, 1, 1), now)
-
-    # SPY-ish benchmark (moderate growth + vol)
-    spy_vals = _synthetic_curve(dates=dates, annual_return=0.15, annual_vol=0.18, seed=42, base=100.0)
-    benchmark = {"name": "SPY", "dates": dates, "values": [round(x, 2) for x in spy_vals]}
-
-    strategies: dict[str, dict] = {}
-    strat_map = validation.get("strategies") if isinstance(validation, dict) else {}
-    if not isinstance(strat_map, dict):
-        strat_map = {}
-
-    for name, metrics in strat_map.items():
-        if not isinstance(name, str) or not name.strip():
-            continue
-        metrics = metrics if isinstance(metrics, dict) else {}
-        if metrics.get("status") in {"ERROR", "FAILED"}:
-            continue
-
-        cagr_pct = float(metrics.get("cagr") or 0.0)
-        sharpe = float(metrics.get("sharpe") or metrics.get("sharpe_ratio") or 0.5)
-        max_dd_pct = float(metrics.get("max_drawdown") or -30.0)
-
-        annual_return = cagr_pct / 100.0
-        annual_vol = (annual_return / sharpe) if sharpe > 0 else 0.20
-        annual_vol = max(0.01, min(1.0, float(annual_vol)))
-
-        vals = _synthetic_curve(dates=dates, annual_return=annual_return, annual_vol=annual_vol, seed=hash(name), base=100.0)
-
-        strategies[name] = {
-            "name": name,
-            "dates": dates,
-            "values": [round(x, 2) for x in vals],
-            "cagr": round(cagr_pct, 2),
-            "sharpe": round(float(sharpe), 2),
-            "max_drawdown": round(max_dd_pct, 2),
-            "start_date": metrics.get("start_date"),
-        }
-
-    return {
-        "generated_at": now.isoformat(),
-        "data_source": "sample_from_validation",
-        "price_source": price_source,
-        "strategies": strategies,
-        "benchmark": benchmark,
-        "missing": False,
-        "synthetic": True,
-    }
 
 
 @router.get("")

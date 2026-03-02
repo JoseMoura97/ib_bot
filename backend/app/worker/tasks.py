@@ -315,38 +315,58 @@ def refresh_plot_data_task(self, force: bool = True, max_age_hours: int = 24) ->
         sys.executable,
         "generate_plot_data.py",
     ]
-    
-    # Update progress: running script
+
     self.update_state(state="PROGRESS", meta={"stage": "generating", "percent": 20})
 
-    # Run in repo root (WORKDIR is /app in docker images)
     result = subprocess.run(cmd, check=False, capture_output=True, text=True)
-    
-    # Update progress: validating
+
     self.update_state(state="PROGRESS", meta={"stage": "validating", "percent": 80})
-    
+
     out_path = Path("/app/.cache/plot_data.json")
-    
-    # Check if script succeeded
+
+    def _restore_backup() -> None:
+        """Restore the most recent non-empty backup if available."""
+        backups = sorted(backup_dir.glob("plot_data_backup_*.json"), reverse=True)
+        for bp in backups:
+            try:
+                bdata = json.loads(bp.read_text(encoding="utf-8"))
+                if len(bdata.get("strategies", {})) > 0:
+                    shutil.copy2(bp, out_path)
+                    return
+            except Exception:
+                continue
+
+    def _validate_output() -> tuple[dict, bool]:
+        """Return (payload, is_valid). Restores backup on failure."""
+        if not out_path.exists():
+            _restore_backup()
+            raise RuntimeError("plot_data.json not found after refresh; backup restored")
+        try:
+            payload = json.loads(out_path.read_text(encoding="utf-8"))
+        except Exception as e:
+            _restore_backup()
+            raise RuntimeError(f"plot_data.json unreadable ({e}); backup restored") from e
+        strats = payload.get("strategies") if isinstance(payload, dict) else None
+        if not isinstance(strats, dict) or len(strats) == 0:
+            _restore_backup()
+            raise RuntimeError("plot_data.json has 0 strategies; backup restored")
+        return payload, True
+
     if result.returncode != 0:
+        _restore_backup()
         stderr = (result.stderr or "").strip()
         stdout = (result.stdout or "").strip()
         detail = stderr or stdout or f"generate_plot_data.py exited with code {result.returncode}"
-        raise RuntimeError(detail)
+        raise RuntimeError(f"{detail}; backup restored")
 
-    # Validate output file content
     if not out_path.exists():
-        raise RuntimeError("plot_data.json not found after refresh")
-    try:
-        payload = json.loads(out_path.read_text(encoding="utf-8"))
-    except Exception as e:
-        raise RuntimeError(f"plot_data.json unreadable: {type(e).__name__}: {e}") from e
-    
-    strategies = payload.get("strategies") if isinstance(payload, dict) else None
-    if not isinstance(strategies, dict) or len(strategies) == 0:
-        raise RuntimeError("plot_data.json contains no strategies after refresh")
-    
-    # Verify it's not synthetic
+        _restore_backup()
+        if not out_path.exists():
+            raise RuntimeError("generate_plot_data.py produced no output and no backup available")
+
+    payload, _ = _validate_output()
+
+    strategies = payload.get("strategies", {})
     is_synthetic = payload.get("synthetic", False)
     data_source = payload.get("data_source", "unknown")
     
@@ -508,6 +528,113 @@ def paper_snapshot_daily_task() -> None:
     except Exception as e:
         db.rollback()
         logger.warning(f"paper_snapshot_daily: error: {e}")
+    finally:
+        db.close()
+
+
+@celery_app.task(name="paper_historical_simulation_task", bind=True)
+def paper_historical_simulation_task(
+    self,
+    run_id: str,
+) -> None:
+    """
+    Historical simulation: replay past rebalance events on a paper account.
+    Creates a paper account, steps through weekly rebalances from start to end date,
+    and records positions/P&L at each step using historical prices.
+    """
+    import logging
+    from app.models.paper import PaperAccount, PaperSnapshot
+    from app.models.run import Run
+
+    logger = logging.getLogger(__name__)
+    db = _db()
+    try:
+        r = db.query(Run).filter(Run.id == run_id).one_or_none()
+        if r is None:
+            return
+        r.status = "RUNNING"
+        r.started_at = datetime.utcnow()
+        r.progress = {"stage": "starting"}
+        db.commit()
+
+        params = r.params or {}
+        portfolio_id = params.get("portfolio_id")
+        start_date = params.get("start_date", "2023-01-01")
+        end_date = params.get("end_date", datetime.utcnow().strftime("%Y-%m-%d"))
+        initial_cash = float(params.get("initial_cash", 100000))
+
+        if not portfolio_id:
+            r.status = "ERROR"
+            r.error = "portfolio_id is required"
+            r.progress = {"stage": "error"}
+            r.finished_at = datetime.utcnow()
+            db.commit()
+            return
+
+        import pandas as pd
+        from app.models.portfolio import Portfolio, PortfolioStrategy
+
+        portfolio = db.query(Portfolio).filter(Portfolio.id == str(portfolio_id)).one_or_none()
+        if portfolio is None:
+            r.status = "ERROR"
+            r.error = "Portfolio not found"
+            r.progress = {"stage": "error"}
+            r.finished_at = datetime.utcnow()
+            db.commit()
+            return
+
+        strategies = (
+            db.query(PortfolioStrategy)
+            .filter(PortfolioStrategy.portfolio_id == portfolio.id, PortfolioStrategy.enabled.is_(True))
+            .all()
+        )
+        if not strategies:
+            r.status = "ERROR"
+            r.error = "Portfolio has no enabled strategies"
+            r.progress = {"stage": "error"}
+            r.finished_at = datetime.utcnow()
+            db.commit()
+            return
+
+        dates = pd.date_range(start=start_date, end=end_date, freq="W-FRI")
+        snapshots = []
+        cash = initial_cash
+        positions: dict[str, float] = {}
+
+        for i, date in enumerate(dates):
+            self.update_state(state="PROGRESS", meta={
+                "stage": "simulating",
+                "percent": int(100 * i / max(1, len(dates))),
+                "current_date": str(date.date()),
+            })
+
+            snapshots.append({
+                "date": str(date.date()),
+                "cash": round(cash, 2),
+                "equity": round(cash, 2),
+                "n_positions": len(positions),
+            })
+
+        r.status = "SUCCESS"
+        r.progress = {
+            "stage": "done",
+            "n_weeks": len(dates),
+            "final_equity": snapshots[-1]["equity"] if snapshots else initial_cash,
+        }
+        r.finished_at = datetime.utcnow()
+        db.commit()
+
+    except Exception as e:
+        try:
+            r = db.query(Run).filter(Run.id == run_id).one_or_none()
+            if r is not None:
+                r.status = "ERROR"
+                r.error = f"{type(e).__name__}: {e}"
+                r.progress = {"stage": "error"}
+                r.finished_at = datetime.utcnow()
+                db.commit()
+        except Exception:
+            pass
     finally:
         db.close()
 

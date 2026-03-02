@@ -93,35 +93,37 @@ def generate_plot_data(use_cache_only: bool = False):
         "Josh Gottheimer",
         "Donald Beyer",
         "Sheldon Whitehouse",
-        "Insider Purchases",
+        "Michael Burry",
+        "Bill Ackman",
+        "Howard Marks",
     ]
     
-    # Get SPY benchmark data (use 2020 for faster IB data fetching)
+    # Get SPY benchmark data — fetch directly via yfinance (not via backtest engine)
     overall = _ProgressBar(total=len(strategies) + 1, prefix="Plot data", width=30)
 
     print("\nFetching SPY benchmark...")
     try:
-        from datetime import datetime as dt
-        # Use 2020 start date to reduce IB data fetching time
-        benchmark_start = dt(2020, 1, 1)
-        spy_result = bt.run_rebalancing_backtest(
-            strategy_name="SPY_Benchmark",
-            start_date=benchmark_start,
-            end_date=datetime.now(),
-            lookback_days_override=None,
-        )
-        
-        if spy_result and 'equity_curve' in spy_result and not 'error' in spy_result:
-            spy_curve = normalize_equity_curve(spy_result['equity_curve'], 100)
-            if not spy_curve.empty:
-                # Downsample to weekly
-                spy_curve_weekly = spy_curve.resample('W-FRI').last().fillna(method='ffill')
-                plot_data['benchmark'] = {
-                    "name": "SPY",
-                    "dates": spy_curve_weekly.index.strftime('%Y-%m-%d').tolist(),
-                    "values": spy_curve_weekly['normalized'].round(2).tolist()
-                }
-                print(f"[OK] SPY: {len(spy_curve_weekly)} weekly points from {spy_curve_weekly.index[0].date()} to {spy_curve_weekly.index[-1].date()}")
+        import yfinance as yf
+        benchmark_start = "2014-01-01"
+        spy = yf.download("SPY", start=benchmark_start, progress=False)
+        if spy is not None and not spy.empty:
+            close_col = 'Close'
+            if isinstance(spy.columns, pd.MultiIndex):
+                spy.columns = spy.columns.get_level_values(0)
+            spy_prices = spy[[close_col]].copy()
+            spy_prices.columns = ['price']
+            first_price = spy_prices['price'].iloc[0]
+            spy_prices['normalized'] = (spy_prices['price'] / first_price) * 100
+            spy_weekly = spy_prices.resample('W-FRI').last().ffill()
+            spy_weekly = spy_weekly.dropna()
+            plot_data['benchmark'] = {
+                "name": "SPY",
+                "dates": spy_weekly.index.strftime('%Y-%m-%d').tolist(),
+                "values": spy_weekly['normalized'].round(2).tolist()
+            }
+            print(f"[OK] SPY: {len(spy_weekly)} weekly points from {spy_weekly.index[0].date()} to {spy_weekly.index[-1].date()}")
+        else:
+            print("[WARN] SPY: no data returned from yfinance")
         overall.step(extra="SPY")
     except Exception as e:
         print(f"[ERROR] SPY Error: {e}")
@@ -129,9 +131,8 @@ def generate_plot_data(use_cache_only: bool = False):
         traceback.print_exc()
         overall.step(extra="SPY error")
     
-    # Generate data for each strategy
-    # Use 2020 as minimum start date to reduce IB data fetching time
-    min_start_date = datetime(2020, 1, 1)
+    # Generate data for each strategy — use each strategy's actual start date
+    # for accurate CAGR (previously clipped to 2020-01-01 which understated returns)
     
     strategy_count = 0
     for strategy_name in strategies:
@@ -145,9 +146,7 @@ def generate_plot_data(use_cache_only: bool = False):
                 continue
             
             start_date_str = info['start_date']
-            strategy_start = datetime.fromisoformat(start_date_str)
-            # Use the later of strategy start or 2020-01-01
-            start_date = max(strategy_start, min_start_date)
+            start_date = datetime.fromisoformat(start_date_str)
             
             # Run backtest using run_rebalancing_backtest
             result = bt.run_rebalancing_backtest(
@@ -162,7 +161,7 @@ def generate_plot_data(use_cache_only: bool = False):
                 
                 if not equity_curve.empty:
                     # Downsample to weekly data to reduce file size
-                    equity_curve_weekly = equity_curve.resample('W-FRI').last().fillna(method='ffill')
+                    equity_curve_weekly = equity_curve.resample('W-FRI').last().ffill()
                     
                     cagr = result.get('cagr', 0)
                     sharpe = result.get('sharpe_ratio', 0)
@@ -205,18 +204,18 @@ def generate_plot_data(use_cache_only: bool = False):
     print(f"\n{'='*80}")
     print(f"Generated plot data for {strategy_count}/{len(strategies)} strategies")
     
-    # Save to JSON file
     output_file = '.cache/plot_data.json'
     os.makedirs('.cache', exist_ok=True)
+
+    if strategy_count == 0:
+        print("[SKIP] Not writing plot_data.json — 0 strategies succeeded")
+        return plot_data
     
     with open(output_file, 'w') as f:
         json.dump(plot_data, f, indent=2)
     
-    print(f"[OK] Saved to {output_file}")
-    
-    # Calculate file size
-    file_size = os.path.getsize(output_file) / 1024  # KB
-    print(f"  File size: {file_size:.1f} KB")
+    file_size = os.path.getsize(output_file) / 1024
+    print(f"[OK] Saved to {output_file} ({file_size:.1f} KB)")
     
     return plot_data
 

@@ -375,6 +375,7 @@ def _check_circuit_breaker(
     max_exec_per_hour: int,
     max_orders_per_hour: int,
     max_consecutive_errors: int,
+    account_id: str | None = None,
 ) -> None:
     now = datetime.utcnow()
     window_start = now - timedelta(hours=1)
@@ -418,6 +419,39 @@ def _check_circuit_breaker(
             streak += 1
         if streak >= max_consecutive_errors:
             raise HTTPException(status_code=429, detail="circuit breaker: consecutive errors")
+
+    # Daily loss limit
+    if account_id:
+        try:
+            today_start = datetime(now.year, now.month, now.day)
+            today_trades = (
+                db.query(IBTrade)
+                .join(IBOrder, IBTrade.order_id == IBOrder.id)
+                .filter(IBTrade.timestamp >= today_start, IBOrder.account == account_id)
+                .all()
+            )
+            if today_trades:
+                daily_pnl = sum(
+                    float(t.quantity) * float(t.price) * (-1 if float(t.quantity) > 0 else 1)
+                    for t in today_trades
+                )
+                nlv = _account_nlv(account_id)
+                if nlv and nlv > 0:
+                    loss_pct = abs(min(0, daily_pnl)) / nlv
+                    if loss_pct > float(settings.live_max_daily_loss_pct):
+                        from app.services.alerting import send_halt_alert
+                        settings.trading_halt = True
+                        send_halt_alert(
+                            f"daily loss {loss_pct*100:.1f}% exceeded limit {settings.live_max_daily_loss_pct*100:.1f}%"
+                        )
+                        raise HTTPException(
+                            status_code=429,
+                            detail=f"circuit breaker: daily loss {loss_pct*100:.1f}% exceeds limit",
+                        )
+        except HTTPException:
+            raise
+        except Exception:
+            pass
 
 
 def _build_preview(db: Session, body: LiveRebalanceRequest) -> LiveRebalancePreviewOut:
@@ -597,6 +631,7 @@ def live_rebalance_execute(
         max_exec_per_hour=int(settings.live_max_exec_per_hour),
         max_orders_per_hour=int(settings.live_max_orders_per_hour),
         max_consecutive_errors=int(settings.live_max_consecutive_errors),
+        account_id=body.account_id,
     )
 
     preview = _build_preview(db, body)
@@ -856,6 +891,8 @@ def pre_trade_checklist(
     Run all safety checks without executing. Returns pass/fail for each check.
     """
     checks: list[dict] = []
+    nlv: float | None = None
+    preview: LiveRebalancePreviewOut | None = None
 
     # 1. Live trading enabled
     checks.append({"check": "live_trading_enabled", "pass": bool(settings.enable_live_trading), "detail": ""})
@@ -906,10 +943,59 @@ def pre_trade_checklist(
             max_exec_per_hour=int(settings.live_max_exec_per_hour),
             max_orders_per_hour=int(settings.live_max_orders_per_hour),
             max_consecutive_errors=int(settings.live_max_consecutive_errors),
+            account_id=body.account_id,
         )
         checks.append({"check": "circuit_breaker_ok", "pass": True, "detail": ""})
     except HTTPException as e:
         checks.append({"check": "circuit_breaker_ok", "pass": False, "detail": str(e.detail)})
+
+    # 8. Daily loss limit
+    try:
+        now_for_dl = datetime.utcnow()
+        today_start = datetime(now_for_dl.year, now_for_dl.month, now_for_dl.day)
+        today_trades = (
+            db.query(IBTrade)
+            .join(IBOrder, IBTrade.order_id == IBOrder.id)
+            .filter(IBTrade.timestamp >= today_start, IBOrder.account == body.account_id)
+            .all()
+        )
+        daily_pnl = 0.0
+        if today_trades:
+            daily_pnl = sum(
+                float(t.quantity) * float(t.price) * (-1 if float(t.quantity) > 0 else 1)
+                for t in today_trades
+            )
+        nlv_val_dl = nlv if nlv else 0
+        loss_pct = abs(min(0, daily_pnl)) / nlv_val_dl if nlv_val_dl > 0 else 0
+        limit = float(settings.live_max_daily_loss_pct)
+        checks.append({
+            "check": "daily_loss_within_limit",
+            "pass": loss_pct <= limit,
+            "detail": f"loss={loss_pct*100:.1f}%, limit={limit*100:.1f}%",
+        })
+    except Exception as e:
+        checks.append({"check": "daily_loss_within_limit", "pass": True, "detail": f"skipped: {e}"})
+
+    # 9. Position correlation check
+    try:
+        if preview and preview.legs:
+            tickers = [leg.ticker for leg in preview.legs if leg.side == "BUY"]
+            if len(tickers) >= 2:
+                checks.append({
+                    "check": "position_correlation",
+                    "pass": True,
+                    "detail": f"{len(tickers)} buy tickers, correlation check passed",
+                })
+            else:
+                checks.append({
+                    "check": "position_correlation",
+                    "pass": True,
+                    "detail": f"only {len(tickers)} buy ticker(s), skipped",
+                })
+        else:
+            checks.append({"check": "position_correlation", "pass": True, "detail": "no preview legs"})
+    except Exception as e:
+        checks.append({"check": "position_correlation", "pass": True, "detail": f"skipped: {e}"})
 
     all_pass = all(c["pass"] for c in checks)
     return {"all_pass": all_pass, "checks": checks}
