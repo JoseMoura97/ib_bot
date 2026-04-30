@@ -1,0 +1,31 @@
+﻿---
+description: Server location, access methods, and ops notes for this project. Read before any deployment, runtime, or cross-project work.
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# This project lives on the EPYC server
+
+`ib_bot` is hosted at `~/Desktop/cursor-projects/ib_bot` on the EPYC tower in Portugal.
+Cursor IDE runs on that box (over RDP) — that copy is the source of truth.
+The local Windows folder under `C:\Users\Jibas\Desktop\cursor_bots\ib_bot` is the historical original; treat it as a backup.
+
+## Access (all via Tailscale, nothing public)
+
+| Channel | How |
+|---------|-----|
+| SSH (primary) | `ssh servidor@100.67.188.93` — passwordless key + sudo |
+| RDP (GUI / Cursor IDE) | mstsc -> `100.67.188.93`, user `servidor`, XFCE session |
+| Cockpit (system status) | `https://100.67.188.93:9090` |
+| IPMI / BMC (hardware) | `https://192.168.1.114` (subnet-routed) |
+
+## Hardware available
+
+EPYC 7643 (48c/96t) | 64 GiB ECC | RTX 3090 24 GB **(shared with the local-LLM workload, do not assume exclusive)** | 2 TB NVMe | 10 GbE.
+
+## Notes for running here
+
+- Use `systemd` units (no NSSM — that was Windows).
+- Browser-extension parts (Betano, Coincasino) still need Windows VMs not yet provisioned on this host; they continue on legacy VMs for now.
+- Cross-project resources (Postgres, Mongo, Redis) live on `localhost` once both projects are migrated.
+- Full ops reference (kernels, NVIDIA DKMS, NIC trap, RDP tuning, pitfalls, standard commands) lives at `~/Desktop/cursor-projects/life/.cursor/rules/server-portugal.mdc`.

@@ -177,6 +177,67 @@ class TestFullCycle:
         # Accept either 200 (success) or 403 (live trading not enabled)
         assert resp.status_code in (200, 403)
 
+    def test_dry_run_blocks_execute(self, client):
+        from app.core.config import settings
+
+        orig_live = settings.enable_live_trading
+        orig_dry = settings.live_dry_run
+        try:
+            settings.enable_live_trading = True
+            settings.live_dry_run = True
+            resp = client.post("/live/rebalance/execute", json={
+                "account_id": "U123",
+                "portfolio_id": "00000000-0000-0000-0000-000000000001",
+                "allocation_amount": 10000,
+                "confirm": True,
+            })
+            assert resp.status_code == 403
+            assert "Dry-run mode active" in resp.json()["detail"]
+        finally:
+            settings.enable_live_trading = orig_live
+            settings.live_dry_run = orig_dry
+
+    def test_dry_run_status_field(self, client):
+        resp = client.get("/live/status")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "dry_run_blocks_execute" in data
+
+    def test_checklist_includes_dry_run_check(self, client, db_session):
+        resp = client.post("/portfolios", json={
+            "name": "Checklist Test",
+            "default_cash": 50000,
+        })
+        pid = resp.json()["id"]
+
+        with patch("app.api.routes.live.call_ib", side_effect=RuntimeError("no IB")):
+            resp = client.post("/live/checklist", json={
+                "account_id": "U123",
+                "portfolio_id": pid,
+                "allocation_amount": 10000,
+            })
+        assert resp.status_code == 200
+        check_names = [c["check"] for c in resp.json()["checks"]]
+        assert "dry_run_disabled" in check_names
+
+    def test_checklist_concentration_replaces_correlation(self, client, db_session):
+        resp = client.post("/portfolios", json={
+            "name": "Concentration Test",
+            "default_cash": 50000,
+        })
+        pid = resp.json()["id"]
+
+        with patch("app.api.routes.live.call_ib", side_effect=RuntimeError("no IB")):
+            resp = client.post("/live/checklist", json={
+                "account_id": "U123",
+                "portfolio_id": pid,
+                "allocation_amount": 10000,
+            })
+        assert resp.status_code == 200
+        check_names = [c["check"] for c in resp.json()["checks"]]
+        assert "portfolio_concentration" in check_names
+        assert "position_correlation" not in check_names
+
     def test_allocations_ledger(self, client, db_session):
         # Create portfolio first
         resp = client.post("/api/portfolios", json={"name": "Alloc Test", "default_cash": 50000})

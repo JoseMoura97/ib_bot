@@ -55,15 +55,16 @@
 
 - [ ] Set `LIVE_DRY_RUN=true` and `ENABLE_LIVE_TRADING=true` in `.env`
 - [ ] Restart: `docker compose restart api worker`
+- [ ] Verify dry-run blocks real execution: `POST /live/rebalance/execute` returns 403
 - [ ] Run pre-trade checklist via Live page > "Pre-trade Checklist"
-- [ ] All checks pass
+- [ ] All checks pass (except `dry_run_disabled` which will correctly show as failed)
 - [ ] Run dry-run rebalance via Live page > "Dry Run"
 - [ ] Review dry-run orders - verify they look correct
 - [ ] Monitor for 1-2 days of dry-run operation
 
 ## Live Trading Activation (Real)
 
-- [ ] Set `LIVE_DRY_RUN=false` in `.env`
+- [ ] Set `LIVE_DRY_RUN=false` in `.env` (this unblocks `POST /live/rebalance/execute`)
 - [ ] Restart: `docker compose restart api worker`
 - [ ] Set conservative limits:
   - `LIVE_MAX_EXEC_PER_HOUR=5`

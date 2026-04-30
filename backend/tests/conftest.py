@@ -45,7 +45,12 @@ def client(db_session, monkeypatch):
 
     monkeypatch.setattr(celery_module.celery_app, "send_task", lambda *args, **kwargs: None)
 
+    # Disable rate limiting during tests
+    from app.core.limiter import limiter
+    limiter.enabled = False
+
     with TestClient(app) as c:
         yield c
 
+    limiter.enabled = True
     app.dependency_overrides.clear()

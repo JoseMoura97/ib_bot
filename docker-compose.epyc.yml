@@ -1,0 +1,34 @@
+# EPYC-specific overrides — avoid host port collisions with Grafana (3000),
+# host PostgreSQL (5432), and host redis-server (6379). Keep services
+# Docker-internal-only where possible. Drafted by migration agent 2026-04-29.
+services:
+  db:
+    ports: !reset []   # do not expose 5432 on host (collides with system postgres)
+  redis:
+    ports: !reset []   # do not expose 6379 on host (collides with system redis)
+  api:
+    ports:
+      - "8001:8000"    # API on host:8001 (8000 free, but reserve room)
+    environment:
+      # Don't try to reach a non-existent IB Gateway during dry-run bring-up.
+      # Override later (or unset) when IB Gateway is migrated to EPYC.
+      IB_HOST: "127.0.0.1"
+      IB_PORT: "4999"
+      ENABLE_LIVE_TRADING: "false"
+      LIVE_DRY_RUN: "true"
+  worker:
+    environment:
+      IB_HOST: "127.0.0.1"
+      IB_PORT: "4999"
+      LIVE_DRY_RUN: "true"
+  beat:
+    environment:
+      IB_HOST: "127.0.0.1"
+      IB_PORT: "4999"
+  web:
+    ports: !reset []                # avoid collision with Grafana on :3000
+  nginx:
+    ports: !override
+      - "8090:80"                   # expose dev nginx on host:8090 (8080 reserved, 80 needs root)
+    volumes: !override
+      - ./infra/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro   # use dev nginx, no SSL needed yet

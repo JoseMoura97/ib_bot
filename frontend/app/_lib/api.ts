@@ -32,9 +32,16 @@ async function buildServerApiUrl(path: string): Promise<string> {
   return `${proto}://${host}${publicBase}${path}`;
 }
 
+function apiHeaders(): Record<string, string> {
+  const h: Record<string, string> = {};
+  const key = process.env.INTERNAL_API_KEY;
+  if (key) h["x-api-key"] = key;
+  return h;
+}
+
 export async function apiGet<T = unknown>(path: string): Promise<T> {
   const url = await buildServerApiUrl(path);
-  const res = await fetch(url, { cache: "no-store" });
+  const res = await fetch(url, { cache: "no-store", headers: apiHeaders() });
   if (!res.ok) throw new Error(`API error ${res.status}`);
   return (await res.json()) as T;
 }

@@ -20,3 +20,4 @@ ib_insync
 quiverquant
 exchange-calendars
 scipy
+slowapi

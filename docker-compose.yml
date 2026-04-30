@@ -91,8 +91,8 @@ services:
       dockerfile: frontend/Dockerfile
     environment:
       NEXT_PUBLIC_API_BASE: /api
-      # Used by Next.js server-side rendering inside the container.
       INTERNAL_API_BASE: http://api:8000
+      INTERNAL_API_KEY: ${API_KEY-}
     depends_on:
       - api
     ports:

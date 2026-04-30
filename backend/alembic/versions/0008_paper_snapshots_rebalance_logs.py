@@ -11,7 +11,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "0008_paper_snapshots_rebalance_logs"
+revision = "0008_paper_snap_rebal"
 down_revision = "0007_live_shadow_snapshots"
 branch_labels = None
 depends_on = None

@@ -15,16 +15,16 @@ services:
   api:
     restart: always
     environment:
-      # Production settings
-      IB_HOST: 172.17.0.1  # Docker bridge gateway to reach host
+      IB_HOST: 172.17.0.1
       IB_PORT: ${IB_PORT:-4001}
-      # API Key must be set in .env
       QUIVER_API_KEY: ${QUIVER_API_KEY}
       ENABLE_LIVE_TRADING: ${ENABLE_LIVE_TRADING:-false}
       LIVE_DRY_RUN: ${LIVE_DRY_RUN:-true}
       LIVE_MAX_ORDER_PCT_NLV: ${LIVE_MAX_ORDER_PCT_NLV:-0.30}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      API_KEY: ${API_KEY:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -52,6 +52,7 @@ services:
     restart: always
     environment:
       NODE_ENV: production
+      INTERNAL_API_KEY: ${API_KEY:-}
 
   nginx:
     restart: always
@@ -61,3 +62,4 @@ services:
     volumes:
       - ./infra/nginx/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /etc/ssl/ibbot:/etc/ssl/ibbot:ro

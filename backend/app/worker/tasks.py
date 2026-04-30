@@ -216,7 +216,13 @@ def validation_task(run_id: str) -> None:
         db.close()
 
 
-@celery_app.task(name="shadow_preview_task")
+@celery_app.task(
+    name="shadow_preview_task",
+    autoretry_for=(Exception,),
+    retry_backoff=30,
+    retry_backoff_max=300,
+    max_retries=2,
+)
 def shadow_preview_task() -> None:
     """
     Preview live rebalance targets without executing and store diffs vs holdings.
@@ -267,7 +273,14 @@ def shadow_preview_task() -> None:
         db.close()
 
 
-@celery_app.task(name="refresh_plot_data_task", bind=True)
+@celery_app.task(
+    name="refresh_plot_data_task",
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_backoff=60,
+    retry_backoff_max=600,
+    max_retries=3,
+)
 def refresh_plot_data_task(self, force: bool = True, max_age_hours: int = 24) -> None:
     """
     Refresh `.cache/plot_data.json` by running real backtests.
@@ -380,7 +393,13 @@ def refresh_plot_data_task(self, force: bool = True, max_age_hours: int = 24) ->
     })
 
 
-@celery_app.task(name="paper_rebalance_daily_task")
+@celery_app.task(
+    name="paper_rebalance_daily_task",
+    autoretry_for=(Exception,),
+    retry_backoff=60,
+    retry_backoff_max=300,
+    max_retries=1,
+)
 def paper_rebalance_daily_task() -> None:
     """
     Auto-rebalance all paper accounts that have a linked portfolio.
@@ -456,7 +475,13 @@ def paper_rebalance_daily_task() -> None:
         db.close()
 
 
-@celery_app.task(name="paper_snapshot_daily_task")
+@celery_app.task(
+    name="paper_snapshot_daily_task",
+    autoretry_for=(Exception,),
+    retry_backoff=30,
+    retry_backoff_max=300,
+    max_retries=2,
+)
 def paper_snapshot_daily_task() -> None:
     """
     Snapshot cash + equity for all paper accounts.
@@ -532,114 +557,13 @@ def paper_snapshot_daily_task() -> None:
         db.close()
 
 
-@celery_app.task(name="paper_historical_simulation_task", bind=True)
-def paper_historical_simulation_task(
-    self,
-    run_id: str,
-) -> None:
-    """
-    Historical simulation: replay past rebalance events on a paper account.
-    Creates a paper account, steps through weekly rebalances from start to end date,
-    and records positions/P&L at each step using historical prices.
-    """
-    import logging
-    from app.models.paper import PaperAccount, PaperSnapshot
-    from app.models.run import Run
-
-    logger = logging.getLogger(__name__)
-    db = _db()
-    try:
-        r = db.query(Run).filter(Run.id == run_id).one_or_none()
-        if r is None:
-            return
-        r.status = "RUNNING"
-        r.started_at = datetime.utcnow()
-        r.progress = {"stage": "starting"}
-        db.commit()
-
-        params = r.params or {}
-        portfolio_id = params.get("portfolio_id")
-        start_date = params.get("start_date", "2023-01-01")
-        end_date = params.get("end_date", datetime.utcnow().strftime("%Y-%m-%d"))
-        initial_cash = float(params.get("initial_cash", 100000))
-
-        if not portfolio_id:
-            r.status = "ERROR"
-            r.error = "portfolio_id is required"
-            r.progress = {"stage": "error"}
-            r.finished_at = datetime.utcnow()
-            db.commit()
-            return
-
-        import pandas as pd
-        from app.models.portfolio import Portfolio, PortfolioStrategy
-
-        portfolio = db.query(Portfolio).filter(Portfolio.id == str(portfolio_id)).one_or_none()
-        if portfolio is None:
-            r.status = "ERROR"
-            r.error = "Portfolio not found"
-            r.progress = {"stage": "error"}
-            r.finished_at = datetime.utcnow()
-            db.commit()
-            return
-
-        strategies = (
-            db.query(PortfolioStrategy)
-            .filter(PortfolioStrategy.portfolio_id == portfolio.id, PortfolioStrategy.enabled.is_(True))
-            .all()
-        )
-        if not strategies:
-            r.status = "ERROR"
-            r.error = "Portfolio has no enabled strategies"
-            r.progress = {"stage": "error"}
-            r.finished_at = datetime.utcnow()
-            db.commit()
-            return
-
-        dates = pd.date_range(start=start_date, end=end_date, freq="W-FRI")
-        snapshots = []
-        cash = initial_cash
-        positions: dict[str, float] = {}
-
-        for i, date in enumerate(dates):
-            self.update_state(state="PROGRESS", meta={
-                "stage": "simulating",
-                "percent": int(100 * i / max(1, len(dates))),
-                "current_date": str(date.date()),
-            })
-
-            snapshots.append({
-                "date": str(date.date()),
-                "cash": round(cash, 2),
-                "equity": round(cash, 2),
-                "n_positions": len(positions),
-            })
-
-        r.status = "SUCCESS"
-        r.progress = {
-            "stage": "done",
-            "n_weeks": len(dates),
-            "final_equity": snapshots[-1]["equity"] if snapshots else initial_cash,
-        }
-        r.finished_at = datetime.utcnow()
-        db.commit()
-
-    except Exception as e:
-        try:
-            r = db.query(Run).filter(Run.id == run_id).one_or_none()
-            if r is not None:
-                r.status = "ERROR"
-                r.error = f"{type(e).__name__}: {e}"
-                r.progress = {"stage": "error"}
-                r.finished_at = datetime.utcnow()
-                db.commit()
-        except Exception:
-            pass
-    finally:
-        db.close()
-
-
-@celery_app.task(name="refresh_validation_results_task")
+@celery_app.task(
+    name="refresh_validation_results_task",
+    autoretry_for=(Exception,),
+    retry_backoff=60,
+    retry_backoff_max=600,
+    max_retries=3,
+)
 def refresh_validation_results_task(force: bool = True, max_age_hours: int = 24 * 7) -> None:
     """
     Refresh `.cache/last_validation_results.json` by running `validate_quiver_replication.py`.

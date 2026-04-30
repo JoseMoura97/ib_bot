@@ -1,0 +1,104 @@
+---
+description: ib_bot shadow / dev instance on EPYC (parallel to Finland production). Read before any EPYC-side changes.
+alwaysApply: true
+---
+
+# ib_bot — EPYC shadow instance
+
+A second copy of the full ib_bot stack runs on the EPYC tower in Portugal, **alongside** the live Finland instance at `213.159.68.39`. This is a **shadow / dev** environment — same code, separate Postgres, **no live trading**, **no IB Gateway connection**. Use it for:
+
+- Testing migrations / new features without touching production.
+- Eventual full cut-over once IB Gateway has been moved to EPYC (see "Cutover sequence" below).
+
+Live trading remains on Finland until that ceremony is performed manually.
+
+## Reach the EPYC shadow
+
+| Surface | URL / command |
+|---------|---------------|
+| Dashboard (nginx → web) | `http://100.67.188.93:8090/` (Tailscale) |
+| API direct | `http://100.67.188.93:8001/health`, `/docs` |
+| API via nginx | `http://100.67.188.93:8090/api/health` |
+| SSH host | `ssh servidor@100.67.188.93` |
+
+## Compose layout
+
+Three compose files merged, in order:
+
+```bash
+cd ~/Desktop/cursor-projects/ib_bot
+COMPOSE='-f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.epyc.yml'
+sudo docker compose $COMPOSE ps
+sudo docker compose $COMPOSE logs -f api
+sudo docker compose $COMPOSE up -d --build
+sudo docker compose $COMPOSE down                # keep pgdata
+sudo docker compose $COMPOSE down -v             # nuke pgdata too
+```
+
+The EPYC override (`docker-compose.epyc.yml`) is what makes the stack co-exist with the host's other services. Key differences from production Finland:
+
+| Service | EPYC override | Why |
+|---------|---------------|-----|
+| `db` | `ports: !reset []` | Host already runs PostgreSQL 18 on 5432. DB is internal-docker-network only. |
+| `redis` | `ports: !reset []` | Host already runs `redis-server` on 6379. Internal-only. |
+| `api` | `ports: ["8001:8000"]` (additive) + `IB_HOST=127.0.0.1, IB_PORT=4999` (deliberately unreachable) + `ENABLE_LIVE_TRADING=false`, `LIVE_DRY_RUN=true` | Avoid touching IB Gateway; trading kill-switch on. |
+| `worker`, `beat` | same IB stub + `LIVE_DRY_RUN=true` | |
+| `web` | `ports: !reset []` | Host's :3000 is owned by Grafana. Reach the UI through nginx instead. |
+| `nginx` | `ports: !override ["8090:80"]`, mounts `nginx.conf` (not `nginx.prod.conf`) | Avoid host :80/:443 conflicts; no SSL needed (Tailscale-only). |
+
+## Sticky local patches (NOT in upstream git)
+
+These EPYC-side fixes are **not committed** and will be lost if you `git pull` and re-build without re-applying:
+
+1. **`backend/alembic/versions/0008_paper_snapshots_rebalance_logs.py`**
+   - Original revision id: `"0008_paper_snapshots_rebalance_logs"` (35 chars, blows up `alembic_version.version_num` which is `varchar(32)`)
+   - Patched to: `"0008_paper_snap_rebal"`
+   - Re-apply after `git pull` with:
+     ```bash
+     sed -i 's/"0008_paper_snapshots_rebalance_logs"/"0008_paper_snap_rebal"/g' \
+       backend/alembic/versions/0008_paper_snapshots_rebalance_logs.py
+     ```
+   - Better fix: PR upstream to either rename the migration ids consistently across all files (use 32-char-safe ids), or override `version_table_pk` in `env.py` with `String(128)`.
+
+2. **`docker-compose.epyc.yml`** (this is the override file itself, not in the original repo).
+
+3. **`.env` additions** (the original `.env` carried over from Finland, but these explicit overrides are EPYC-only safety):
+   - `ENABLE_LIVE_TRADING=false`
+   - `LIVE_DRY_RUN=true`
+   - `POSTGRES_PASSWORD=ibbot`  (matches the hardcoded password in base compose's `DATABASE_URL`; only safe because no host port is exposed)
+
+## Reboot survival
+
+Docker daemon (`docker.service`) is enabled on EPYC. All services in compose have `restart: always`. After a host reboot:
+- Docker daemon starts.
+- Containers come back automatically.
+- No manual action required.
+
+## Cutover sequence (when ready to make EPYC the live ib_bot)
+
+**Pre-flight (do nothing until checked):**
+- [ ] Coordinate with the user — IB account 2FA dance can fail and lock the account 24h. `jibas.bot` (U15721390) has been rate-limited before.
+- [ ] Confirm Finland's gateway is healthy and the move can be reverted within ~30 min if needed.
+
+**Steps:**
+1. **Bring up IB Gateway on EPYC** (separate from the docker stack):
+   - Install IB Gateway + IBC + Xvfb + x11vnc on the host (or in a small Linux VM on EPYC).
+   - Configure as per Finland's `server-setup.mdc` — same TOTP secret, same IBC config.
+   - Test login via VNC manually, then enable `ib-socat.service` to bridge `:4003` → `127.0.0.1:4001` if the docker bridge setup needs it (or just use `host.docker.internal` directly via the `extra_hosts` already in `docker-compose.prod.yml`).
+2. **Update EPYC `.env`:**
+   - Set `IB_HOST=host.docker.internal` (works because of `extra_hosts: "host.docker.internal:host-gateway"` in prod compose).
+   - Set `IB_PORT=4001` (or `4003` if going through socat).
+   - Set `ENABLE_LIVE_TRADING=true` and `LIVE_DRY_RUN=false` ONLY after a paper-mode dry run confirms the gateway is reachable.
+3. **`docker compose up -d --force-recreate api worker beat`** so they pick up the new env.
+4. **Verify** `/ib/status` returns `connected: true` with the right account list.
+5. **Stop Finland**: `ssh root@213.159.68.39 "cd /home/ibbot/ib_bot && docker compose down"`. Disable `ibgateway.service` / `ib-socat.service` over there to prevent it auto-starting.
+6. **Update DNS / bookmarks** — point users to `http://100.67.188.93:8090/` (or set up a proper domain + Caddy/nginx terminator).
+
+Until step 5 is done, both instances exist. **They share NO state** — separate Postgres, separate cache. Safe to leave running in parallel as long as only Finland actually touches IB Gateway.
+
+## Where to find related docs
+
+- This file: EPYC-specific shadow-instance ops.
+- `~/Desktop/cursor-projects/ib_bot/.cursor/rules/server-setup.mdc`: live Finland production reference (still authoritative).
+- `~/Desktop/cursor-projects/life/.cursor/rules/server-portugal.mdc`: full EPYC host reference (kernels, NVIDIA, NIC, RDP, pitfalls).
+- `~/Desktop/cursor-projects/life/migration/morning-status.md`: rolling migration log.

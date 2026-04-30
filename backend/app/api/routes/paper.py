@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from app.api.schemas import (
@@ -19,11 +18,11 @@ from app.api.schemas import (
     PaperRebalanceRequest,
     PaperTradeOut,
 )
+from app.core.limiter import limiter
 from app.db.session import get_db
 from app.models.paper import PaperAccount, PaperOrder, PaperPosition, PaperTrade
 from app.models.portfolio import Portfolio, PortfolioStrategy
 from app.services.paper_trading import ensure_paper_account, fetch_prices, place_market_order
-
 
 router = APIRouter()
 
@@ -360,7 +359,8 @@ def paper_rebalance_preview(body: PaperRebalanceRequest, db: Session = Depends(g
 
 
 @router.post("/rebalance/execute", response_model=PaperRebalanceExecuteOut)
-def paper_rebalance_execute(body: PaperRebalanceRequest, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def paper_rebalance_execute(body: PaperRebalanceRequest, db: Session = Depends(get_db), request: Request = None):
     preview = paper_rebalance_preview(body, db)  # reuse logic (includes ensure_paper_account)
     acct = db.query(PaperAccount).filter(PaperAccount.id == int(body.account_id)).one()
 
@@ -412,37 +412,6 @@ def paper_rebalance_execute(body: PaperRebalanceRequest, db: Session = Depends(g
         trades=[_trade_out(t) for t in trades],
         account=_account_out(acct),
     )
-
-
-@router.post("/simulate")
-def paper_simulate(
-    portfolio_id: UUID = Body(...),
-    start_date: str = Body("2023-01-01"),
-    end_date: str | None = Body(None),
-    initial_cash: float = Body(100000.0),
-    db: Session = Depends(get_db),
-):
-    """Queue a historical simulation for a paper trading portfolio."""
-    from app.models.run import Run
-
-    run = Run(
-        type="paper_simulation",
-        params={
-            "portfolio_id": str(portfolio_id),
-            "start_date": start_date,
-            "end_date": end_date or datetime.utcnow().strftime("%Y-%m-%d"),
-            "initial_cash": initial_cash,
-        },
-        status="PENDING",
-    )
-    db.add(run)
-    db.commit()
-    db.refresh(run)
-
-    from app.worker.celery_app import celery_app
-    celery_app.send_task("paper_historical_simulation_task", kwargs={"run_id": str(run.id)})
-
-    return {"queued": True, "run_id": str(run.id)}
 
 
 # ---- P&L / Snapshot endpoints

@@ -20,6 +20,115 @@ except ImportError:
     YFINANCE_AVAILABLE = False
     yf = None
 
+import json
+import logging
+
+# Approximate S&P 500 GICS sector weights (updated periodically)
+SP500_SECTOR_WEIGHTS = {
+    "Technology": 0.30,
+    "Healthcare": 0.13,
+    "Financials": 0.13,
+    "Consumer Discretionary": 0.10,
+    "Communication Services": 0.09,
+    "Industrials": 0.08,
+    "Consumer Staples": 0.06,
+    "Energy": 0.04,
+    "Utilities": 0.03,
+    "Real Estate": 0.02,
+    "Materials": 0.02,
+}
+
+# yfinance uses different names than GICS
+_YF_SECTOR_MAP = {
+    "Technology": "Technology",
+    "Healthcare": "Healthcare",
+    "Financial Services": "Financials",
+    "Consumer Cyclical": "Consumer Discretionary",
+    "Communication Services": "Communication Services",
+    "Industrials": "Industrials",
+    "Consumer Defensive": "Consumer Staples",
+    "Energy": "Energy",
+    "Utilities": "Utilities",
+    "Real Estate": "Real Estate",
+    "Basic Materials": "Materials",
+}
+
+_sector_cache: Dict[str, str] = {}
+_sector_cache_loaded = False
+_SECTOR_CACHE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".cache", "sector_map.json")
+
+
+def _load_sector_cache() -> None:
+    global _sector_cache, _sector_cache_loaded
+    if _sector_cache_loaded:
+        return
+    try:
+        if os.path.exists(_SECTOR_CACHE_PATH):
+            with open(_SECTOR_CACHE_PATH, "r") as f:
+                _sector_cache = json.load(f)
+    except Exception:
+        pass
+    _sector_cache_loaded = True
+
+
+def _save_sector_cache() -> None:
+    try:
+        os.makedirs(os.path.dirname(_SECTOR_CACHE_PATH), exist_ok=True)
+        with open(_SECTOR_CACHE_PATH, "w") as f:
+            json.dump(_sector_cache, f)
+    except Exception:
+        pass
+
+
+def _get_ticker_sector(ticker: str) -> str:
+    """Look up GICS sector for a ticker via yfinance, with disk caching."""
+    _load_sector_cache()
+    if ticker in _sector_cache:
+        return _sector_cache[ticker]
+
+    sector = "Unknown"
+    if YFINANCE_AVAILABLE:
+        try:
+            info = yf.Ticker(ticker).info
+            yf_sector = info.get("sector", "")
+            if yf_sector:
+                sector = _YF_SECTOR_MAP.get(yf_sector, yf_sector)
+        except Exception:
+            pass
+
+    _sector_cache[ticker] = sector
+    _save_sector_cache()
+    return sector
+
+
+def _get_sectors_batch(tickers: List[str]) -> Dict[str, str]:
+    """Look up sectors for a batch of tickers, leveraging cache."""
+    _load_sector_cache()
+    result = {}
+    to_fetch = []
+    for t in tickers:
+        if t in _sector_cache:
+            result[t] = _sector_cache[t]
+        else:
+            to_fetch.append(t)
+
+    if to_fetch and YFINANCE_AVAILABLE:
+        for t in to_fetch:
+            try:
+                info = yf.Ticker(t).info
+                yf_sector = info.get("sector", "")
+                sector = _YF_SECTOR_MAP.get(yf_sector, yf_sector) if yf_sector else "Unknown"
+            except Exception:
+                sector = "Unknown"
+            _sector_cache[t] = sector
+            result[t] = sector
+        _save_sector_cache()
+    else:
+        for t in to_fetch:
+            result[t] = "Unknown"
+
+    return result
+
 
 class StrategyReplicator:
     """Replicates Quiver's strategy methodologies with proper weighting and rebalancing."""
@@ -41,7 +150,7 @@ class StrategyReplicator:
                 'weight_by': 'purchase_size',
                 'rebalance': 'weekly',
                 'filter': 'purchase',
-                'lookback_days': rules.get("lookback_days", 120),
+                'lookback_days': rules.get("lookback_days", 30),
             }
         
         if strategy_name == "Congress Long-Short":
@@ -52,7 +161,7 @@ class StrategyReplicator:
                 # Congress-level long/short tends to be size-weighted in Quiver outputs.
                 'weight_by': 'transaction_size',
                 'rebalance': 'weekly',
-                'lookback_days': rules.get("lookback_days", 120),
+                'lookback_days': rules.get("lookback_days", 30),
                 # Use broader baskets to reduce concentration/drawdown.
                 'top_longs': 20,
                 'top_shorts': 20
@@ -66,7 +175,7 @@ class StrategyReplicator:
                 'weight_by': 'count',
                 'rebalance': 'weekly',
                 'filter_chamber': 'house',
-                'lookback_days': rules.get("lookback_days", 120),
+                'lookback_days': rules.get("lookback_days", 30),
                 'top_longs': 10,
                 'top_shorts': 10
             }
@@ -78,7 +187,7 @@ class StrategyReplicator:
                 'weight_by': 'sale_size',
                 'rebalance': 'weekly',
                 'filter': 'sale',
-                'lookback_days': rules.get("lookback_days", 120),
+                'lookback_days': rules.get("lookback_days", 30),
             }
         
         # Congressional Committee Strategies
@@ -88,7 +197,7 @@ class StrategyReplicator:
                 'weight_by': 'purchase_size',
                 'rebalance': 'weekly',
                 'filter': 'purchase',
-                'lookback_days': rules.get("lookback_days", 120),
+                'lookback_days': rules.get("lookback_days", 30),
                 'top_n': 10
             }
         
@@ -96,13 +205,9 @@ class StrategyReplicator:
         if strategy_name in ["Nancy Pelosi", "Dan Meuser", "Josh Gottheimer", "Donald Beyer", "Sheldon Whitehouse"]:
             return {
                 'type': 'portfolio_mirror',
-                'rebalance': 'on_trade',  # Rebalance when new trades filed
-                # Quiver describes these as portfolio mirrors, rebalanced on trade/report.
-                # Match that by treating the portfolio as an equal-weight basket of
-                # currently-held tickers inferred from the latest buy/sell per ticker.
-                'weighting': 'equal',
+                'rebalance': 'on_trade',
+                'weighting': 'position_size',
                 'mirror_mode': 'latest_action',
-                # Use a long lookback so we can infer "currently held" from history.
                 'lookback_days': 3650
             }
         
@@ -436,19 +541,14 @@ class StrategyReplicator:
     def _portfolio_mirror(self, data: pd.DataFrame, config: Dict) -> Dict[str, float]:
         """
         Mirror a portfolio (politician or hedge fund).
-        Uses reported position sizes.
+        Supports position-size weighting (proportional to purchase amounts)
+        and 13F value weighting.
         """
         if data.empty or 'Ticker' not in data.columns:
             return {}
-        
-        # Politician portfolio mirrors: infer current holdings from the latest action per ticker,
-        # then equal-weight the inferred holdings.
-        #
-        # This is a closer match to Quiver's stated methodology ("mirror the portfolio" and
-        # rebalance when new trades/reports are filed) than summing trade amounts.
-        if str(config.get("weighting", "")).lower() == "equal" and str(config.get("mirror_mode", "")).lower() == "latest_action":
+
+        if str(config.get("mirror_mode", "")).lower() == "latest_action":
             df = data.copy()
-            # Determine best date column for ordering.
             date_col = None
             for col in ["ReportDate", "TransactionDate", "Date", "LastUpdate"]:
                 if col in df.columns:
@@ -460,18 +560,39 @@ class StrategyReplicator:
                     df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
                 df = df.dropna(subset=[date_col])
                 if not df.empty:
-                    # Keep latest row per ticker.
                     df = df.sort_values(date_col, ascending=False)
                     latest = df.drop_duplicates(subset=["Ticker"], keep="first")
                     tx = latest["Transaction"].astype(str).str.lower()
-                    # Treat buys/purchases as holding; sells as not holding.
                     held = latest[tx.str.contains("purchase|buy", na=False)]
                     tickers = held["Ticker"].dropna().astype(str).unique().tolist()
                     if tickers:
+                        weighting = str(config.get("weighting", "equal")).lower()
+                        if weighting == "position_size":
+                            amounts: Dict[str, float] = {}
+                            for t in tickers:
+                                t_rows = df[df["Ticker"] == t]
+                                if "Transaction" in t_rows.columns:
+                                    t_buys = t_rows[
+                                        t_rows["Transaction"].astype(str).str.lower()
+                                        .str.contains("purchase|buy", na=False)
+                                    ]
+                                else:
+                                    t_buys = t_rows
+                                if "Amount" in t_buys.columns:
+                                    amt = pd.to_numeric(t_buys["Amount"], errors="coerce").sum()
+                                    amounts[t] = max(float(amt) if not pd.isna(amt) else 0.0, 0.0)
+                                elif "Range" in t_buys.columns:
+                                    amounts[t] = max(
+                                        float(t_buys["Range"].apply(self._parse_amount_range).sum()), 0.0
+                                    )
+                                else:
+                                    amounts[t] = 1.0
+                            total = sum(amounts.values())
+                            if total > 0:
+                                return {t: a / total for t, a in amounts.items()}
                         w = 1.0 / len(tickers)
                         return {t: w for t in tickers}
 
-            # If we can't infer action, fall back to equal-weight across tickers present.
             tickers = df["Ticker"].dropna().astype(str).unique().tolist()
             if tickers:
                 w = 1.0 / len(tickers)
@@ -634,12 +755,47 @@ class StrategyReplicator:
     
     def _sector_weighted(self, data: pd.DataFrame, config: Dict) -> Dict[str, float]:
         """
-        Sector-weighted to match benchmark (e.g., S&P 500).
-        This is complex and would require sector data - simplified version here.
+        Sector-weighted to match S&P 500 sector allocation.
+
+        Methodology (matches Quiver's DC Insider):
+        1. Map each ticker to its GICS sector via yfinance (cached to disk)
+        2. Assign each occupied sector its S&P 500 weight, renormalized
+        3. Equal-weight tickers within each sector
         """
-        # This would require fetching sector allocations from benchmark
-        # For now, use equal weight as approximation
-        return self._equal_weight(data, config)
+        if data.empty or 'Ticker' not in data.columns:
+            return {}
+
+        tickers = data['Ticker'].unique().tolist()
+        if not tickers:
+            return {}
+
+        ticker_sectors = _get_sectors_batch(tickers)
+
+        by_sector: Dict[str, List[str]] = {}
+        for t in tickers:
+            s = ticker_sectors.get(t, "Unknown")
+            by_sector.setdefault(s, []).append(t)
+
+        raw_allocs: Dict[str, float] = {}
+        for sector in by_sector:
+            target = SP500_SECTOR_WEIGHTS.get(sector)
+            if target is not None:
+                raw_allocs[sector] = target
+            else:
+                raw_allocs[sector] = 0.02
+
+        alloc_total = sum(raw_allocs.values())
+        if alloc_total <= 0:
+            return self._equal_weight(data, config)
+
+        weights: Dict[str, float] = {}
+        for sector, sector_tickers in by_sector.items():
+            sector_alloc = raw_allocs[sector] / alloc_total
+            per_ticker = sector_alloc / len(sector_tickers)
+            for t in sector_tickers:
+                weights[t] = per_ticker
+
+        return weights
     
     @staticmethod
     def _parse_amount_range(range_str: str) -> float:

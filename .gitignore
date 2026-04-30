@@ -69,3 +69,7 @@ clientportal.gw.zip
 frontend/node_modules/
 frontend/.next/
 frontend/.env*
+
+# auto-added 2026-04-30 to stop tracking IB price cache
+.cache/
+*.pkl

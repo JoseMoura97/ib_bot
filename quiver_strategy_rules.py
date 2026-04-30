@@ -22,7 +22,7 @@ class QuiverStrategyRules:
             "rebalance_frequency": "weekly",
             "rebalance_day": "monday",
             "universe": "all_congress",
-            "lookback_days": 120,  # Look at recent 120 days of purchases
+            "lookback_days": 30,
         },
         
         "Congress Sells": {
@@ -32,20 +32,20 @@ class QuiverStrategyRules:
             "rebalance_frequency": "weekly",
             "rebalance_day": "monday",
             "universe": "all_congress",
-            "lookback_days": 120,
+            "lookback_days": 30,
         },
         
         "Congress Long-Short": {
             "type": "long_short",
-            "long_allocation": 1.30,  # 130% long
-            "short_allocation": 0.30,  # 30% short
+            "long_allocation": 1.30,
+            "short_allocation": 0.30,
             "long_selection": "top_buys",
             "short_selection": "top_sells",
             "weighting": "transaction_size",
             "rebalance_frequency": "weekly",
             "rebalance_day": "monday",
             "universe": "all_congress",
-            "lookback_days": 120,
+            "lookback_days": 30,
         },
         
         # Individual Politicians (Event-Driven)
@@ -97,7 +97,7 @@ class QuiverStrategyRules:
             "rebalance_frequency": "weekly",
             "rebalance_day": "monday",
             "committee": "House Transportation & Infrastructure",
-            "lookback_days": 120,
+            "lookback_days": 30,
         },
         
         # Long-Short Strategies
@@ -110,18 +110,18 @@ class QuiverStrategyRules:
             "weighting": "transaction_size",
             "rebalance_frequency": "weekly",
             "rebalance_day": "monday",
-            "lookback_days": 120,
+            "lookback_days": 30,
         },
         
         # Alternative Data - Lobbying
         "Lobbying Spending Growth": {
             "type": "alternative_data",
             "data_source": "lobbying",
-            "selection": "highest_qoq_growth",  # Quarter-over-quarter growth
-            "num_holdings": 20,
+            "selection": "highest_qoq_growth",
+            "num_holdings": 10,
             "weighting": "equal",
             "rebalance_frequency": "monthly",
-            "rebalance_day": 1,  # First day of month
+            "rebalance_day": 1,
         },
         
         "Top Lobbying Spenders": {

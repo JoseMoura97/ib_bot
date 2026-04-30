@@ -12,6 +12,15 @@
 - Use clear, descriptive variable names
 - Add docstrings for public methods
 
+## Security
+- NEVER hardcode secrets, passwords, API keys, or TOTP codes in source files
+- All secrets go in `.env` (gitignored) and are read via `app.core.config.Settings`
+- API endpoints (except `/health`, `/docs`) are protected by `API_KEY` middleware when configured
+- Rate limiting is enforced via shared `app.core.limiter.limiter` -- import from there, do not create new `Limiter` instances
+- When adding new sensitive endpoints, add tighter `@limiter.limit()` decorators
+
 ## Testing
 - Run verification after major changes
 - Use existing test files in the project
+- 3 test files have pre-existing import errors (repo-root modules not on path): `test_edgar_13f_fallback.py`, `test_plot_data_cache.py`, `test_rebalancing_engine_regressions.py` -- skip with `--ignore` when running locally
+- Rate limiting is auto-disabled in test fixtures via `limiter.enabled = False` in conftest.py

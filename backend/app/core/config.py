@@ -42,5 +42,8 @@ class Settings(BaseSettings):
     telegram_bot_token: str | None = Field(default=None, validation_alias="TELEGRAM_BOT_TOKEN")
     telegram_chat_id: str | None = Field(default=None, validation_alias="TELEGRAM_CHAT_ID")
 
+    api_key: str | None = Field(default=None, validation_alias="API_KEY")
+    cors_origins: str = Field(default="", validation_alias="CORS_ORIGINS")
+
 
 settings = Settings()  # singleton

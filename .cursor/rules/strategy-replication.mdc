@@ -1,0 +1,75 @@
+---
+description: Strategy replication methodology, backtest engine architecture, and Quiver alignment decisions
+globs: strategy_replicator.py,quiver_engine.py,quiver_strategy_rules.py,quiver_signals.py,rebalancing_backtest_engine.py,generate_plot_data.py,backtest_engine.py
+alwaysApply: false
+---
+
+# Strategy Replication Architecture
+
+## Data Flow
+
+```
+QuiverQuant API / SEC EDGAR → quiver_engine.py (raw data + metadata)
+                            → strategy_replicator.py (weighting logic)
+                            → rebalancing_backtest_engine.py (time-series backtest)
+                            → generate_plot_data.py → .cache/plot_data.json
+```
+
+## Key Files
+
+| File | Role |
+|------|------|
+| `quiver_engine.py` | Fetches raw data from Quiver API, SEC EDGAR, bulk congress. Handles time-travel filtering (`_get_raw_data_with_metadata_at_date`) |
+| `strategy_replicator.py` | Converts raw data → ticker weights. Strategy-specific logic (congressional, portfolio mirror, sector-weighted, long-short, 13F) |
+| `quiver_strategy_rules.py` | Strategy metadata: rebalance frequency, lookback days, weighting method. Generates rebalance date schedules |
+| `rebalancing_backtest_engine.py` | Orchestrates the full backtest: generates rebalance events, fetches prices, applies weights to daily returns |
+| `generate_plot_data.py` | Runs all 19 strategies, normalizes equity curves, outputs `plot_data.json` for the dashboard |
+| `backtest_engine.py` | Price fetching layer (yfinance / IB / cache). `auto_adjust=True` includes dividends |
+
+## Strategy Types & Weighting
+
+| Type | Strategies | Weighting | Rebalance |
+|------|-----------|-----------|-----------|
+| `congressional_weighted` | Congress Buys, Sells, Committees | Purchase/sale size (from Range midpoint) | Weekly (Mon) |
+| `long_short` | Congress L/S, House L/S | 130/30 by transaction size | Weekly (Mon) |
+| `portfolio_mirror` | Pelosi, Meuser, Gottheimer, Beyer, Whitehouse | Position-size (cumulative purchase amounts) | On-trade (ReportDate) |
+| `portfolio_mirror` (13F) | Burry, Ackman, Marks | 13F Value column, gross-normalized | Quarterly (actual filing dates from EDGAR) |
+| `sector_weighted` | DC Insider | S&P 500 sector-matched via yfinance lookups | Monthly |
+| `equal_weighted` | Lobbying Growth, Top Lobbying | Equal across top N | Monthly |
+| `value_weighted` | Gov Contracts | Contract value with EMA decay | Monthly |
+
+## Calibration Decisions (Quiver Alignment)
+
+These were chosen to match Quiver's published methodology as closely as possible:
+
+- **Lookback: 30 days** for all weekly congressional strategies. Was 120, changed to 30 to match Quiver's "most recently purchased/sold" intent and `quiver_engine.py` meta.
+- **Position-size weighting** for politician mirrors. Was equal-weight, changed to weight by cumulative purchase amounts from disclosures. Quiver mirrors actual portfolio sizes.
+- **Sector weighting** for DC Insider uses real GICS sector lookups (cached to `.cache/sector_map.json`). Targets S&P 500 sector allocation. Falls back to equal-weight if yfinance unavailable.
+- **S&P 500 sector weights** are hardcoded in `SP500_SECTOR_WEIGHTS` dict in `strategy_replicator.py`. Update periodically.
+- **Lobbying Spending Growth**: 10 holdings (not 20).
+- **Transaction costs**: 0 bps (matches Quiver's published backtests).
+- **Missing ticker policy**: "cash" for cache-only pricing, "renormalize" otherwise.
+
+## Known Sources of Remaining Divergence from Quiver
+
+1. **Congressional amount parsing**: Disclosures report ranges ($1,001-$15,000); we use midpoint. Unparseable defaults to $15,000.
+2. **Delisted tickers**: yfinance returns empty data; weight redistributed to survivors (survivorship bias).
+3. **Dividend treatment**: `auto_adjust=True` includes reinvestment (~1.5%/yr boost for dividend stocks).
+4. **Split detection heuristic**: Zeros out returns where price ratio matches integer factors 2-200 (can suppress real moves).
+5. **ReportDate vs TransactionDate**: Politician mirrors use ReportDate (30-45 day delay); Quiver may differ.
+6. **13F rebalance timing**: Uses actual SEC filing dates when available, falls back to 45-day offset.
+
+## Regenerating Plot Data
+
+```bash
+# Local (takes ~1 hour, needs QUIVER_API_KEY in .env):
+python generate_plot_data.py
+
+# Cache-only mode (faster, no API calls, uses cached prices):
+python generate_plot_data.py --cache-only
+
+# Then SCP to server:
+scp .cache/plot_data.json root@213.159.68.39:/home/ibbot/ib_bot/.cache/plot_data.json
+```
+
+The sector cache at `.cache/sector_map.json` persists yfinance sector lookups. First run is slow (~1s per unknown ticker); subsequent runs are instant.

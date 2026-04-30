@@ -104,7 +104,7 @@ def generate_plot_data(use_cache_only: bool = False):
     print("\nFetching SPY benchmark...")
     try:
         import yfinance as yf
-        benchmark_start = "2014-01-01"
+        benchmark_start = "2008-01-01"
         spy = yf.download("SPY", start=benchmark_start, progress=False)
         if spy is not None and not spy.empty:
             close_col = 'Close'

@@ -5,18 +5,18 @@ import time
 from typing import Any, Iterable
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.limiter import limiter
 from app.db.session import get_db
 from app.models.ib_audit import IBOrder, IBTrade, LiveExecutionRequest, LiveRebalanceAudit
 from app.models.portfolio import Portfolio, PortfolioStrategy
 from app.services.ib_worker import call_ib
 from app.services.market_calendar import market_is_open
 from app.services.paper_trading import PriceQuote, fetch_last_close_price, fetch_prices
-
 
 router = APIRouter()
 
@@ -26,6 +26,7 @@ def live_status():
     return {
         "enabled": bool(settings.enable_live_trading),
         "dry_run": bool(settings.live_dry_run),
+        "dry_run_blocks_execute": bool(settings.live_dry_run),
         "halted": bool(settings.trading_halt),
         "ib_host": settings.ib_host,
         "ib_port": settings.ib_port,
@@ -575,13 +576,20 @@ def live_rebalance_preview(body: LiveRebalanceRequest, db: Session = Depends(get
 
 
 @router.post("/rebalance/execute", response_model=LiveRebalancePreviewOut)
+@limiter.limit("5/minute")
 def live_rebalance_execute(
+    request: Request,
     body: LiveRebalanceRequest,
     db: Session = Depends(get_db),
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ):
     if not settings.enable_live_trading:
         raise HTTPException(status_code=403, detail="Live trading disabled (set ENABLE_LIVE_TRADING=1)")
+    if settings.live_dry_run:
+        raise HTTPException(
+            status_code=403,
+            detail="Dry-run mode active (LIVE_DRY_RUN=true). Use POST /live/rebalance/dry-run instead.",
+        )
     if not body.confirm:
         raise HTTPException(status_code=400, detail="confirm must be true to execute live rebalance")
 
@@ -746,6 +754,14 @@ def live_rebalance_execute(
                 max_orders=body.max_orders,
                 allow_short=body.allow_short,
             )
+            from app.services.alerting import send_rebalance_alert
+            completed = len([r for r in results if not r.get("error")])
+            send_rebalance_alert(
+                "INCOMPLETE",
+                f"Account: {body.account_id}\n"
+                f"Error: {detail}\n"
+                f"Completed: {completed} / {len(preview.legs)} legs",
+            )
             if idem_row is not None:
                 idem_row.status = "ERROR"
                 idem_row.error = str(detail)
@@ -774,6 +790,19 @@ def live_rebalance_execute(
             idem_row.result = preview.model_dump(mode="json")
             db.add(idem_row)
             db.commit()
+        from app.services.alerting import send_rebalance_alert
+        legs_summary = ", ".join(
+            f"{l.side} {abs(int(l.delta_quantity))} {l.ticker}" for l in preview.legs[:5]
+        )
+        if len(preview.legs) > 5:
+            legs_summary += f" (+{len(preview.legs) - 5} more)"
+        send_rebalance_alert(
+            "OK",
+            f"Account: {body.account_id}\n"
+            f"Portfolio: {body.portfolio_id}\n"
+            f"Notional: ${preview.estimated_notional:,.2f}\n"
+            f"Orders: {legs_summary}",
+        )
         return preview
     except HTTPException as e:
         _audit_event(
@@ -900,21 +929,28 @@ def pre_trade_checklist(
     # 2. Trading halt
     checks.append({"check": "trading_not_halted", "pass": not settings.trading_halt, "detail": ""})
 
-    # 3. Market open
+    # 3. Dry-run mode off
+    checks.append({
+        "check": "dry_run_disabled",
+        "pass": not settings.live_dry_run,
+        "detail": "LIVE_DRY_RUN must be false to execute real orders",
+    })
+
+    # 4. Market open
     try:
         is_open, reason = market_is_open(settings.market_calendar)
         checks.append({"check": "market_open", "pass": is_open, "detail": reason or ""})
     except Exception as e:
         checks.append({"check": "market_open", "pass": False, "detail": str(e)})
 
-    # 4. IB connection
+    # 5. IB connection
     try:
         call_ib(lambda ib: True, timeout=5.0)
         checks.append({"check": "ib_connected", "pass": True, "detail": ""})
     except Exception as e:
         checks.append({"check": "ib_connected", "pass": False, "detail": str(e)})
 
-    # 5. Account NLV within range
+    # 6. Account NLV within range
     try:
         nlv = _account_nlv(body.account_id)
         nlv_ok = nlv is not None and nlv > 0
@@ -923,7 +959,7 @@ def pre_trade_checklist(
     except Exception as e:
         checks.append({"check": "account_nlv_valid", "pass": False, "detail": str(e)})
 
-    # 6. Total order value < max % NLV
+    # 7. Total order value < max % NLV
     try:
         preview = _build_preview(db, body)
         nlv_val = nlv if nlv else 0
@@ -936,7 +972,7 @@ def pre_trade_checklist(
     except Exception as e:
         checks.append({"check": "total_order_within_limit", "pass": False, "detail": str(e)})
 
-    # 7. Circuit breaker
+    # 8. Circuit breaker
     try:
         _check_circuit_breaker(
             db,
@@ -949,7 +985,7 @@ def pre_trade_checklist(
     except HTTPException as e:
         checks.append({"check": "circuit_breaker_ok", "pass": False, "detail": str(e.detail)})
 
-    # 8. Daily loss limit
+    # 9. Daily loss limit
     try:
         now_for_dl = datetime.utcnow()
         today_start = datetime(now_for_dl.year, now_for_dl.month, now_for_dl.day)
@@ -976,26 +1012,31 @@ def pre_trade_checklist(
     except Exception as e:
         checks.append({"check": "daily_loss_within_limit", "pass": True, "detail": f"skipped: {e}"})
 
-    # 9. Position correlation check
+    # 10. Portfolio concentration check
     try:
         if preview and preview.legs:
-            tickers = [leg.ticker for leg in preview.legs if leg.side == "BUY"]
-            if len(tickers) >= 2:
+            buy_legs = [l for l in preview.legs if l.side == "BUY"]
+            if len(buy_legs) >= 2:
+                total_buy_notional = sum(abs(l.delta_quantity) * l.price for l in buy_legs)
+                max_single = max(abs(l.delta_quantity) * l.price for l in buy_legs)
+                concentration = max_single / total_buy_notional if total_buy_notional > 0 else 0
+                conc_ok = concentration <= 0.50
                 checks.append({
-                    "check": "position_correlation",
-                    "pass": True,
-                    "detail": f"{len(tickers)} buy tickers, correlation check passed",
+                    "check": "portfolio_concentration",
+                    "pass": conc_ok,
+                    "detail": f"max single position is {concentration * 100:.0f}% of total buy notional"
+                              f" ({len(buy_legs)} tickers)",
                 })
             else:
                 checks.append({
-                    "check": "position_correlation",
+                    "check": "portfolio_concentration",
                     "pass": True,
-                    "detail": f"only {len(tickers)} buy ticker(s), skipped",
+                    "detail": f"only {len(buy_legs)} buy ticker(s), skipped",
                 })
         else:
-            checks.append({"check": "position_correlation", "pass": True, "detail": "no preview legs"})
+            checks.append({"check": "portfolio_concentration", "pass": True, "detail": "no preview legs"})
     except Exception as e:
-        checks.append({"check": "position_correlation", "pass": True, "detail": f"skipped: {e}"})
+        checks.append({"check": "portfolio_concentration", "pass": False, "detail": str(e)})
 
     all_pass = all(c["pass"] for c in checks)
     return {"all_pass": all_pass, "checks": checks}
