@@ -186,6 +186,7 @@ class _IbWorker:
             asyncio.set_event_loop(asyncio.new_event_loop())
 
         last_epoch = -1
+        _retry_delay = 0.5  # exponential backoff state for failed connections
         while not self._stop.is_set():
             # If connection settings changed, force a reconnect.
             with self._lock:
@@ -193,13 +194,16 @@ class _IbWorker:
             if epoch != last_epoch:
                 self._disconnect()
                 last_epoch = epoch
+                _retry_delay = 0.5  # reset backoff on explicit reconfigure
 
             # Keep connection alive.
             try:
                 self._ensure_connected()
+                _retry_delay = 0.5  # reset backoff on success
             except HTTPException:
-                # Connection down; wait a bit and retry
-                time.sleep(0.5)
+                # Connection down; exponential backoff up to 30s to avoid log spam
+                time.sleep(_retry_delay)
+                _retry_delay = min(_retry_delay * 2, 30.0)
 
             # Process at most one task per loop so we pump frequently.
             try:

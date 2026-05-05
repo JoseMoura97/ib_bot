@@ -1,247 +1,162 @@
-# Quick Start Guide - Strategy Replication
+# IB Bot — Quick Start (Docker Stack)
 
-## Installation
+**Business purpose:** Automated IB (Interactive Brokers) trading bot that replicates
+Quiver Quant strategies (congressional trades, lobbying, 13F filings). FastAPI backend +
+Next.js dashboard + Celery workers. Runs paper and live rebalancing on a schedule.
 
-No new dependencies needed! Uses existing packages:
-- `pandas`, `numpy` - Data handling
-- `yfinance` - Historical price data
-- `quiverquant` - Quiver API
-- `requests` - Direct API calls
+---
 
-## Basic Usage
+## Requirements
 
-### 1. Run a Single Strategy Backtest
+- Docker + Docker Compose v2
+- A `.env` file in the project root (copy from `.env.example`, fill in secrets)
+- IB Gateway running (for live/paper trading — see below)
+- `QUIVER_API_KEY` for strategy signals (without it, only the 3 free 13F strategies work)
 
-```python
-from quiver_signals import QuiverSignals
-from backtest_engine import BacktestEngine
-import os
+---
 
-# Initialize
-api_key = os.getenv('QUIVER_API_KEY')
-qs = QuiverSignals(api_key)
+## Local / EPYC dev (shadow, no live trading)
 
-# Get signals
-tickers = qs.engine.get_signals("Congress Buys")
+```bash
+cd ~/Desktop/cursor-projects/ib_bot
 
-# Backtest (equal-weight)
-engine = BacktestEngine(initial_capital=100000)
-results = engine.run_equal_weight_backtest(
-    tickers,
-    start_date="2024-01-01",
-    end_date="2025-01-01"
-)
+# First time — copy and fill secrets
+cp .env.example .env
+# Set at minimum: QUIVER_API_KEY, API_KEY (optional but recommended)
 
-print(f"Return: {results['total_return']:.2%}")
-print(f"Sharpe: {results['sharpe_ratio']:.2f}")
+# Start everything (EPYC override avoids port conflicts with Grafana/host PG/host Redis)
+COMPOSE='-f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.epyc.yml'
+docker compose $COMPOSE up -d --build
+
+# Health check
+curl http://localhost:8001/health        # API direct
+curl http://localhost:8090/api/health   # via nginx
+
+# Dashboard UI
+http://100.67.188.93:8090/
 ```
 
-### 2. Run Weighted Strategy Backtest
+Ports on EPYC:
+| Service | Host port |
+|---------|-----------|
+| nginx (UI + /api proxy) | 8090 |
+| API (direct) | 8001 |
+| DB/Redis | internal only |
 
-```python
-from strategy_replicator import StrategyReplicator
+---
 
-# Initialize replicator
-replicator = StrategyReplicator(initial_capital=100000)
+## Production (Finland server, `213.159.68.39`)
 
-# Get raw data with transaction amounts
-raw_data = qs.engine._get_raw_data_with_metadata("Lobbying Spending Growth")
+```bash
+# From local: commit + push, then:
+ssh root@213.159.68.39 "cd /home/ibbot/ib_bot && \
+  GIT_TERMINAL_PROMPT=0 git pull origin portfolios-builder-allocations-ui && \
+  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build"
 
-# Run weighted backtest
-results = replicator.run_strategy_backtest(
-    strategy_name="Lobbying Spending Growth",
-    raw_signal_data=raw_data,
-    start_date="2024-01-01",
-    end_date="2025-01-01"
-)
-
-print(f"Return: {results['total_return']:.2%}")
-print(f"Strategy Type: {results['strategy_type']}")
-print(f"Top 5 weights:")
-for ticker, weight in list(results['weights'].items())[:5]:
-    print(f"  {ticker}: {weight:.2%}")
+# Or use the deploy script:
+ssh root@213.159.68.39 "/home/ibbot/deploy.sh"
 ```
 
-### 3. Compare All Strategies vs Quiver
+Dashboard: `http://213.159.68.39`
 
-```python
-# Just run the comparison script
-python compare_backtests.py
+---
+
+## .env — minimum required values
+
+```bash
+# Copy the example, then fill in:
+QUIVER_API_KEY=<your key from quiverquant.com>
+API_KEY=<random secret for UI/API auth, or leave blank for no auth>
+
+# IB Gateway (Finland production):
+IB_HOST=172.18.0.1
+IB_PORT=4003         # socat proxy → IB Gateway 4001
+
+# Trading safety (keep false until paper is validated):
+ENABLE_LIVE_TRADING=false
+LIVE_DRY_RUN=true
 ```
 
-Output shows all 22 strategies with:
-- Quiver's published 1Y return
-- Our backtest 1Y return
-- Sharpe ratios
-- Status (working/no signals/error)
+All other values have sane defaults in `.env.example`.
 
-### 4. Compare Equal-Weight vs Weighted
+---
 
-```python
-# Run comprehensive comparison
-python final_comparison.py
+## Database migrations
+
+```bash
+docker compose exec api alembic upgrade head
+# (runs automatically on container startup via docker-entrypoint.sh)
 ```
 
-Shows side-by-side:
-- Equal-weight results
-- Weighted results
-- Improvement
-- Quiver metrics
+---
 
-## Available Strategies
+## IB Gateway (for live/paper trading)
 
-### Works Without API Key (via SEC EDGAR) - 3 strategies
-- **Michael Burry** ✓ - Scion Asset Management 13F
-- **Bill Ackman** ✓ - Pershing Square 13F  
-- **Howard Marks** ✓ - Oaktree Capital 13F
+1. IB Gateway 10.37 runs on the host (not in Docker), headless via Xvfb.
+2. Start it: `DISPLAY=:1 nohup /opt/ibgateway/ibgateway > /tmp/gw.log 2>&1 &`
+3. Login via VNC at `:5900` with TOTP from `/opt/ibc/auto2fa.py`.
+4. Set `IB_HOST=172.18.0.1`, `IB_PORT=4003` in `.env`, recreate api/worker/beat.
+5. Enable API: Gateway → Configure → Settings → API Settings → port 4001.
 
-### Requires Quiver API Key - 18 strategies
+Full details: `.cursor/rules/server-setup.mdc`
 
-#### Congressional (11 strategies)
-- Congress Buys
-- Congress Sells
-- Congress Long-Short
-- Dan Meuser
-- Nancy Pelosi
-- Josh Gottheimer
-- Donald Beyer
-- Sheldon Whitehouse
-- Transportation & Infrastructure Committee
-- Energy and Commerce Committee
-- Homeland Security Committee
+---
 
-#### Lobbying & Contracts (4 strategies)
-- Lobbying Spending Growth
-- Top Lobbying Spenders
-- Top Gov Contract Recipients
-- Sector Weighted DC Insider
+## Scheduled tasks (Celery Beat, UTC)
 
-#### Other (3 strategies)
-- U.S. House Long-Short
-- Insider Purchases
-- Analyst Buys
+| Task | Schedule | Purpose |
+|------|----------|---------|
+| `refresh_plot_data_nightly` | 02:00 daily | Regenerate strategy equity curves |
+| `refresh_validation_weekly` | 03:00 Sunday | Backtest all 20 strategies vs Quiver |
+| `shadow_preview_daily` | 06:00 daily | Preview live rebalancing targets |
+| `paper_rebalance_daily` | 15:00 daily | Auto-rebalance paper portfolios |
+| `paper_snapshot_daily` | 21:30 daily | Snapshot paper P&L |
 
-### Requires Premium Subscription - 1 strategy
-- Wall Street Conviction
+---
 
-**Total: 22 strategies**
-- **3 work without any API key** (via free SEC EDGAR API)
-- **18 require QUIVER_API_KEY** environment variable
-- **1 requires premium Quiver subscription**
+## Common ops
 
-## Strategy Configurations
+```bash
+COMPOSE='-f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.epyc.yml'
 
-Each strategy automatically uses its proper methodology:
+# Status
+docker compose $COMPOSE ps
 
-### Congress Buys
-```python
-{
-    'type': 'congressional_weighted',
-    'top_n': 10,
-    'weight_by': 'purchase_size',
-    'rebalance': 'weekly'
-}
+# Logs
+docker compose $COMPOSE logs -f api
+docker compose $COMPOSE logs -f worker
+
+# Force-recreate after .env change
+docker compose $COMPOSE up -d --force-recreate api worker beat
+
+# Emergency halt
+echo "TRADING_HALT=true" >> .env && docker compose $COMPOSE restart api worker
+
+# Trigger plot data refresh manually
+docker exec ib_bot-api-1 curl -s -X POST 'http://localhost:8000/plot-data/refresh?force=true'
+
+# DB shell
+docker compose $COMPOSE exec db psql -U ibbot -d ibbot
 ```
 
-### Congress Long-Short
-```python
-{
-    'type': 'long_short',
-    'long_weight': 1.30,  # 130% long
-    'short_weight': 0.30,  # 30% short
-    'rebalance': 'weekly'
-}
-```
+---
 
-### Lobbying Spending Growth
-```python
-{
-    'type': 'equal_weighted',
-    'top_n': 10,
-    'sort_by': 'lobbying_growth',
-    'rebalance': 'monthly'
-}
-```
+## What Jibas needs to provide
 
-## Key Files
+- [ ] `QUIVER_API_KEY` — from quiverquant.com (required for 18/22 strategies)
+- [ ] IB Gateway login — manual 2FA via VNC; `jibas.bot` (U15721390) is the main account
+- [ ] `API_KEY` — any random string; set the same in `.env` and frontend `INTERNAL_API_KEY`
+- [ ] `POSTGRES_PASSWORD` — change from default `ibbot` for production
+- [ ] `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` — optional, for trade alerts
 
-| File | Purpose |
-|------|---------|
-| `quiver_signals.py` | Strategy definitions & metadata |
-| `quiver_engine.py` | Quiver API integration |
-| `backtest_engine.py` | Equal-weight backtesting |
-| `strategy_replicator.py` | Weighted strategy replication |
-| `compare_backtests.py` | Compare all strategies vs Quiver |
-| `final_comparison.py` | Equal vs weighted comparison |
-| `test_backtests.py` | Comprehensive test suite |
+---
 
-## Performance Comparison
+## Known gotchas
 
-### Equal-Weight (Current)
-- Simple: All tickers get equal allocation
-- Fast: No extra data processing
-- Works: But may not match Quiver's actual methodology
+- IB Gateway **rejects non-localhost connections** from Docker. Use socat proxy on port 4003.
+- Do **NOT** set `SecondFactorDevice` in IBC config — causes lockout from rapid failed 2FA.
+- After ~5 failed 2FA attempts, IB locks the account for ~24h.
+- EPYC shadow env uses `IB_PORT=4999` (intentionally unreachable) — IB connection errors in logs are expected.
+- `.cache/plot_data.json` must be seeded locally and SCP'd to server; on-server generation fails for delisted tickers.
 
-### Weighted (New)
-- Accurate: Uses transaction sizes, contract values
-- Smart: Strategy-specific weighting logic
-- Better: +1.58% improvement on Lobbying Growth
-
-## Results at a Glance
-
-| Strategy | Quiver 1Y | Our Equal | Our Weighted | Improvement |
-|----------|-----------|-----------|--------------|-------------|
-| Lobbying Growth | 18.23% | 24.28% | **25.86%** | **+1.58%** ✓ |
-| Congress Sells | 3.16% | 3.55% | 3.55% | Close match ✓ |
-| Dan Meuser | 22.39% | 27.52% | 27.52% | Outperforming ✓ |
-
-## Common Issues & Solutions
-
-### Issue: "No signals"
-**Cause**: Strategy requires premium API subscription
-**Solution**: Use strategies that work with your API tier
-
-### Issue: "Type errors in Amount column"
-**Cause**: Already fixed! Amount columns now properly converted to numeric
-**Solution**: Use latest code (already implemented)
-
-### Issue: "Weighted doesn't improve results"
-**Cause**: Strategy uses official API that only returns current tickers
-**Solution**: Use strategies with full transaction history (Lobbying, Individual Politicians)
-
-## Best Practices
-
-1. **Start with working strategies**: Use "Congress Buys" or "Dan Meuser" for testing
-2. **Check for Amount column**: Strategies with transaction amounts benefit most from weighting
-3. **Use longer periods**: Test 1-3 years for more stable results
-4. **Compare to benchmark**: Use SPY comparison to measure alpha
-5. **Understand limitations**: Current holdings ≠ historical holdings
-
-## Next Steps
-
-1. **Try it**: Run `python final_comparison.py`
-2. **Explore**: Test different strategies
-3. **Optimize**: Adjust parameters in strategy configs
-4. **Extend**: Add your own custom strategies
-
-## Support
-
-- **Documentation**: See `STRATEGY_REPLICATION_GUIDE.md` for details
-- **Results**: See `REPLICATION_COMPLETE.md` for full analysis
-- **Code**: All source files are well-commented
-
-## Summary
-
-✅ 22 strategies with full metadata
-✅ 3 strategies work without API key (via SEC EDGAR: Michael Burry, Bill Ackman, Howard Marks)
-✅ 18 strategies work with QUIVER_API_KEY set
-✅ Equal-weight backtesting proven
-✅ Weighted replication implemented  
-✅ SEC EDGAR integration for free 13F hedge fund replication
-✅ Production-ready system
-
-**To get started:**
-1. For 13F hedge fund strategies (Burry, Ackman, Marks) - works immediately
-2. For congressional/lobbying strategies - set `QUIVER_API_KEY` environment variable
-
-**You're ready to replicate Quiver strategies locally!**
+Full ops reference: `docs/RUNBOOK.md` and `.cursor/rules/server-setup.mdc`
