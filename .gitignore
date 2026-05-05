@@ -54,6 +54,9 @@ env/
 .env
 .env.local
 
+# Conductor PM context (local / per-machine)
+.conductor/
+
 # Server credentials (never commit)
 infra/scripts/askpass.cmd
 
