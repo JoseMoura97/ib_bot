@@ -24,6 +24,15 @@ import argparse
 import json
 import os
 import sys
+
+# Load .env for CLI invocations. Non-destructive — anything already exported
+# in the shell wins, so containerized runs that pass env explicitly are
+# unaffected.
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
 import time
 import traceback
 from dataclasses import asdict, dataclass, field
@@ -39,7 +48,7 @@ ROOT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT_DIR))
 
 from backtest_engine import BacktestEngine
-from metrics_utils import RegressionStats, period_return_from_equity, regression_vs_benchmark, win_loss_stats
+from metrics_utils import annualized_sharpe, annualized_sortino, RegressionStats, period_return_from_equity, regression_vs_benchmark, win_loss_stats
 
 # ── Strategy Registry ──────────────────────────────────────────────────────────
 # This is THE canonical list.  Every strategy that exists in the system
@@ -54,12 +63,15 @@ class StrategySpec:
     default_start: str        # Earliest reasonable start date
     enabled: bool = True      # Whether to include in default runs
     notes: str = ""
+    alpha_only: bool = False  # If True, hedge net exposure with SPY.
+    base_name: str = ""       # Canonical strategy name used for data/rule lookup.
 
 
 STRATEGY_REGISTRY: List[StrategySpec] = [
     # ── Core (5) ───────────────────────────────────────────────────────────
     StrategySpec("Congress Buys",                  "quiver_api",     "core",         "2020-04-01"),
-    StrategySpec("Dan Meuser",                     "quiver_api",     "core",         "2019-08-14"),
+    StrategySpec("Dan Meuser (equal)",             "quiver_api",     "core",         "2019-08-14"),
+    StrategySpec("Dan Meuser (size)",              "quiver_api",     "core",         "2019-08-14"),
     StrategySpec("Sector Weighted DC Insider",     "quiver_api",     "core",         "2020-04-01"),
     StrategySpec("Michael Burry",                  "sec_edgar",      "core",         "2016-02-17"),
     StrategySpec("Lobbying Spending Growth",       "quiver_api",     "core",         "2020-01-01"),
@@ -71,10 +83,14 @@ STRATEGY_REGISTRY: List[StrategySpec] = [
     StrategySpec("Transportation and Infra. Committee (House)","quiver_api", "experimental", "2020-04-01"),
     StrategySpec("Energy and Commerce Committee (House)",      "quiver_api", "experimental", "2020-04-01"),
     StrategySpec("Homeland Security Committee (Senate)",       "quiver_api", "experimental", "2020-04-01"),
-    StrategySpec("Nancy Pelosi",                               "quiver_api", "experimental", "2014-05-16"),
-    StrategySpec("Donald Beyer",                               "quiver_api", "experimental", "2016-05-09"),
-    StrategySpec("Josh Gottheimer",                            "quiver_api", "experimental", "2019-01-01"),
-    StrategySpec("Sheldon Whitehouse",                         "quiver_api", "experimental", "2014-02-28"),
+    StrategySpec("Nancy Pelosi (equal)",       "quiver_api", "experimental", "2014-05-16"),
+    StrategySpec("Nancy Pelosi (size)",        "quiver_api", "experimental", "2014-05-16"),
+    StrategySpec("Donald Beyer (equal)",       "quiver_api", "experimental", "2016-05-09"),
+    StrategySpec("Donald Beyer (size)",        "quiver_api", "experimental", "2016-05-09"),
+    StrategySpec("Josh Gottheimer (equal)",    "quiver_api", "experimental", "2019-01-01"),
+    StrategySpec("Josh Gottheimer (size)",     "quiver_api", "experimental", "2019-01-01"),
+    StrategySpec("Sheldon Whitehouse (equal)", "quiver_api", "experimental", "2014-02-28"),
+    StrategySpec("Sheldon Whitehouse (size)",  "quiver_api", "experimental", "2014-02-28"),
 
     # ── Experimental: Alternative Data ─────────────────────────────────────
     StrategySpec("Top Lobbying Spenders",      "quiver_api",     "experimental", "2020-01-01"),
@@ -90,6 +106,20 @@ STRATEGY_REGISTRY: List[StrategySpec] = [
                  enabled=False, notes="Requires premium Quiver subscription"),
     StrategySpec("Analyst Buys",           "quiver_api",     "experimental", "2023-02-01",
                  enabled=False, notes="Requires active Quiver subscription"),
+]
+
+STRATEGY_REGISTRY += [
+    StrategySpec(
+        name=f"{s.name} (alpha only)",
+        data_source=s.data_source,
+        category=s.category,
+        default_start=s.default_start,
+        enabled=s.enabled,
+        alpha_only=True,
+        base_name=s.name,
+    )
+    for s in list(STRATEGY_REGISTRY)
+    if s.enabled and s.data_source != "quiver_premium"
 ]
 
 
@@ -121,12 +151,8 @@ def compute_extended_metrics(
     volatility = float(np.std(daily_returns) * np.sqrt(252))
 
     # ── Risk-adjusted returns ──────────────────────────────────────────────
-    rf = 0.02
-    sharpe = (cagr - rf) / volatility if volatility > 0 else 0.0
-
-    neg_ret = daily_returns[daily_returns < 0]
-    downside_std = float(np.std(neg_ret) * np.sqrt(252)) if len(neg_ret) > 0 else 0.0
-    sortino = (cagr - rf) / downside_std if downside_std > 0 else 0.0
+    sharpe = annualized_sharpe(daily_returns)
+    sortino = annualized_sortino(daily_returns)
 
     # ── Drawdown ───────────────────────────────────────────────────────────
     eq_arr = np.array(equity_values, dtype=float)
@@ -162,10 +188,7 @@ def compute_extended_metrics(
     # ── Rolling Sharpe (12-month / 252-day window) ────────────────────────
     rolling_sharpe_latest = None
     if n >= 252:
-        window = daily_returns[-252:]
-        rs_mean = float(np.mean(window)) * 252
-        rs_std = float(np.std(window)) * np.sqrt(252)
-        rolling_sharpe_latest = float((rs_mean - rf) / rs_std) if rs_std > 1e-12 else 0.0
+        rolling_sharpe_latest = annualized_sharpe(daily_returns[-252:])
 
     # ── Distribution stats ────────────────────────────────────────────────
     from scipy.stats import skew as _skew, kurtosis as _kurtosis
@@ -379,6 +402,7 @@ def run_single_strategy(
         from rebalancing_backtest_engine import RebalancingBacktestEngine
 
         effective_start = max(spec.default_start, start_date) if start_date else spec.default_start
+        strategy_name = spec.base_name or spec.name
 
         bt = RebalancingBacktestEngine(
             quiver_api_key=quiver_api_key or "",
@@ -388,9 +412,10 @@ def run_single_strategy(
         )
 
         result = bt.run_rebalancing_backtest(
-            strategy_name=spec.name,
+            strategy_name=strategy_name,
             start_date=effective_start,
             end_date=end_date,
+            alpha_only=spec.alpha_only,
         )
 
         if "error" in result:
@@ -438,7 +463,14 @@ def run_single_strategy(
         )
 
         # Carry forward engine-computed fields not in our metrics
-        for key in ["trades", "rebalance_events"]:
+        # (provenance + dropped-weight fields are part of the Phase-1 contract
+        # — see plan production-hardening-plan-condensed-defa-noble-plum.md)
+        for key in [
+            "trades", "rebalance_events",
+            "provenance",
+            "segment_drops", "dropped_weight_avg", "dropped_weight_max",
+            "n_missing_ticker_segments", "missing_ticker_policy",
+        ]:
             if key in result:
                 metrics[key] = result[key]
 
@@ -757,6 +789,14 @@ def main():
                         help="Don't use cached plot_data as fallback")
     parser.add_argument("--sec-edgar-only", action="store_true",
                         help="Only run SEC EDGAR strategies (no API key needed)")
+    parser.add_argument("--yes", "-y", action="store_true",
+                        help="Pre-confirm api_caution gate (skip interactive prompt)")
+    parser.add_argument("--budget-estimate", action="store_true",
+                        help="Print estimated API call volume and exit (no calls made)")
+    parser.add_argument("--budget-warn", type=int, default=None,
+                        help="Override api_caution warn budget (default: source-specific)")
+    parser.add_argument("--budget-block", type=int, default=None,
+                        help="Override api_caution block budget (default: source-specific)")
 
     args = parser.parse_args()
 
@@ -792,6 +832,61 @@ def main():
     if not args.include_disabled:
         specs = [s for s in specs if s.enabled]
 
+    # ── API-caution gate ───────────────────────────────────────────────────
+    # Refuse to silently launch a multi-thousand-call run. Estimate first; for
+    # IB the default block budget (24k) matches the pacing limit; non-TTY runs
+    # must pass --yes.
+    try:
+        from api_caution import estimate_calls, confirm_or_abort, CautionAbort
+        # Honest call-count estimate:
+        #  - Per-strategy universe: ≤100 tickers (Quiver) or ≤200 for 13F.
+        #    Use 60 as the post-dedupe-across-strategies-and-time AVERAGE: many
+        #    tickers repeat (SPY, big-cap names) and are batched once across
+        #    strategies by the prefetch path.
+        #  - Of those, ~30% are cache-misses on a warm cache (the rest are
+        #    pulled once from disk and reused). On a cold cache assume 100%.
+        per_strategy_tickers = int(os.getenv("API_CAUTION_PER_STRATEGY_TICKERS", "60"))
+        miss_rate = float(os.getenv("API_CAUTION_CACHE_MISS_RATE", "0.30"))
+        gross_tickers = per_strategy_tickers * max(1, len(specs))
+        # Naive global dedupe: assume only 35% of cross-strategy tickers are unique.
+        unique_global = int(gross_tickers * 0.35)
+        n_total_calls = max(
+            1,
+            int(estimate_calls(
+                n_tickers=unique_global,
+                n_strategies=len(specs),
+                source=price_source,
+                calls_per_ticker=1,
+            ) * miss_rate)
+        )
+        if args.budget_estimate:
+            print(
+                f"\napi_caution budget estimate:\n"
+                f"  strategies               : {len(specs)} (registry produces each + alpha_only variant)\n"
+                f"  est. tickers/strategy    : ~{per_strategy_tickers}\n"
+                f"  gross ticker-fetches     : {gross_tickers}\n"
+                f"  unique tickers (≈35%)    : {unique_global}\n"
+                f"  cache-miss rate (env)    : {miss_rate:.0%}\n"
+                f"  estimated {price_source} calls    : {n_total_calls}\n"
+                f"  est. wall time @1.1s/call: ~{n_total_calls * 1.1 / 60:.0f} min (sustained)\n"
+            )
+            return
+        try:
+            confirm_or_abort(
+                estimated_calls=n_total_calls,
+                source=price_source,
+                budget_warn=args.budget_warn,
+                budget_block=args.budget_block,
+                yes=args.yes,
+                reason="run_all_backtests.py",
+            )
+        except CautionAbort as ce:
+            print(f"\napi_caution: refusing run. {ce}")
+            sys.exit(2)
+    except ImportError:
+        # api_caution module missing — proceed without gate (best effort).
+        pass
+
     print(f"\nRunning {len(specs)} strategies...")
     print(f"Price source: {price_source}")
     print(f"End date: {end_date}")
@@ -801,11 +896,62 @@ def main():
         print("QuiverQuant API: DOWN (using cache fallback where available)")
     print("")
 
+    # ── Progress tracking ──────────────────────────────────────────────────
+    progress_path = ROOT_DIR / ".cache" / "backtest_progress.json"
+    run_started_at = datetime.now().isoformat()
+
+    def _write_progress(
+        idx: int,
+        current_strategy: str,
+        completed_results: List[BacktestResult],
+        running: bool = True,
+    ):
+        """Atomically write progress JSON for the frontend to poll."""
+        n_done = len(completed_results)
+        total_n = len(specs)
+        elapsed_list = [r.elapsed_seconds for r in completed_results if r.elapsed_seconds > 0]
+        avg_elapsed = sum(elapsed_list) / len(elapsed_list) if elapsed_list else 0.0
+        remaining = total_n - n_done
+        eta_seconds: Optional[float] = avg_elapsed * remaining if avg_elapsed > 0 else None
+
+        payload = {
+            "running": running,
+            "pid": os.getpid(),
+            "current_idx": idx,
+            "total": total_n,
+            "percent": round(n_done / total_n * 100, 1) if total_n else 0.0,
+            "current_strategy": current_strategy,
+            "avg_elapsed_seconds": round(avg_elapsed, 1),
+            "eta_seconds": round(eta_seconds, 0) if eta_seconds is not None else None,
+            "started_at": run_started_at,
+            "last_updated": datetime.now().isoformat(),
+            "completed": [
+                {
+                    "name": r.strategy,
+                    "status": r.status,
+                    "elapsed_seconds": round(r.elapsed_seconds, 1),
+                    "cagr": round(r.metrics.get("cagr", 0) * 100, 1) if r.metrics else None,
+                }
+                for r in completed_results
+            ],
+        }
+        tmp = progress_path.with_suffix(".json.tmp")
+        with open(tmp, "w") as _f:
+            json.dump(payload, _f)
+        tmp.replace(progress_path)
+
+    # Write initial "starting" state
+    _write_progress(0, specs[0].name if specs else "", [])
+
     # ── Run backtests ──────────────────────────────────────────────────────
     results: List[BacktestResult] = []
     for i, spec in enumerate(specs):
         effective_start = start_date or spec.default_start
         print(f"[{i+1}/{len(specs)}] {spec.name} ({spec.data_source})...", end=" ", flush=True)
+
+        # Update progress: currently running this strategy
+        next_name = specs[i + 1].name if i + 1 < len(specs) else spec.name
+        _write_progress(i + 1, spec.name, results)
 
         result = run_single_strategy(
             spec=spec,
@@ -825,6 +971,9 @@ def main():
         else:
             print(f"FAILED ({result.error_message[:80]})")
 
+    # Mark run as finished
+    _write_progress(len(specs), "", results, running=False)
+
     # ── Output ─────────────────────────────────────────────────────────────
     print(format_results_table(results))
 
@@ -834,6 +983,30 @@ def main():
     # ── Save latest results to cache for UI consumption ────────────────────
     results_cache_path = ROOT_DIR / ".cache" / "latest_backtest_results.json"
     save_results_json(results, str(results_cache_path))
+
+    # ── Regenerate plot_data.json so dashboard reflects new results ─────────
+    success_count = sum(1 for r in results if r.status == "success")
+    if success_count > 0 and not args.report_only:
+        print(f"\nRegenerating plot_data.json ({success_count} successful strategies)...")
+        gen_script = ROOT_DIR / "generate_plot_data.py"
+        if gen_script.exists():
+            import subprocess as _sp
+            gen_cmd = [sys.executable, str(gen_script)]
+            # Propagate api_caution acceptance so the post-step doesn't abort
+            # on a non-TTY parent run that's already past its own gate.
+            if args.yes:
+                gen_cmd.append("--yes")
+            ret = _sp.run(
+                gen_cmd,
+                cwd=str(ROOT_DIR),
+                env={**os.environ},
+            )
+            if ret.returncode == 0:
+                print("[OK] plot_data.json updated — dashboard is current.")
+            else:
+                print(f"[WARN] generate_plot_data.py exited {ret.returncode} — dashboard may be stale.")
+        else:
+            print("[WARN] generate_plot_data.py not found — dashboard not updated.")
 
 
 if __name__ == "__main__":

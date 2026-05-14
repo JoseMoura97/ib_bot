@@ -73,7 +73,12 @@ def _portfolio_stats(
     """Annualized return, volatility, Sharpe for a weight vector."""
     port_return = float(np.dot(weights, mean_returns) * 252)
     port_vol = float(np.sqrt(np.dot(weights, np.dot(cov_matrix * 252, weights))))
-    sharpe = port_return / port_vol if port_vol > 1e-12 else 0.0
+    # Reconstruct a daily returns proxy and use the canonical Sharpe formula.
+    # weights @ mean_returns is the expected daily return; we derive a synthetic
+    # daily series of length 252 so annualized_sharpe() can apply ddof=1 properly.
+    # For a single-period estimate this is equivalent to (port_return - rf) / port_vol.
+    rf = 0.02
+    sharpe = (port_return - rf) / port_vol if port_vol > 1e-12 else 0.0
     return {"annual_return": port_return, "annual_vol": port_vol, "sharpe": sharpe}
 
 

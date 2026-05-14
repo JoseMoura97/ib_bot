@@ -68,6 +68,19 @@ app.include_router(api_router)
 def _startup() -> None:
     if settings.database_url.startswith("sqlite"):
         create_all()
+    # Load persisted halt state from DB so restarts preserve halt
+    try:
+        from app.db.session import SessionLocal
+        from app.api.routes.live import _load_halt_from_db
+        db = SessionLocal()
+        try:
+            halted = _load_halt_from_db(db)
+            if halted:
+                settings.trading_halt = True
+        finally:
+            db.close()
+    except Exception:
+        pass
 
 
 @app.on_event("shutdown")

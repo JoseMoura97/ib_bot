@@ -38,6 +38,8 @@ class Settings(BaseSettings):
 
     live_dry_run: bool = Field(default=False, validation_alias="LIVE_DRY_RUN")
     live_max_order_pct_nlv: float = Field(default=0.50, validation_alias="LIVE_MAX_ORDER_PCT_NLV")
+    live_per_leg_timeout_seconds: int = Field(default=60, validation_alias="LIVE_PER_LEG_TIMEOUT_SECONDS")
+    live_allowed_accounts: str | None = Field(default=None, validation_alias="LIVE_ALLOWED_ACCOUNTS")
 
     telegram_bot_token: str | None = Field(default=None, validation_alias="TELEGRAM_BOT_TOKEN")
     telegram_chat_id: str | None = Field(default=None, validation_alias="TELEGRAM_CHAT_ID")

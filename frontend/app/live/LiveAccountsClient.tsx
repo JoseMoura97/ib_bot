@@ -6,6 +6,7 @@ import { Card, CardContent } from "../_components/ui/Card";
 import { Input } from "../_components/ui/Input";
 import { Select } from "../_components/ui/Select";
 import { Table, TableWrap, Td, Th } from "../_components/ui/Table";
+import { cn } from "../_components/cn";
 
 type IbAccount = { account_id: string };
 
@@ -84,6 +85,8 @@ export function LiveAccountsClient() {
   const [dryRunResult, setDryRunResult] = useState<any>(null);
   const [checklistResult, setChecklistResult] = useState<any>(null);
   const [safetyBusy, setSafetyBusy] = useState<string | null>(null);
+  const [connOpen, setConnOpen] = useState(true);
+  const [posFilter, setPosFilter] = useState("");
 
   async function onHalt() {
     setSafetyBusy("halt");
@@ -314,9 +317,10 @@ export function LiveAccountsClient() {
         allow_short: allowShort,
         confirm: confirmExecute,
       };
+      const idempotencyKey = crypto.randomUUID();
       const res = await fetch("/api/live/rebalance/execute", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
         body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -355,6 +359,10 @@ export function LiveAccountsClient() {
   }, []);
 
   useEffect(() => {
+    if (status?.connected) setConnOpen(false);
+  }, [status?.connected]);
+
+  useEffect(() => {
     if (selected) loadSnapshot(selected);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected]);
@@ -388,63 +396,98 @@ export function LiveAccountsClient() {
   const noAccountData =
     !!snapshot && cashRows.length === 0 && keyRows.length === 0 && (snapshot.positions?.length || 0) === 0;
 
+  const nlv = useMemo(() => {
+    const k = snapshot?.key?.NetLiquidation || snapshot?.key?.["NetLiquidation"];
+    if (k && typeof k === "object") {
+      const usd = (k as Record<string, number>).USD;
+      if (typeof usd === "number" && Number.isFinite(usd)) return usd;
+      const first = Object.values(k as Record<string, number>)[0];
+      if (typeof first === "number") return first;
+    }
+    return undefined;
+  }, [snapshot]);
+
+  const cashUsd = snapshot?.cash_by_currency?.USD;
+
+  const filteredPositions = useMemo(() => {
+    const rows = snapshot?.positions || [];
+    const q = posFilter.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((p) => {
+      const sym = (p.contract?.symbol || p.contract?.localSymbol || "").toLowerCase();
+      return sym.includes(q);
+    });
+  }, [snapshot?.positions, posFilter]);
+
   return (
     <section className="space-y-4">
-      <Card className="shadow-none">
-        <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+      <header className="sticky top-0 z-30 -mx-1 flex flex-wrap items-center justify-between gap-3 border-b bg-background/90 px-1 py-3 backdrop-blur-md">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <span
+            className={cn("h-2.5 w-2.5 shrink-0 rounded-full", status?.connected ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" : "bg-red-500")}
+            title={status?.connected ? "Connected" : "Disconnected"}
+          />
           <div className="min-w-0">
-            <div className="text-sm font-semibold">IB connection</div>
-            <div className="text-xs text-muted-foreground">
-              {status
-                ? status.connected
-                  ? `Connected to ${status.host}:${status.port}`
-                  : `Not connected to ${status.host}:${status.port} — ${status.error ?? "unknown error"}`
-                : "Loading…"}
+            <div className="truncate text-sm font-semibold">{status?.connected ? "IB connected" : "IB disconnected"}</div>
+            <div className="truncate text-xs text-muted-foreground">
+              {status ? `${status.host}:${status.port}` : "…"}
+              {selected ? ` · ${selected}` : ""}
             </div>
           </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={selected} onChange={(e) => setSelected(e.target.value)} className="min-w-[140px]">
+            {(accounts || []).map((a) => (
+              <option key={a.account_id} value={a.account_id}>
+                {a.account_id}
+              </option>
+            ))}
+            {!accounts.length ? <option value="">No accounts</option> : null}
+          </Select>
+          {!halted ? (
+            <Button size="sm" variant="secondary" className="bg-red-600 text-white hover:bg-red-700" onClick={onHalt} disabled={safetyBusy === "halt"}>
+              {safetyBusy === "halt" ? "…" : "Halt"}
+            </Button>
+          ) : (
+            <Button size="sm" variant="outline" onClick={onResume} disabled={safetyBusy === "resume"}>
+              Resume
+            </Button>
+          )}
+          <Button size="sm" variant="outline" onClick={() => loadSnapshot(selected)} disabled={loading || !selected}>
+            Refresh
+          </Button>
+        </div>
+      </header>
+
+      <details className="rounded-xl border bg-card shadow-none" open={connOpen} onToggle={(e) => setConnOpen((e.target as HTMLDetailsElement).open)}>
+        <summary className="cursor-pointer px-4 py-3 text-sm font-semibold">Connection &amp; session</summary>
+        <div className="space-y-3 border-t px-4 py-4">
+          <p className="text-xs text-muted-foreground">
+            {status
+              ? status.connected
+                ? `Connected to ${status.host}:${status.port}`
+                : `Not connected — ${status.error ?? "configure host/port and connect"}`
+              : "Loading status…"}
+          </p>
           <div className="flex flex-wrap items-center gap-2">
-            <Input
-              value={host}
-              onChange={(e) => setHost(e.target.value)}
-              placeholder="Host"
-              className="w-44"
-              disabled={loading}
-            />
-            <Input
-              value={port}
-              onChange={(e) => setPort(e.target.value)}
-              placeholder="Port"
-              inputMode="numeric"
-              className="w-24"
-              disabled={loading}
-            />
+            <Input value={host} onChange={(e) => setHost(e.target.value)} placeholder="Host" className="w-40" disabled={loading} />
+            <Input value={port} onChange={(e) => setPort(e.target.value)} placeholder="Port" inputMode="numeric" className="w-24" disabled={loading} />
             <Input
               value={extraAccounts}
               onChange={(e) => setExtraAccounts(e.target.value)}
               placeholder="Extra accounts (comma-separated)"
-              className="w-64"
+              className="min-w-[200px] flex-1"
               disabled={loading}
             />
-            <Button size="sm" variant="outline" onClick={() => connectToIb()} disabled={loading || !host || !port}>
+            <Button size="sm" variant="primary" onClick={() => connectToIb()} disabled={loading || !host || !port}>
               Connect
             </Button>
-            <Select value={selected} onChange={(e) => setSelected(e.target.value)} className="w-auto">
-              {(accounts || []).map((a) => (
-                <option key={a.account_id} value={a.account_id}>
-                  {a.account_id}
-                </option>
-              ))}
-              {!accounts.length ? <option value="">No accounts</option> : null}
-            </Select>
             <Button size="sm" variant="outline" onClick={() => loadStatusAndAccounts()} disabled={loading}>
-              Reload
-            </Button>
-            <Button size="sm" variant="secondary" onClick={() => loadSnapshot(selected)} disabled={loading || !selected}>
-              Refresh balances
+              Reload accounts
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </details>
 
       {err ? (
         <Card className="shadow-none">
@@ -464,6 +507,21 @@ export function LiveAccountsClient() {
 
       {snapshot ? (
         <div className="grid gap-4 lg:grid-cols-2">
+          {(cashUsd != null && Number.isFinite(cashUsd)) || (nlv != null && Number.isFinite(nlv)) ? (
+            <Card className="shadow-none lg:col-span-2">
+              <CardContent className="grid gap-4 py-4 sm:grid-cols-2">
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground">Net liquidation</div>
+                  <div className="mt-1 text-2xl font-bold tabular-nums">{nlv != null ? `$${fmtNum(nlv, 2)}` : "—"}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground">Cash (USD)</div>
+                  <div className="mt-1 text-2xl font-bold tabular-nums">{cashUsd != null ? `$${fmtNum(cashUsd, 2)}` : "—"}</div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
+
           <Card className="shadow-none">
             <CardContent className="space-y-3 py-4">
               <div className="text-sm font-semibold">Cash by currency</div>
@@ -530,7 +588,15 @@ export function LiveAccountsClient() {
 
           <Card className="shadow-none lg:col-span-2">
             <CardContent className="space-y-3 py-4">
-              <div className="text-sm font-semibold">Positions</div>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="text-sm font-semibold">Positions</div>
+                <Input
+                  value={posFilter}
+                  onChange={(e) => setPosFilter(e.target.value)}
+                  placeholder="Filter symbol…"
+                  className="h-8 max-w-xs text-sm"
+                />
+              </div>
               <TableWrap>
                 <Table>
                   <thead>
@@ -543,19 +609,21 @@ export function LiveAccountsClient() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(snapshot.positions || []).map((p, idx) => (
+                    {filteredPositions.map((p, idx) => (
                       <tr key={idx}>
-                        <Td className="font-semibold">{p.contract?.symbol || p.contract?.localSymbol || "—"}</Td>
+                        <Td className={cn("font-semibold", p.position > 0 && "text-emerald-600", p.position < 0 && "text-red-600")}>
+                          {p.contract?.symbol || p.contract?.localSymbol || "—"}
+                        </Td>
                         <Td className="text-muted-foreground">{p.contract?.secType || "—"}</Td>
                         <Td className="text-muted-foreground">{p.contract?.currency || "—"}</Td>
                         <Td className="text-right font-mono">{fmtNum(p.position, 4)}</Td>
                         <Td className="text-right font-mono">{fmtNum(p.avgCost, 4)}</Td>
                       </tr>
                     ))}
-                    {!snapshot.positions?.length ? (
+                    {!filteredPositions.length ? (
                       <tr>
                         <Td colSpan={5} className="text-muted-foreground">
-                          No positions.
+                          {snapshot.positions?.length ? "No matches." : "No positions."}
                         </Td>
                       </tr>
                     ) : null}
@@ -571,29 +639,19 @@ export function LiveAccountsClient() {
         <CardContent className="space-y-3 py-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-sm font-semibold">Safety Controls</div>
+              <div className="text-sm font-semibold">Pre-flight checks</div>
               <div className="text-xs text-muted-foreground">
                 {halted
-                  ? "TRADING IS HALTED. All live execution is blocked."
-                  : "Trading is active. Use the kill-switch to halt immediately."}
+                  ? "Trading is halted — resume from the top bar when ready."
+                  : "Validate the book and simulate orders before any live rebalance."}
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {!halted ? (
-                <Button size="sm" variant="secondary" onClick={onHalt} disabled={safetyBusy === "halt"}
-                  className="bg-red-600 text-white hover:bg-red-700">
-                  {safetyBusy === "halt" ? "Halting..." : "HALT TRADING"}
-                </Button>
-              ) : (
-                <Button size="sm" variant="outline" onClick={onResume} disabled={safetyBusy === "resume"}>
-                  {safetyBusy === "resume" ? "Resuming..." : "Resume Trading"}
-                </Button>
-              )}
               <Button size="sm" variant="outline" onClick={onRunChecklist} disabled={safetyBusy === "checklist" || !selected || !portfolioId}>
-                {safetyBusy === "checklist" ? "Running..." : "Pre-trade Checklist"}
+                {safetyBusy === "checklist" ? "Running…" : "Run checklist"}
               </Button>
               <Button size="sm" variant="outline" onClick={onDryRun} disabled={safetyBusy === "dryrun" || !selected || !portfolioId}>
-                {safetyBusy === "dryrun" ? "Running..." : "Dry Run"}
+                {safetyBusy === "dryrun" ? "Running…" : "Dry run"}
               </Button>
             </div>
           </div>
@@ -666,13 +724,15 @@ export function LiveAccountsClient() {
       </Card>
 
       <Card className="shadow-none">
-        <CardContent className="space-y-3 py-4">
-          <div className="text-sm font-semibold">Live rebalance (guarded)</div>
-          <div className="text-xs text-muted-foreground">
-            Requires ENABLE_LIVE_TRADING=1 on the backend. Preview is safe; execute requires confirmation.
+        <CardContent className="space-y-4 py-4">
+          <div>
+            <div className="text-sm font-semibold">Live rebalance</div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Requires <code className="rounded bg-muted px-1">ENABLE_LIVE_TRADING=1</code>. Preview only simulates; execute sends real orders after you confirm.
+            </p>
           </div>
 
-          <div className="grid gap-3 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-2">
               <div className="text-xs text-muted-foreground">Portfolio</div>
               <Select value={portfolioId} onChange={(e) => setPortfolioId(e.target.value)}>
@@ -718,11 +778,11 @@ export function LiveAccountsClient() {
             </label>
             <Button
               size="sm"
-              variant="secondary"
+              variant="destructive"
               onClick={executeRebalance}
               disabled={rebalanceBusy === "execute" || !confirmExecute}
             >
-              {rebalanceBusy === "execute" ? "Executing…" : "Execute"}
+              {rebalanceBusy === "execute" ? "Executing…" : "Execute live"}
             </Button>
           </div>
 
@@ -768,49 +828,28 @@ export function LiveAccountsClient() {
         </CardContent>
       </Card>
 
-      <Card className="shadow-none">
-        <CardContent className="space-y-3 py-4">
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-sm font-semibold">Recent live rebalance activity</div>
+      <details className="rounded-xl border bg-card shadow-none">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-semibold">Audit log ({auditRows.length})</summary>
+        <CardContent className="space-y-3 border-t py-4">
+          <div className="flex justify-end">
             <Button size="sm" variant="outline" onClick={() => loadAudit()}>
               Reload
             </Button>
           </div>
-          <TableWrap>
-            <Table>
-              <thead>
-                <tr>
-                  <Th>When</Th>
-                  <Th>Action</Th>
-                  <Th>Status</Th>
-                  <Th>Account</Th>
-                  <Th>Portfolio</Th>
-                  <Th className="text-right">Allocation</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {(auditRows || []).map((r) => (
-                  <tr key={r.id} className="hover:bg-accent/40">
-                    <Td>{r.created_at ? new Date(r.created_at).toLocaleString() : "—"}</Td>
-                    <Td className="font-semibold">{r.action}</Td>
-                    <Td>{r.status}</Td>
-                    <Td className="font-mono text-xs">{r.account_id || "—"}</Td>
-                    <Td className="font-mono text-xs">{r.portfolio_id || "—"}</Td>
-                    <Td className="text-right font-mono">{r.allocation_amount ? fmtNum(r.allocation_amount, 2) : "—"}</Td>
-                  </tr>
-                ))}
-                {!auditRows.length ? (
-                  <tr>
-                    <Td colSpan={6} className="text-muted-foreground">
-                      No audit records yet.
-                    </Td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </Table>
-          </TableWrap>
+          <div className="space-y-3">
+            {(auditRows || []).map((r) => (
+              <div key={r.id} className="flex flex-wrap gap-x-4 gap-y-1 border-b border-border/60 pb-3 text-sm last:border-0">
+                <div className="text-xs text-muted-foreground">{r.created_at ? new Date(r.created_at).toLocaleString() : "—"}</div>
+                <div className="font-semibold">{r.action}</div>
+                <div className="text-xs">{r.status}</div>
+                <div className="font-mono text-xs text-muted-foreground">{r.account_id || "—"}</div>
+                <div className="ml-auto font-mono text-xs">{r.allocation_amount ? `$${fmtNum(r.allocation_amount, 2)}` : "—"}</div>
+              </div>
+            ))}
+            {!auditRows.length ? <p className="text-sm text-muted-foreground">No audit records yet.</p> : null}
+          </div>
         </CardContent>
-      </Card>
+      </details>
     </section>
   );
 }

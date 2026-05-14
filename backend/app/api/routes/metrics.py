@@ -92,7 +92,13 @@ def metrics_strategies():
                 "end_date": row.get("end_date"),
                 "cagr": row.get("cagr"),
                 "sharpe": row.get("sharpe"),
+                "sortino": row.get("sortino"),
                 "max_drawdown": row.get("max_drawdown"),
+                "transaction_cost_bps": row.get("transaction_cost_bps"),
+                "slippage_bps_per_side": row.get("slippage_bps_per_side"),
+                "execution_offset_days": row.get("execution_offset_days"),
+                "missing_ticker_policy": row.get("missing_ticker_policy"),
+                "n_missing_ticker_segments": row.get("n_missing_ticker_segments"),
             }
 
     # Quiver metrics (best-effort; do not fail the endpoint if unavailable)

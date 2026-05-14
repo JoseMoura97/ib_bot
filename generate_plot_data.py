@@ -13,6 +13,7 @@ import numpy as np
 from dotenv import load_dotenv
 from quiver_signals import QuiverSignals
 from rebalancing_backtest_engine import RebalancingBacktestEngine, _ProgressBar
+from run_all_backtests import STRATEGY_REGISTRY
 
 def normalize_equity_curve(equity_curve_df, initial_value=100):
     """Normalize an equity curve to start at initial_value (e.g., 100)."""
@@ -75,27 +76,12 @@ def generate_plot_data(use_cache_only: bool = False):
         "benchmark": None
     }
     
-    # List of strategies to plot
+    # Use the canonical registry so dashboard plot data stays aligned with
+    # run_all_backtests.py, including generated alpha-only variants.
     strategies = [
-        "Congress Buys",
-        "Congress Sells",
-        "Congress Long-Short",
-        "U.S. House Long-Short",
-        "Transportation and Infra. Committee (House)",
-        "Energy and Commerce Committee (House)",
-        "Homeland Security Committee (Senate)",
-        "Top Lobbying Spenders",
-        "Lobbying Spending Growth",
-        "Top Gov Contract Recipients",
-        "Sector Weighted DC Insider",
-        "Nancy Pelosi",
-        "Dan Meuser",
-        "Josh Gottheimer",
-        "Donald Beyer",
-        "Sheldon Whitehouse",
-        "Michael Burry",
-        "Bill Ackman",
-        "Howard Marks",
+        (s.name, s.base_name or s.name, s.alpha_only)
+        for s in STRATEGY_REGISTRY
+        if s.enabled
     ]
     
     # Get SPY benchmark data — fetch directly via yfinance (not via backtest engine)
@@ -135,25 +121,38 @@ def generate_plot_data(use_cache_only: bool = False):
     # for accurate CAGR (previously clipped to 2020-01-01 which understated returns)
     
     strategy_count = 0
-    for strategy_name in strategies:
+    for strategy_name, base_strategy_name, alpha_only in strategies:
         try:
             print(f"\n{strategy_name}...")
-            
-            info = qs.get_strategy_info(strategy_name)
+
+            # Look up strategy info; if the variant name has decoration like
+            # "(equal)", "(size)", or "(alpha only)" the canonical key is the
+            # un-suffixed base, so progressively strip suffixes until we hit a
+            # known entry.
+            info = qs.get_strategy_info(base_strategy_name)
             if not info or not info.get("start_date"):
-                print(f"  [SKIP] No strategy info found")
-                overall.step(extra=f"skip: {strategy_name}")
-                continue
-            
+                stripped = base_strategy_name
+                for suffix in [" (alpha only)", " (equal)", " (size)"]:
+                    if stripped.endswith(suffix):
+                        stripped = stripped[: -len(suffix)]
+                        cand = qs.get_strategy_info(stripped)
+                        if cand and cand.get("start_date"):
+                            info = cand
+                            break
+            if not info or not info.get("start_date"):
+                # Final fallback: use 2014-01-01 (covers all Quiver-data strategies).
+                info = {"start_date": "2014-01-01"}
+
             start_date_str = info['start_date']
             start_date = datetime.fromisoformat(start_date_str)
             
             # Run backtest using run_rebalancing_backtest
             result = bt.run_rebalancing_backtest(
-                strategy_name=strategy_name,
+                strategy_name=base_strategy_name,
                 start_date=start_date,
                 end_date=datetime.now(),
                 lookback_days_override=None,
+                alpha_only=alpha_only,
             )
             
             if result and 'equity_curve' in result and not 'error' in result:
@@ -166,6 +165,7 @@ def generate_plot_data(use_cache_only: bool = False):
                     cagr = result.get('cagr', 0)
                     sharpe = result.get('sharpe_ratio', 0)
                     max_dd = result.get('max_drawdown', 0)
+                    sortino = result.get('sortino_ratio', 0)
                     
                     # Convert to percentages
                     cagr_pct = cagr * 100 if isinstance(cagr, (int, float)) else 0
@@ -176,9 +176,16 @@ def generate_plot_data(use_cache_only: bool = False):
                         "dates": equity_curve_weekly.index.strftime('%Y-%m-%d').tolist(),
                         "values": equity_curve_weekly['normalized'].round(2).tolist(),
                         "start_date": start_date_str,
+                        "alpha_only": bool(alpha_only),
                         "cagr": float(cagr_pct),
                         "sharpe": float(sharpe) if isinstance(sharpe, (int, float)) else 0,
-                        "max_drawdown": float(max_dd_pct)
+                        "sortino": float(sortino) if isinstance(sortino, (int, float)) else 0,
+                        "max_drawdown": float(max_dd_pct),
+                        "transaction_cost_bps": result.get('transaction_cost_bps'),
+                        "slippage_bps_per_side": result.get('slippage_bps_per_side'),
+                        "execution_offset_days": result.get('execution_offset_days'),
+                        "missing_ticker_policy": result.get('missing_ticker_policy'),
+                        "n_missing_ticker_segments": result.get('n_missing_ticker_segments'),
                     }
                     
                     strategy_count += 1
@@ -204,8 +211,9 @@ def generate_plot_data(use_cache_only: bool = False):
     print(f"\n{'='*80}")
     print(f"Generated plot data for {strategy_count}/{len(strategies)} strategies")
     
-    output_file = '.cache/plot_data.json'
-    os.makedirs('.cache', exist_ok=True)
+    output_file = os.environ.get("PLOT_DATA_OUTPUT_PATH") or '.cache/plot_data.json'
+    os.makedirs(os.path.dirname(output_file) or '.', exist_ok=True)
+    plot_data["missing_ticker_policy"] = os.environ.get("MISSING_TICKER_POLICY", "cash")
 
     if strategy_count == 0:
         print("[SKIP] Not writing plot_data.json — 0 strategies succeeded")
@@ -231,12 +239,51 @@ if __name__ == "__main__":
                         help="Cache directory path")
     parser.add_argument("--no-progress", action="store_true",
                         help="Disable progress bars")
+    parser.add_argument("--yes", "-y", action="store_true",
+                        help="Pre-confirm api_caution gate")
+    parser.add_argument("--budget-estimate", action="store_true",
+                        help="Print estimated API call volume and exit")
+    parser.add_argument("--policy", choices=["cash", "renormalize"], default="cash",
+                        help="Missing-ticker policy applied during backtest")
+    parser.add_argument("--output", type=str, default=None,
+                        help="Override plot_data output path (default: .cache/plot_data.json)")
     args = parser.parse_args()
-    
+
+    # Apply policy via env so the engine picks it up.
+    os.environ["MISSING_TICKER_POLICY"] = args.policy
+    if args.output:
+        os.environ["PLOT_DATA_OUTPUT_PATH"] = args.output
+
     # Set environment variables for backtesting
     os.environ['PYTHONUNBUFFERED'] = '1'
     if not args.cache_only:
         os.environ['PRICE_SOURCE'] = os.getenv('PRICE_SOURCE', 'auto')
+
+    # ── API-caution gate ──────────────────────────────────────────────────
+    if not args.cache_only:
+        try:
+            from api_caution import estimate_calls, confirm_or_abort, CautionAbort
+            # generate_plot_data runs all strategies — conservative estimate.
+            est = estimate_calls(
+                n_tickers=150 * 30,  # ~30 strategies * 150 tickers
+                n_strategies=30,
+                source=os.environ.get('PRICE_SOURCE', 'auto'),
+            )
+            if args.budget_estimate:
+                print(f"api_caution budget estimate: {est} calls (source={os.environ.get('PRICE_SOURCE')})")
+                sys.exit(0)
+            try:
+                confirm_or_abort(
+                    estimated_calls=est,
+                    source=os.environ.get('PRICE_SOURCE', 'auto'),
+                    yes=args.yes,
+                    reason="generate_plot_data.py",
+                )
+            except CautionAbort as ce:
+                print(f"api_caution: refusing run. {ce}")
+                sys.exit(2)
+        except ImportError:
+            pass
     if args.no_progress:
         os.environ['NO_PROGRESS'] = '1'
     else:

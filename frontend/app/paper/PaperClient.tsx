@@ -14,6 +14,11 @@ import {
   paperRebalancePreview,
   placePaperMarketOrder,
 } from "./_lib/paperApi";
+import { PaperPerformanceCharts } from "./PaperPerformanceCharts";
+import { Button } from "../_components/ui/Button";
+import { Card, CardContent } from "../_components/ui/Card";
+import { Badge } from "../_components/ui/Badge";
+import { cn } from "../_components/cn";
 
 function fmtMoney(n: number | undefined, currency = "USD"): string {
   if (n == null || !Number.isFinite(n)) return "—";
@@ -75,6 +80,28 @@ export function PaperClient() {
   const [pnlLoading, setPnlLoading] = useState(false);
   type RebalLog = { id: number; timestamp: string; portfolio_id: string; status: string; n_orders: number; details: any };
   const [rebalLogs, setRebalLogs] = useState<RebalLog[]>([]);
+
+  type PaperRebalanceLeg = {
+    ticker: string;
+    target_weight: number;
+    price: number;
+    target_value: number;
+    target_quantity: number;
+    current_quantity: number;
+    delta_quantity: number;
+    side: "BUY" | "SELL";
+  };
+  type PaperRebalancePreview = {
+    legs?: PaperRebalanceLeg[];
+    allocation_amount?: number;
+    estimated_cash_remaining?: number;
+    as_of?: string;
+    orders?: unknown[];
+    trades?: unknown[];
+  };
+
+  const [pnlWindow, setPnlWindow] = useState<"7d" | "30d" | "all">("all");
+  const [ordersFillsTab, setOrdersFillsTab] = useState<"orders" | "fills">("orders");
 
   const mountedRef = useRef(true);
   useEffect(() => {
@@ -178,6 +205,13 @@ export function PaperClient() {
     return cashPart + mv;
   }, [cash, equity, positions]);
 
+  const filteredPnlDaily = useMemo(() => {
+    if (!pnlDaily.length) return [];
+    if (pnlWindow === "all") return pnlDaily;
+    const n = pnlWindow === "7d" ? 7 : 30;
+    return pnlDaily.slice(-n);
+  }, [pnlDaily, pnlWindow]);
+
   async function onAccountChange(nextId: string) {
     setAccountId(nextId);
     setRebalancePreview(null);
@@ -270,20 +304,23 @@ export function PaperClient() {
     return <div className="p-5">Loading paper trading…</div>;
   }
 
+  const preview = rebalancePreview as PaperRebalancePreview | null;
+  const legs = preview?.legs || [];
+
   return (
-    <main className="mx-auto max-w-[1400px] p-5">
+    <main className="mx-auto max-w-[1400px] space-y-6 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="mb-1.5 mt-2">Paper Trading</h2>
-          <div className="text-xs text-muted-foreground">Place a market order and watch cash/positions update instantly.</div>
+          <h2 className="mb-1 mt-1 text-2xl font-semibold tracking-tight">Paper Trading</h2>
+          <p className="text-sm text-muted-foreground">Simulated fills, portfolio rebalance, and performance — same view style as Backtest.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2.5">
-          <label className="text-xs text-muted-foreground">
-            Account{" "}
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            Account
             <select
               value={accountId}
               onChange={(e) => onAccountChange(e.target.value)}
-              className="input-field ml-1.5 inline-block"
+              className="input-field min-w-[200px]"
             >
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
@@ -292,105 +329,206 @@ export function PaperClient() {
               ))}
             </select>
           </label>
-          <button
-            onClick={() => refreshAll(accountId)}
-            className="btn"
-            disabled={!!actionBusy}
-          >
+          <Button variant="outline" size="sm" onClick={() => refreshAll(accountId)} disabled={!!actionBusy}>
             Refresh
-          </button>
+          </Button>
         </div>
       </div>
 
-      {error ? (
-        <div className="error-message mt-3">
-          {error}
-        </div>
-      ) : null}
+      {error ? <div className="error-message">{error}</div> : null}
 
-      <div className="mt-3.5 flex flex-wrap gap-3">
-        <div className="stat-card">
-          <div className="stat-label">Cash</div>
-          <div className="stat-value">{fmtMoney(cash, currency)}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Equity</div>
-          <div className="stat-value">{fmtMoney(computedEquity, currency)}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Positions</div>
-          <div className="stat-value">{positions.length}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Last update</div>
-          <div className="text-xs font-semibold">{fmtTime(balance?.updated_at)}</div>
-        </div>
-      </div>
-
-      <div className="mt-3.5 grid gap-3 lg:grid-cols-[420px_1fr]">
-        <div className="section-card p-3">
-          <h3 className="mb-2.5 mt-0">Fund paper account</h3>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <input
-              value={fundAmount}
-              onChange={(e) => setFundAmount(e.target.value)}
-              inputMode="decimal"
-              placeholder="Amount"
-              className="input-field w-40"
-            />
-            <span className="text-xs text-muted-foreground">{currency}</span>
-            <button
-              onClick={onFund}
-              disabled={actionBusy === "fund"}
-              className="btn"
+      {/* Hero metrics from P&L summary + live balances */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="shadow-none">
+          <CardContent className="py-4">
+            <div className="text-xs font-medium text-muted-foreground">Total equity</div>
+            <div className="mt-1 text-2xl font-bold tabular-nums">{fmtMoney(computedEquity, currency)}</div>
+            <div className="mt-1 text-[11px] text-muted-foreground">Cash {fmtMoney(cash, currency)}</div>
+          </CardContent>
+        </Card>
+        <Card className="shadow-none">
+          <CardContent className="py-4">
+            <div className="text-xs font-medium text-muted-foreground">Total return</div>
+            <div
+              className={cn(
+                "mt-1 text-2xl font-bold tabular-nums",
+                pnlSummary && pnlSummary.total_return >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400",
+              )}
             >
-              {actionBusy === "fund" ? "Funding…" : "Add cash"}
-            </button>
-          </div>
-          <div className="mt-2 text-xs text-muted-foreground">
-            Uses Agent E funding endpoint if available; otherwise shows a clear error.
-          </div>
-        </div>
-
-        <div className="section-card p-3">
-          <h3 className="mb-2.5 mt-0">Order ticket (market)</h3>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <input
-              value={symbol}
-              onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-              placeholder="Symbol (e.g. AAPL)"
-              className="input-field w-40"
-            />
-            <select value={side} onChange={(e) => setSide(e.target.value as PaperOrderSide)} className="input-field">
-              <option value="BUY">BUY</option>
-              <option value="SELL">SELL</option>
-            </select>
-            <input
-              value={qty}
-              onChange={(e) => setQty(e.target.value)}
-              inputMode="decimal"
-              placeholder="Qty"
-              className="input-field w-30"
-            />
-            <button
-              onClick={onSubmitOrder}
-              disabled={actionBusy === "order"}
-              className="btn"
-            >
-              {actionBusy === "order" ? "Submitting…" : "Submit"}
-            </button>
-          </div>
-          <div className="mt-2 text-xs text-muted-foreground">
-            After submit, this page auto-refreshes to show the fill and updated cash/positions.
-          </div>
-        </div>
+              {pnlSummary && pnlSummary.days > 0 ? `${(pnlSummary.total_return * 100).toFixed(2)}%` : "—"}
+            </div>
+            {pnlSummary && pnlSummary.days > 0 ? (
+              <Badge variant="outline" className="mt-2">
+                {pnlSummary.days} days
+              </Badge>
+            ) : (
+              <div className="mt-1 text-[11px] text-muted-foreground">Awaiting daily snapshots</div>
+            )}
+          </CardContent>
+        </Card>
+        <Card className="shadow-none">
+          <CardContent className="py-4">
+            <div className="text-xs font-medium text-muted-foreground">Max drawdown</div>
+            <div className="mt-1 text-2xl font-bold tabular-nums text-red-600 dark:text-red-400">
+              {pnlSummary && pnlSummary.days > 0 ? `${(pnlSummary.max_drawdown * 100).toFixed(2)}%` : "—"}
+            </div>
+            <div className="mt-1 text-[11px] text-muted-foreground">From snapshot series</div>
+          </CardContent>
+        </Card>
+        <Card className="shadow-none">
+          <CardContent className="py-4">
+            <div className="text-xs font-medium text-muted-foreground">Open positions</div>
+            <div className="mt-1 text-2xl font-bold tabular-nums">{positions.length}</div>
+            <div className="mt-1 text-[11px] text-muted-foreground">Updated {fmtTime(balance?.updated_at)}</div>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="mt-3.5 grid gap-3 lg:grid-cols-2">
-        <div className="section-card overflow-hidden">
+      <div className="grid gap-4 lg:grid-cols-[420px_1fr]">
+        <Card className="shadow-none">
+          <CardContent className="space-y-4 p-4">
+            <div>
+              <h3 className="mb-2 text-sm font-semibold">Fund account</h3>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  value={fundAmount}
+                  onChange={(e) => setFundAmount(e.target.value)}
+                  inputMode="decimal"
+                  placeholder="Amount"
+                  className="input-field w-36"
+                />
+                <span className="text-xs text-muted-foreground">{currency}</span>
+                <Button onClick={onFund} disabled={actionBusy === "fund"} variant="secondary" size="sm">
+                  {actionBusy === "fund" ? "Funding…" : "Add cash"}
+                </Button>
+              </div>
+            </div>
+            <div>
+              <h3 className="mb-2 text-sm font-semibold">Market order</h3>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  value={symbol}
+                  onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                  placeholder="Symbol"
+                  className="input-field w-28"
+                />
+                <select value={side} onChange={(e) => setSide(e.target.value as PaperOrderSide)} className="input-field w-24">
+                  <option value="BUY">BUY</option>
+                  <option value="SELL">SELL</option>
+                </select>
+                <input
+                  value={qty}
+                  onChange={(e) => setQty(e.target.value)}
+                  inputMode="decimal"
+                  placeholder="Qty"
+                  className="input-field w-24"
+                />
+                <Button onClick={onSubmitOrder} disabled={actionBusy === "order"} size="sm">
+                  {actionBusy === "order" ? "Submitting…" : "Submit"}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-none">
+          <CardContent className="p-0">
+            <div className="flex border-b">
+              <button
+                type="button"
+                className={cn(
+                  "flex-1 px-4 py-3 text-sm font-medium transition-colors",
+                  ordersFillsTab === "orders" ? "border-b-2 border-primary bg-accent/30" : "text-muted-foreground hover:bg-accent/20",
+                )}
+                onClick={() => setOrdersFillsTab("orders")}
+              >
+                Orders ({orders.length})
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  "flex-1 px-4 py-3 text-sm font-medium transition-colors",
+                  ordersFillsTab === "fills" ? "border-b-2 border-primary bg-accent/30" : "text-muted-foreground hover:bg-accent/20",
+                )}
+                onClick={() => setOrdersFillsTab("fills")}
+              >
+                Fills ({fills.length})
+              </button>
+            </div>
+            <div className="table-wrapper max-h-[320px] overflow-auto">
+              {ordersFillsTab === "orders" ? (
+                <table className="data-table w-full">
+                  <thead>
+                    <tr>
+                      <th>Time</th>
+                      <th>Symbol</th>
+                      <th>Side</th>
+                      <th>Qty</th>
+                      <th>Type</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.map((o, idx) => (
+                      <tr key={`${o.id ?? "order"}-${idx}`}>
+                        <td className="text-xs whitespace-nowrap">{fmtTime(o.created_at)}</td>
+                        <td className="font-semibold">{o.symbol}</td>
+                        <td>{o.side}</td>
+                        <td>{fmtNum(o.quantity, 4)}</td>
+                        <td>{o.type || "—"}</td>
+                        <td>{o.status || "—"}</td>
+                      </tr>
+                    ))}
+                    {orders.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="empty-state">
+                          No orders yet.
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              ) : (
+                <table className="data-table w-full">
+                  <thead>
+                    <tr>
+                      <th>Time</th>
+                      <th>Symbol</th>
+                      <th>Side</th>
+                      <th>Qty</th>
+                      <th>Price</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fills.map((f, idx) => (
+                      <tr key={`${f.id ?? "fill"}-${idx}`}>
+                        <td className="text-xs whitespace-nowrap">{fmtTime(f.timestamp)}</td>
+                        <td className="font-semibold">{f.symbol}</td>
+                        <td>{f.side}</td>
+                        <td>{fmtNum(f.quantity, 4)}</td>
+                        <td>{fmtMoney(f.price, currency)}</td>
+                      </tr>
+                    ))}
+                    {fills.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="empty-state">
+                          No fills yet.
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="shadow-none">
+        <CardContent className="p-0">
           <div className="section-header">Positions</div>
-          <div className="table-wrapper">
-            <table className="data-table">
+          <div className="table-wrapper overflow-x-auto">
+            <table className="data-table w-full min-w-[640px]">
               <thead>
                 <tr>
                   <th>Symbol</th>
@@ -398,23 +536,43 @@ export function PaperClient() {
                   <th>Avg cost</th>
                   <th>Mkt price</th>
                   <th>Mkt value</th>
+                  <th>Unrealized</th>
                 </tr>
               </thead>
               <tbody>
-                {positions.map((p) => (
-                  <tr key={p.symbol}>
-                    <td className="font-bold">{p.symbol}</td>
-                    <td>{fmtNum(p.quantity, 4)}</td>
-                    <td>{fmtMoney(p.avg_cost, p.currency || currency)}</td>
-                    <td>{fmtMoney(p.market_price, p.currency || currency)}</td>
-                    <td>
-                      {fmtMoney(p.market_value ?? (p.market_price != null ? p.market_price * p.quantity : undefined), p.currency || currency)}
-                    </td>
-                  </tr>
-                ))}
+                {positions.map((p) => {
+                  const mv =
+                    p.market_value ?? (p.market_price != null && p.quantity != null ? p.market_price * p.quantity : undefined);
+                  const unreal =
+                    mv != null && p.avg_cost != null && Number.isFinite(mv) && Number.isFinite(p.avg_cost) && Number.isFinite(p.quantity)
+                      ? mv - p.avg_cost * p.quantity
+                      : undefined;
+                  const long = p.quantity > 0;
+                  const short = p.quantity < 0;
+                  return (
+                    <tr key={p.symbol}>
+                      <td className={cn("font-semibold", long && "text-emerald-600 dark:text-emerald-400", short && "text-red-600 dark:text-red-400")}>
+                        {p.symbol}
+                      </td>
+                      <td className="font-mono text-sm">{fmtNum(p.quantity, 4)}</td>
+                      <td>{fmtMoney(p.avg_cost, p.currency || currency)}</td>
+                      <td>{fmtMoney(p.market_price, p.currency || currency)}</td>
+                      <td>{fmtMoney(mv, p.currency || currency)}</td>
+                      <td
+                        className={cn(
+                          "font-mono text-sm",
+                          unreal != null && unreal > 0 && "text-emerald-600",
+                          unreal != null && unreal < 0 && "text-red-600",
+                        )}
+                      >
+                        {unreal != null && Number.isFinite(unreal) ? fmtMoney(unreal, p.currency || currency) : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
                 {positions.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="empty-state">
+                    <td colSpan={6} className="empty-state">
                       No positions.
                     </td>
                   </tr>
@@ -422,275 +580,195 @@ export function PaperClient() {
               </tbody>
             </table>
           </div>
-        </div>
-
-        <div className="section-card overflow-hidden">
-          <div className="section-header">Recent fills / trades</div>
-          <div className="table-wrapper">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Time</th>
-                  <th>Symbol</th>
-                  <th>Side</th>
-                  <th>Qty</th>
-                  <th>Price</th>
-                </tr>
-              </thead>
-              <tbody>
-                {fills.map((f, idx) => (
-                  <tr key={`${f.id ?? "fill"}-${idx}`}>
-                    <td className="text-xs">{fmtTime(f.timestamp)}</td>
-                    <td className="font-bold">{f.symbol}</td>
-                    <td>{f.side}</td>
-                    <td>{fmtNum(f.quantity, 4)}</td>
-                    <td>{fmtMoney(f.price, currency)}</td>
-                  </tr>
-                ))}
-                {fills.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="empty-state">
-                      No fills yet.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <div className="section-card mt-3.5 overflow-hidden">
-        <div className="section-header">Recent orders</div>
-        <div className="table-wrapper">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Time</th>
-                <th>Symbol</th>
-                <th>Side</th>
-                <th>Qty</th>
-                <th>Type</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((o, idx) => (
-                <tr key={`${o.id ?? "order"}-${idx}`}>
-                  <td className="text-xs">{fmtTime(o.created_at)}</td>
-                  <td className="font-bold">{o.symbol}</td>
-                  <td>{o.side}</td>
-                  <td>{fmtNum(o.quantity, 4)}</td>
-                  <td>{o.type || "—"}</td>
-                  <td>{o.status || "—"}</td>
-                </tr>
-              ))}
-              {orders.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="empty-state">
-                    No orders yet.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {portfolios.length ? (
-        <div className="section-card mt-3.5 p-3">
-          <h3 className="mb-2.5 mt-0">Optional: Allocate cash to a portfolio (rebalance)</h3>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <select
-              value={portfolioId}
-              onChange={(e) => setPortfolioId(e.target.value)}
-              className="input-field min-w-[260px]"
-            >
-              {portfolios.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            <input
-              value={allocationUsd}
-              onChange={(e) => setAllocationUsd(e.target.value)}
-              inputMode="decimal"
-              placeholder="Allocation (USD)"
-              className="input-field w-[200px]"
-            />
-            <button
-              onClick={onPreviewRebalance}
-              disabled={actionBusy === "preview"}
-              className="btn"
-            >
-              {actionBusy === "preview" ? "Previewing…" : "Preview"}
-            </button>
-            <button
-              onClick={onExecuteRebalance}
-              disabled={actionBusy === "execute"}
-              className="btn"
-            >
-              {actionBusy === "execute" ? "Executing…" : "Execute"}
-            </button>
-          </div>
-          {rebalanceError ? (
-            <div className="error-message mt-2.5">
-              {rebalanceError}
+        <Card className="shadow-none">
+          <CardContent className="space-y-4 p-4">
+            <h3 className="text-sm font-semibold">Rebalance to portfolio</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={portfolioId}
+                onChange={(e) => setPortfolioId(e.target.value)}
+                className="input-field min-w-[240px]"
+              >
+                {portfolios.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={allocationUsd}
+                onChange={(e) => setAllocationUsd(e.target.value)}
+                inputMode="decimal"
+                placeholder="Allocation USD"
+                className="input-field w-36"
+              />
+              <Button onClick={onPreviewRebalance} disabled={actionBusy === "preview"} size="sm" variant="outline">
+                {actionBusy === "preview" ? "Previewing…" : "Preview"}
+              </Button>
+              <Button onClick={onExecuteRebalance} disabled={actionBusy === "execute"} size="sm" variant="secondary">
+                {actionBusy === "execute" ? "Executing…" : "Execute"}
+              </Button>
             </div>
-          ) : null}
-          {rebalancePreview ? (
-            <pre className="code-block">
-              {JSON.stringify(rebalancePreview, null, 2)}
-            </pre>
-          ) : null}
-        </div>
+            {rebalanceError ? <div className="error-message">{rebalanceError}</div> : null}
+            {preview && (legs.length > 0 || preview.orders) ? (
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                  {preview.as_of ? <span>As of {fmtTime(preview.as_of)}</span> : null}
+                  {preview.allocation_amount != null ? <span>Allocation {fmtMoney(preview.allocation_amount)}</span> : null}
+                  {preview.estimated_cash_remaining != null ? (
+                    <span>Est. cash remaining {fmtMoney(preview.estimated_cash_remaining)}</span>
+                  ) : null}
+                </div>
+                {legs.length > 0 ? (
+                  <div className="table-wrapper overflow-x-auto rounded-md border">
+                    <table className="data-table w-full min-w-[720px] text-sm">
+                      <thead>
+                        <tr>
+                          <th>Symbol</th>
+                          <th className="text-right">Current</th>
+                          <th className="text-right">Target qty</th>
+                          <th className="text-right">Delta</th>
+                          <th>Side</th>
+                          <th className="text-right">Price</th>
+                          <th className="text-right">Target value</th>
+                          <th className="text-right">Weight</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {legs.map((leg) => (
+                          <tr key={leg.ticker}>
+                            <td className="font-semibold">{leg.ticker}</td>
+                            <td className="text-right font-mono text-xs">{fmtNum(leg.current_quantity, 4)}</td>
+                            <td className="text-right font-mono text-xs">{fmtNum(leg.target_quantity, 4)}</td>
+                            <td className="text-right font-mono text-xs">{fmtNum(leg.delta_quantity, 4)}</td>
+                            <td>
+                              <Badge variant={leg.side === "BUY" ? "success" : "danger"}>{leg.side}</Badge>
+                            </td>
+                            <td className="text-right font-mono text-xs">{fmtMoney(leg.price)}</td>
+                            <td className="text-right font-mono text-xs">{fmtMoney(leg.target_value)}</td>
+                            <td className="text-right font-mono text-xs">{(leg.target_weight * 100).toFixed(1)}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : preview.orders && Array.isArray(preview.orders) ? (
+                  <p className="text-sm text-muted-foreground">Executed {preview.orders.length} orders — positions refreshed.</p>
+                ) : null}
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
       ) : null}
 
-      {/* P&L / Performance Tracking */}
-      <div className="section-card mt-3.5 p-3">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
-          <h3 className="mt-0 mb-0">Performance Tracking</h3>
-          <button onClick={() => refreshPnl(accountId)} disabled={pnlLoading} className="btn text-xs">
-            {pnlLoading ? "Loading..." : "Refresh P&L"}
-          </button>
-        </div>
-
-        {pnlSummary && pnlSummary.days > 0 ? (
-          <>
-            <div className="flex flex-wrap gap-3 mb-3">
-              <div className="stat-card">
-                <div className="stat-label">Total P&L</div>
-                <div className={`stat-value ${pnlSummary.total_pnl >= 0 ? "text-emerald-600" : "text-red-500"}`}>
-                  {fmtMoney(pnlSummary.total_pnl)}
-                </div>
+      <Card className="shadow-none">
+        <CardContent className="space-y-4 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-base font-semibold">Performance</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex rounded-md border p-0.5">
+                {(["7d", "30d", "all"] as const).map((w) => (
+                  <button
+                    key={w}
+                    type="button"
+                    onClick={() => setPnlWindow(w)}
+                    className={cn(
+                      "rounded px-2.5 py-1 text-xs font-medium",
+                      pnlWindow === w ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent",
+                    )}
+                  >
+                    {w === "all" ? "All" : w.toUpperCase()}
+                  </button>
+                ))}
               </div>
-              <div className="stat-card">
-                <div className="stat-label">Total Return</div>
-                <div className={`stat-value ${pnlSummary.total_return >= 0 ? "text-emerald-600" : "text-red-500"}`}>
-                  {(pnlSummary.total_return * 100).toFixed(2)}%
-                </div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-label">Max Drawdown</div>
-                <div className="stat-value text-red-500">{(pnlSummary.max_drawdown * 100).toFixed(2)}%</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-label">Days Tracked</div>
-                <div className="stat-value">{pnlSummary.days}</div>
-              </div>
+              <Button variant="outline" size="sm" onClick={() => refreshPnl(accountId)} disabled={pnlLoading}>
+                {pnlLoading ? "Loading…" : "Refresh P&L"}
+              </Button>
             </div>
+          </div>
 
-            {/* Equity curve SVG sparkline */}
-            {pnlDaily.length > 1 ? (
-              <div className="mb-3">
-                <div className="text-xs font-semibold mb-1">Equity Curve</div>
-                <svg viewBox={`0 0 ${Math.max(pnlDaily.length - 1, 1)} 100`} className="w-full h-32 border rounded bg-background" preserveAspectRatio="none">
-                  {(() => {
-                    const eqs = pnlDaily.map((d) => d.equity);
-                    const minE = Math.min(...eqs);
-                    const maxE = Math.max(...eqs);
-                    const range = maxE - minE || 1;
-                    const points = eqs.map((e, i) => `${i},${100 - ((e - minE) / range) * 90 - 5}`).join(" ");
-                    return <polyline points={points} fill="none" stroke="currentColor" strokeWidth="0.5" className="text-emerald-500" />;
-                  })()}
-                </svg>
-                <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
-                  <span>{pnlDaily[0]?.date}</span>
-                  <span>{pnlDaily[pnlDaily.length - 1]?.date}</span>
-                </div>
+          {pnlSummary && pnlSummary.days > 0 ? (
+            <>
+              <div className="rounded-lg border bg-muted/10 p-2">
+                <PaperPerformanceCharts daily={filteredPnlDaily} />
               </div>
-            ) : null}
-
-            {/* Daily P&L bars */}
-            {pnlDaily.length > 1 ? (
-              <div className="mb-3">
-                <div className="text-xs font-semibold mb-1">Daily P&L</div>
-                <div className="flex items-end gap-px h-20 border rounded bg-background p-1 overflow-hidden">
-                  {pnlDaily.slice(1).map((d, i) => {
-                    const maxPnl = Math.max(...pnlDaily.slice(1).map((x) => Math.abs(x.daily_pnl)), 1);
-                    const pct = Math.abs(d.daily_pnl) / maxPnl;
-                    return (
-                      <div
-                        key={i}
-                        className={`flex-1 min-w-[1px] ${d.daily_pnl >= 0 ? "bg-emerald-500" : "bg-red-500"}`}
-                        style={{
-                          height: `${Math.max(pct * 100, 2)}%`,
-                          alignSelf: d.daily_pnl >= 0 ? "flex-end" : "flex-end",
-                          opacity: 0.8,
-                        }}
-                        title={`${d.date}: ${fmtMoney(d.daily_pnl)}`}
-                      />
-                    );
-                  })}
+              {pnlSummary.total_pnl != null ? (
+                <div className="text-center text-sm text-muted-foreground">
+                  Total P&amp;L{" "}
+                  <span className={cn("font-semibold", pnlSummary.total_pnl >= 0 ? "text-emerald-600" : "text-red-600")}>
+                    {fmtMoney(pnlSummary.total_pnl)}
+                  </span>
                 </div>
-              </div>
-            ) : null}
+              ) : null}
+              <details className="rounded-md border">
+                <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-muted-foreground">
+                  Daily breakdown ({pnlDaily.length} rows)
+                </summary>
+                <div className="table-wrapper max-h-[280px] overflow-auto border-t">
+                  <table className="data-table w-full text-xs">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Equity</th>
+                        <th>Cash</th>
+                        <th>Daily P&L</th>
+                        <th>Cumulative</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pnlDaily.map((d, i) => (
+                        <tr key={i}>
+                          <td>{d.date}</td>
+                          <td>{fmtMoney(d.equity)}</td>
+                          <td>{fmtMoney(d.cash)}</td>
+                          <td className={d.daily_pnl >= 0 ? "text-emerald-600" : "text-red-500"}>{fmtMoney(d.daily_pnl)}</td>
+                          <td className={d.cumulative_pnl >= 0 ? "text-emerald-600" : "text-red-500"}>{fmtMoney(d.cumulative_pnl)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No snapshots yet. Daily snapshots (e.g. 4:30 PM ET) populate equity and risk metrics here.
+            </p>
+          )}
 
-            {/* Daily data table */}
-            <details className="mb-2">
-              <summary className="text-xs font-semibold cursor-pointer">Daily breakdown ({pnlDaily.length} entries)</summary>
-              <div className="table-wrapper mt-1">
-                <table className="data-table text-xs">
+          {rebalLogs.length > 0 ? (
+            <details className="rounded-md border">
+              <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-muted-foreground">
+                Rebalance history ({rebalLogs.length})
+              </summary>
+              <div className="table-wrapper max-h-[200px] overflow-auto border-t">
+                <table className="data-table w-full text-xs">
                   <thead>
                     <tr>
-                      <th>Date</th>
-                      <th>Equity</th>
-                      <th>Cash</th>
-                      <th>Daily P&L</th>
-                      <th>Cumulative</th>
+                      <th>Time</th>
+                      <th>Status</th>
+                      <th>Orders</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {pnlDaily.map((d, i) => (
-                      <tr key={i}>
-                        <td>{d.date}</td>
-                        <td>{fmtMoney(d.equity)}</td>
-                        <td>{fmtMoney(d.cash)}</td>
-                        <td className={d.daily_pnl >= 0 ? "text-emerald-600" : "text-red-500"}>{fmtMoney(d.daily_pnl)}</td>
-                        <td className={d.cumulative_pnl >= 0 ? "text-emerald-600" : "text-red-500"}>{fmtMoney(d.cumulative_pnl)}</td>
+                    {rebalLogs.map((r) => (
+                      <tr key={r.id}>
+                        <td>{fmtTime(r.timestamp)}</td>
+                        <td className={r.status === "SUCCESS" ? "text-emerald-600" : "text-red-500"}>{r.status}</td>
+                        <td>{r.n_orders}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             </details>
-          </>
-        ) : (
-          <div className="text-xs text-muted-foreground">
-            No snapshots yet. Snapshots are taken daily at 4:30 PM ET by the automated scheduler.
-          </div>
-        )}
-
-        {/* Rebalance logs */}
-        {rebalLogs.length > 0 ? (
-          <details className="mt-2">
-            <summary className="text-xs font-semibold cursor-pointer">Rebalance history ({rebalLogs.length} entries)</summary>
-            <div className="table-wrapper mt-1">
-              <table className="data-table text-xs">
-                <thead>
-                  <tr>
-                    <th>Time</th>
-                    <th>Status</th>
-                    <th>Orders</th>
-                    <th>Details</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rebalLogs.map((r) => (
-                    <tr key={r.id}>
-                      <td>{fmtTime(r.timestamp)}</td>
-                      <td className={r.status === "SUCCESS" ? "text-emerald-600" : "text-red-500"}>{r.status}</td>
-                      <td>{r.n_orders}</td>
-                      <td className="text-xs max-w-[300px] truncate">{JSON.stringify(r.details)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </details>
-        ) : null}
-      </div>
+          ) : null}
+        </CardContent>
+      </Card>
     </main>
   );
 }

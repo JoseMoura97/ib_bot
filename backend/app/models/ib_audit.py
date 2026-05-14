@@ -88,6 +88,16 @@ class LiveExecutionRequest(Base):
     result: Mapped[dict] = mapped_column(_json_type(), default=dict, nullable=False)
 
 
+class SystemState(Base):
+    """Single key-value store for persistent runtime state (e.g. trading_halt)."""
+
+    __tablename__ = "system_state"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[str] = mapped_column(String(256), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+
+
 class LiveShadowSnapshot(Base):
     __tablename__ = "live_shadow_snapshots"
 

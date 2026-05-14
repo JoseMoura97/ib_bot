@@ -1,11 +1,32 @@
 ---
-description: ib_bot shadow / dev instance on EPYC (parallel to Finland production). Read before any EPYC-side changes.
+description: ib_bot EPYC instance — shadow now, cutover to live in progress. Read before any EPYC-side changes.
 alwaysApply: true
 ---
 
-# ib_bot — EPYC shadow instance
+# ib_bot — EPYC instance (cutover in progress, 2026-05-09)
 
-A second copy of the full ib_bot stack runs on the EPYC tower in Portugal, **alongside** the live Finland instance at `213.159.68.39`. This is a **shadow / dev** environment — same code, separate Postgres, **no live trading**, **no IB Gateway connection**. Use it for:
+**Status:** Shadow mode today. IB Gateway installed and ready. Waiting for user to copy credentials from Finland (Step 1 of CUTOVER_PLAN.md).
+
+Full cutover plan: `~/Desktop/cursor-projects/ib_bot/CUTOVER_PLAN.md`
+
+A copy of the full ib_bot stack runs on the EPYC tower in Portugal, **alongside** the live Finland instance at `213.159.68.39`. Current state: shadow / dev. Once IB Gateway credentials are filled in and first VNC login done, it moves to paper then live.
+
+## IB Gateway on EPYC (installed 2026-05-09)
+
+| Component | Location | Status |
+|---|---|---|
+| IB Gateway 10.45 | `/opt/ibgateway/` | Installed |
+| IBC 3.23.0 | `/opt/ibc/` | Installed |
+| `xvfb-ibgw.service` | display `:1` | **Enabled + running** |
+| `ibgateway.service` | systemd | Written, **NOT enabled** (needs first manual login) |
+| `ib-socat.service` | port 4003→4001 | Written, **NOT enabled** (enable after Gateway up) |
+| `/opt/ibc/config.ini` | IbLoginId/IbPassword | **⚠️ Empty — YOU must fill from Finland** |
+| `/opt/ibc/auto2fa.py` | TOTP_SECRET | **⚠️ Empty — YOU must fill from Finland** |
+| `/root/Jts/jts.ini` | IB Gateway settings | **⚠️ Needs copy from Finland** |
+
+VNC access (for manual login): `ssh -L 5900:localhost:5900 servidor@100.67.188.93 -N` then connect to `localhost:5900`
+
+**Use for:**
 
 - Testing migrations / new features without touching production.
 - Eventual full cut-over once IB Gateway has been moved to EPYC (see "Cutover sequence" below).

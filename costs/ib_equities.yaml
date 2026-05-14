@@ -1,0 +1,18 @@
+# IB equities cost model (used by RebalancingBacktestEngine)
+#
+# transaction_cost_bps: round-trip cost applied to turnover on each rebalance.
+#   5 bps = 0.05% per side — conservative for IBKR tiered pricing + typical
+#   mid-cap spread.  Override via env TRANSACTION_COST_BPS.
+#
+# slippage_bps_per_side: additional market-impact estimate per leg.
+#   2.5 bps per side (5 bps round-trip) is typical for liquid large-caps.
+#   For sub-$1B market-cap stocks use the inverse_adv model below.
+#
+# inverse_adv_k: coefficient for sqrt-impact slippage model
+#   impact_bps = inverse_adv_k / sqrt(ADV_dollars / notional_traded)
+#   Set to 0 to disable.  ADV data must be supplied by the pricer.
+
+venue: ib_equities
+transaction_cost_bps: 5.0
+slippage_bps_per_side: 2.5
+inverse_adv_k: 10.0

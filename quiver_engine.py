@@ -4,8 +4,56 @@ import numpy as np
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 import os
+import re
 import logging
 import requests
+
+
+_OPT_CONTRACTS_RE = re.compile(r"(\d+)\s+(?:CALL|PUT)\s+OPTIONS?", re.I)
+_OPT_STRIKE_RE = re.compile(r"STRIKE\s+PRICE\s+(?:OF\s+)?\$?([\d,.]+)", re.I)
+_OPT_SHARES_RE = re.compile(r"\(\s*([\d,]+)\s+SHARES?\s*\)", re.I)
+
+
+def _option_notional_or_premium(description, premium):
+    """For an option Purchase, return max(premium, contracts*100*strike).
+
+    Quiver reports Trade_Size_USD as the option premium paid, which
+    under-represents the actual market exposure to the underlying for
+    in-the-money positions where premium ≈ intrinsic ≈ delta-1 notional.
+    Parse the Description to extract contracts + strike and compute a
+    notional floor. Falls back to premium if parsing fails or the parsed
+    notional is smaller (covers OTM cases conservatively).
+    """
+    try:
+        premium = float(premium) if premium is not None else 0.0
+    except (TypeError, ValueError):
+        premium = 0.0
+    if not isinstance(description, str):
+        return premium
+
+    contracts_m = _OPT_CONTRACTS_RE.search(description)
+    strike_m = _OPT_STRIKE_RE.search(description)
+    if not (contracts_m and strike_m):
+        return premium
+    try:
+        contracts = int(contracts_m.group(1))
+        strike = float(strike_m.group(1).replace(",", ""))
+    except (TypeError, ValueError):
+        return premium
+
+    # Description sometimes includes "(N SHARES)" — prefer that exact count
+    # over contracts*100 when present.
+    shares_m = _OPT_SHARES_RE.search(description)
+    if shares_m:
+        try:
+            shares = int(shares_m.group(1).replace(",", ""))
+        except (TypeError, ValueError):
+            shares = contracts * 100
+    else:
+        shares = contracts * 100
+
+    notional = shares * strike
+    return max(premium, notional)
 
 try:
     from sec_edgar import SECEdgarClient
@@ -13,6 +61,12 @@ try:
 except Exception:
     SECEdgarClient = None  # type: ignore
     SEC_EDGAR_AVAILABLE = False
+
+from instrument_classifier import (
+    classify as _classify_instrument,
+    DEFAULT_ADMISSIBLE as _DEFAULT_ADMISSIBLE_TYPES,
+    SecurityType as _SecurityType,
+)
 
 class QuiverStrategyEngine:
     # Mapping from our strategy names to Quiver API strategy names
@@ -65,10 +119,21 @@ class QuiverStrategyEngine:
                 "category": "core"
             },
             "Dan Meuser": {
-                "type": "congress_bulk",  # Use bulk endpoint for politician lookup
-                "name_pattern": "Meuser",  # Search pattern (matches "Daniel Meuser")
-                # No filter - include all trades (purchases and sales) to track portfolio activity
-                "lookback_days": 365,  # Extended lookback for bulk data
+                "type": "congress_bulk",
+                "name_pattern": "Meuser",
+                "lookback_days": 365,
+                "category": "core"
+            },
+            "Dan Meuser (equal)": {
+                "type": "congress_bulk",
+                "name_pattern": "Meuser",
+                "lookback_days": 365,
+                "category": "core"
+            },
+            "Dan Meuser (size)": {
+                "type": "congress_bulk",
+                "name_pattern": "Meuser",
+                "lookback_days": 365,
                 "category": "core"
             },
             "Sector Weighted DC Insider": {
@@ -105,12 +170,35 @@ class QuiverStrategyEngine:
             },
             "Donald Beyer": {
                 "type": "congress_bulk",
-                "name_pattern": "Beyer",  # Matches "Donald Sternoff Beyer Jr."
-                # Extended lookback - last trade was 2022
-                "lookback_days": 1825,  # ~5 years
+                "name_pattern": "Beyer",
+                "lookback_days": 1825,
+                "category": "experimental"
+            },
+            "Donald Beyer (equal)": {
+                "type": "congress_bulk",
+                "name_pattern": "Beyer",
+                "lookback_days": 1825,
+                "category": "experimental"
+            },
+            "Donald Beyer (size)": {
+                "type": "congress_bulk",
+                "name_pattern": "Beyer",
+                "lookback_days": 1825,
                 "category": "experimental"
             },
             "Josh Gottheimer": {
+                "type": "congress_bulk",
+                "name_pattern": "Gottheimer",
+                "lookback_days": 365,
+                "category": "experimental"
+            },
+            "Josh Gottheimer (equal)": {
+                "type": "congress_bulk",
+                "name_pattern": "Gottheimer",
+                "lookback_days": 365,
+                "category": "experimental"
+            },
+            "Josh Gottheimer (size)": {
                 "type": "congress_bulk",
                 "name_pattern": "Gottheimer",
                 "lookback_days": 365,
@@ -130,7 +218,31 @@ class QuiverStrategyEngine:
                 "lookback_days": 3650,  # ~10 years to better approximate full portfolio history
                 "category": "experimental"
             },
+            "Nancy Pelosi (equal)": {
+                "type": "congress_bulk",
+                "name_pattern": "Pelosi",
+                "lookback_days": 3650,
+                "category": "experimental"
+            },
+            "Nancy Pelosi (size)": {
+                "type": "congress_bulk",
+                "name_pattern": "Pelosi",
+                "lookback_days": 3650,
+                "category": "experimental"
+            },
             "Sheldon Whitehouse": {
+                "type": "congress_bulk",
+                "name_pattern": "Whitehouse",
+                "lookback_days": 365,
+                "category": "experimental"
+            },
+            "Sheldon Whitehouse (equal)": {
+                "type": "congress_bulk",
+                "name_pattern": "Whitehouse",
+                "lookback_days": 365,
+                "category": "experimental"
+            },
+            "Sheldon Whitehouse (size)": {
                 "type": "congress_bulk",
                 "name_pattern": "Whitehouse",
                 "lookback_days": 365,
@@ -289,10 +401,17 @@ class QuiverStrategyEngine:
                     else:
                         df = bulk_data.copy()
                     
-                    # Apply date filter
+                    # Use ReportDate (public disclosure) when available; fall back to
+                    # TransactionDate only if ReportDate is absent.  This prevents
+                    # lookahead: a trade reported weeks later must not enter the
+                    # universe until the report is actually public.
                     lookback_days = meta.get('lookback_days', 365)
                     cutoff_date = datetime.now() - timedelta(days=lookback_days)
-                    if 'TransactionDate' in df.columns:
+                    if 'ReportDate' in df.columns:
+                        if not pd.api.types.is_datetime64_any_dtype(df['ReportDate']):
+                            df['ReportDate'] = pd.to_datetime(df['ReportDate'], errors='coerce')
+                        df = df[df['ReportDate'] >= cutoff_date].copy()
+                    elif 'TransactionDate' in df.columns:
                         df = df[df['TransactionDate'] >= cutoff_date].copy()
                     
                     # Apply transaction filter if specified
@@ -313,7 +432,11 @@ class QuiverStrategyEngine:
                     df = bulk_data.copy()
                     lookback_days = meta.get('lookback_days', 30)
                     cutoff_date = datetime.now() - timedelta(days=lookback_days)
-                    if 'TransactionDate' in df.columns:
+                    if 'ReportDate' in df.columns:
+                        if not pd.api.types.is_datetime64_any_dtype(df['ReportDate']):
+                            df['ReportDate'] = pd.to_datetime(df['ReportDate'], errors='coerce')
+                        df = df[df['ReportDate'] >= cutoff_date].copy()
+                    elif 'TransactionDate' in df.columns:
                         df = df[df['TransactionDate'] >= cutoff_date].copy()
                     
                     filter_func = meta.get('filter')
@@ -450,10 +573,34 @@ class QuiverStrategyEngine:
 
         # For composite/official strategies where we don't have true underlying history,
         # use Quiver holdings time-series (tickers + weights) if available.
-        if (
+        #
+        # AGGREGATE CONGRESS STRATEGIES: by default we now ALSO consume Quiver's
+        # /strategies/holdings snapshot for Congress Buys/Sells/LS/House LS and
+        # the committee strategies. Quiver's holdings endpoint exposes their
+        # reconciled portfolio (PTR + methodology rules already applied), so
+        # using it gives near-exact CAGR alignment with Quiver's published
+        # numbers — at the cost of being coupled to Quiver's signal logic.
+        #
+        # Toggle off via USE_QUIVER_HOLDINGS_FOR_AGGREGATES=0 to fall back to
+        # the bulk-congress PTR path.
+        _aggregate_congress = {
+            "Congress Buys", "Congress Sells", "Congress Long-Short",
+            "U.S. House Long-Short",
+            "Transportation and Infra. Committee (House)",
+            "Energy and Commerce Committee (House)",
+            "Homeland Security Committee (Senate)",
+        }
+        _use_holdings_for_aggs = os.environ.get(
+            "USE_QUIVER_HOLDINGS_FOR_AGGREGATES", "1"
+        ).strip() not in {"0", "false", "False", "no"}
+
+        try_holdings = (
             strat_type in {"official_api", "insider", "lobbying"}
             or "Contract" in strategy_name
-        ) and strategy_name not in {"Congress Buys", "Congress Sells", "Congress Long-Short", "U.S. House Long-Short", "Transportation and Infra. Committee (House)"}:
+            or (_use_holdings_for_aggs and strategy_name in _aggregate_congress)
+        )
+
+        if try_holdings:
             holdings_data = self._get_holdings_data()
             if holdings_data is not None:
                 api_strategy_name = self.STRATEGY_NAME_MAP.get(strategy_name, strategy_name)
@@ -496,13 +643,20 @@ class QuiverStrategyEngine:
                     logging.warning(f"Date-aware filter failed for {strategy_name}: {e}")
 
             # Apply rolling window using the best available "known at" date.
-            # For portfolio-mirror politician strategies, Quiver rebalances when trades/reports are *reported*,
-            # so prefer ReportDate when present to avoid lookahead on TransactionDate.
-            preferred = []
-            if meta.get("name_pattern"):
-                preferred = ["ReportDate", "TransactionDate", "Date", "LastUpdate"]
+            # Always prefer ReportDate: aggregate congress strategies had a lookahead
+            # bug where TransactionDate (trade execution) was used instead of
+            # ReportDate (public disclosure) — giving the backtest information the
+            # market couldn't have seen yet.  ReportDate is the earliest the signal
+            # can legitimately be acted on for ALL congress paths.
+            #
+            # Research-only override: SIGNAL_DATE_COLUMN=TransactionDate (or "Filed"
+            # for the bulk endpoint's filing-date alias) lets us A/B Quiver-style
+            # lookahead — never set this for production / live trading.
+            _override = os.getenv("SIGNAL_DATE_COLUMN")
+            if _override and _override in df.columns:
+                preferred = [_override, "ReportDate", "TransactionDate", "Date", "LastUpdate"]
             else:
-                preferred = ["TransactionDate", "ReportDate", "Date", "LastUpdate"]
+                preferred = ["ReportDate", "TransactionDate", "Date", "LastUpdate"]
 
             date_col = None
             for col in preferred:
@@ -519,6 +673,63 @@ class QuiverStrategyEngine:
             # Parse transaction amount (for weighting)
             if "Range" in df.columns and "Amount" not in df.columns:
                 df["Amount"] = df["Range"].apply(self._parse_amount_range)
+
+            # Option-trade notional adjustment. Pelosi/Gottheimer trade
+            # deep-ITM long-dated calls; Quiver reports Trade_Size_USD as the
+            # premium paid, not the underlying market exposure. Treating
+            # option Purchases at premium under-weights actual long exposure
+            # vs the underlying ticker by ~2-3x for ITM positions. Replace
+            # Trade_Size_USD with max(premium, contracts × 100 × strike)
+            # parsed from Description so portfolio-mirror weighting reflects
+            # delta-1 exposure for ITM strikes while keeping premium as a
+            # conservative floor for OTM.
+            if (
+                "TickerType" in df.columns
+                and "Description" in df.columns
+                and "Trade_Size_USD" in df.columns
+            ):
+                is_option = df["TickerType"].astype(str).str.upper().isin(
+                    ["OP", "OL", "OT"]
+                )
+                if is_option.any():
+                    df["Trade_Size_USD"] = pd.to_numeric(
+                        df["Trade_Size_USD"], errors="coerce"
+                    )
+                    df.loc[is_option, "Trade_Size_USD"] = df[is_option].apply(
+                        lambda r: _option_notional_or_premium(
+                            r.get("Description"), r.get("Trade_Size_USD")
+                        ),
+                        axis=1,
+                    )
+
+            # Per-politician portfolio_mirror enrichment: use the parsed annual
+            # FD snapshot when available. The FD captures the full year-end
+            # portfolio (hundreds of holdings) — far richer than the handful of
+            # recent PTRs. Quiver itself does this (their version-history page
+            # describes "incorporates annual filings to get a more accurate
+            # estimate of the portfolio" for Pelosi/Capito/Carper).
+            #
+            # When no FD is cached for the as-of date, we fall back to PTR-rows
+            # below. Toggle off entirely via USE_ANNUAL_FD=0.
+            use_fd = os.environ.get("USE_ANNUAL_FD", "1").strip() not in {"0", "false", "False", "no"}
+            if use_fd:
+                try:
+                    from annual_fd_loader import annual_fd_snapshot, POLITICIAN_REGISTRY
+                    _base = strategy_name
+                    for suf in [" (equal)", " (size)", " (alpha only)"]:
+                        if _base.endswith(suf):
+                            _base = _base[: -len(suf)]
+                    if _base in POLITICIAN_REGISTRY:
+                        weighting = "equal" if "(equal)" in strategy_name else "size"
+                        fd_df = annual_fd_snapshot(strategy_name, as_of_date, weighting=weighting)
+                        if fd_df is not None and not fd_df.empty:
+                            logging.info(
+                                "Annual FD snapshot replacing PTRs for %s as of %s (%d tickers)",
+                                strategy_name, as_of_date.date(), len(fd_df),
+                            )
+                            return fd_df
+                except Exception as e:
+                    logging.warning("Annual FD enrichment failed for %s: %s", strategy_name, e)
 
             return df
 
@@ -806,16 +1017,24 @@ class QuiverStrategyEngine:
                 data = response.json()
                 if isinstance(data, list) and len(data) > 0:
                     df = pd.DataFrame(data)
-                    # Normalize column names to match expected format
+                    # Normalize column names. Critical: bulk endpoint emits
+                    # `Filed` (public disclosure date) and `Traded` (trade-execution
+                    # date). The backtest as-of filter prefers `ReportDate` for
+                    # lookahead-prevention; without this rename it silently fell
+                    # through to TransactionDate, leaking a median 18-30d (and up
+                    # to 503d for Meuser) of advance knowledge.
                     column_map = {
                         'Name': 'Representative',
                         'Traded': 'TransactionDate',
+                        'Filed': 'ReportDate',
                     }
                     df = df.rename(columns=column_map)
-                    
-                    # Convert date column
+
+                    # Convert date columns
                     if 'TransactionDate' in df.columns:
                         df['TransactionDate'] = pd.to_datetime(df['TransactionDate'], errors='coerce')
+                    if 'ReportDate' in df.columns:
+                        df['ReportDate'] = pd.to_datetime(df['ReportDate'], errors='coerce')
                     
                     QuiverStrategyEngine._bulk_congress_cache = df
                     QuiverStrategyEngine._bulk_congress_cache_time = datetime.now()
@@ -851,9 +1070,16 @@ class QuiverStrategyEngine:
             except Exception as e:
                 logging.warning(f"Filter failed for {strategy_name}: {e}")
         
-        # Apply date filter
+        # Apply date filter — use ReportDate (public disclosure) when available so
+        # the live path only sees trades that are already publicly known.
         lookback_days = meta.get('lookback_days', 365)
-        if 'TransactionDate' in df.columns:
+        if 'ReportDate' in df.columns:
+            if not pd.api.types.is_datetime64_any_dtype(df['ReportDate']):
+                df['ReportDate'] = pd.to_datetime(df['ReportDate'], errors='coerce')
+            cutoff = datetime.now() - timedelta(days=lookback_days)
+            df = df[df['ReportDate'] > cutoff]
+            df = df.sort_values('ReportDate', ascending=False)
+        elif 'TransactionDate' in df.columns:
             cutoff = datetime.now() - timedelta(days=lookback_days)
             df = df[df['TransactionDate'] > cutoff]
             df = df.sort_values('TransactionDate', ascending=False)
@@ -898,22 +1124,80 @@ class QuiverStrategyEngine:
                 df = df[df[date_col] > lookback]
                 df = df.sort_values(by=date_col, ascending=False)
 
-            tickers = df[ticker_col].unique().tolist()
-            return self._clean_ticker_list(tickers)
+            # Per-ticker sibling metadata (kept aligned with the ticker list).
+            # Used by the instrument classifier to drop mutual funds, options,
+            # and other non-equity rows before they hit the price fetcher.
+            name_col = self._find_col(df, ['Description', 'AssetDescription', 'Name', 'Issuer'])
+            asset_type_col = self._find_col(df, ['AssetType', 'asset_type', 'Type'])
+
+            # Deduplicate on ticker but keep first-seen sibling metadata.
+            seen: Dict[str, Dict[str, Optional[str]]] = {}
+            for _, row in df[[c for c in [ticker_col, name_col, asset_type_col] if c]].iterrows():
+                t = row.get(ticker_col)
+                if not isinstance(t, str):
+                    continue
+                key = t.strip().upper()
+                if key in seen:
+                    continue
+                seen[key] = {
+                    "name": row.get(name_col) if name_col else None,
+                    "asset_type": row.get(asset_type_col) if asset_type_col else None,
+                }
+
+            tickers = list(seen.keys())
+            names = [seen[t]["name"] for t in tickers]
+            asset_types = [seen[t]["asset_type"] for t in tickers]
+            return self._clean_ticker_list(tickers, names=names, asset_types=asset_types)
         except Exception as e:
             logging.error(f"Error in _process_raw_df: {e}")
             return []
 
-    def _clean_ticker_list(self, tickers):
-        """Clean tickers and limit to 100 to prevent backtest overload."""
-        cleaned = []
-        for t in tickers:
-            if not isinstance(t, str): continue
-            # Remove $ and handle common garbage
+    def _clean_ticker_list(self, tickers, *, names=None, asset_types=None):
+        """
+        Clean tickers and apply instrument classifier to drop non-equity rows
+        (mutual funds, options, warrants, bonds, etc.). Limit to 100 to prevent
+        backtest overload.
+
+        Admissible types are controlled by QUIVER_ADMISSIBLE_TYPES env var
+        (comma-separated SecurityType values). Default = common_stock + etf.
+        """
+        admissible_env = os.environ.get('QUIVER_ADMISSIBLE_TYPES', '').strip()
+        if admissible_env:
+            admissible = {s.strip().lower() for s in admissible_env.split(',') if s.strip()}
+        else:
+            admissible = {t.value for t in _DEFAULT_ADMISSIBLE_TYPES}
+
+        n = len(tickers)
+        names = names or [None] * n
+        asset_types = asset_types or [None] * n
+
+        cleaned: List[str] = []
+        dropped_breakdown: Dict[str, int] = {}
+        for t, name, atype in zip(tickers, names, asset_types):
+            if not isinstance(t, str):
+                continue
             t_clean = t.replace('$', '').strip().upper()
-            if t_clean and len(t_clean) < 10:
+            if not t_clean or len(t_clean) >= 10:
+                continue
+            c = _classify_instrument(
+                ticker=t_clean,
+                name=name if isinstance(name, str) else None,
+                asset_type_hint=atype if isinstance(atype, str) else None,
+            )
+            stype = c.security_type.value
+            if stype in admissible:
                 cleaned.append(t_clean)
-        return list(set(cleaned))[:100]
+            else:
+                dropped_breakdown[stype] = dropped_breakdown.get(stype, 0) + 1
+
+        if dropped_breakdown:
+            n_dropped = sum(dropped_breakdown.values())
+            logging.info(
+                "Instrument classifier dropped %d non-admissible tickers from Quiver feed: %s",
+                n_dropped, dropped_breakdown,
+            )
+
+        return list(dict.fromkeys(cleaned))[:100]
 
     def _fetch_official_strategy(self, strategy_name):
         """Fetches pre-calculated strategy holdings from Quiver's API."""

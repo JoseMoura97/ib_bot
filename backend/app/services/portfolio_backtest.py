@@ -18,7 +18,7 @@ def _parse_dt(s: str) -> datetime:
     return pd.to_datetime(s).to_pydatetime()
 
 
-def run_strategy_backtest(strategy_name: str, start_date: str, end_date: str, transaction_cost_bps: float = 0.0) -> dict:
+def run_strategy_backtest(strategy_name: str, start_date: str, end_date: str, transaction_cost_bps: float = None) -> dict:
     """
     Thin wrapper around the existing rebalancing engine in the repo root.
     This runs an actual strategy replication backtest (may hit Quiver API + price source).
@@ -46,7 +46,7 @@ def portfolio_backtest_nav_blend(
     strategy_weights: Dict[str, float],
     start_date: str,
     end_date: str,
-    transaction_cost_bps: float = 0.0,
+    transaction_cost_bps: float = None,
 ) -> dict:
     """
     NAV blend: run each strategy separately and blend their equity curves by weights.
@@ -80,7 +80,10 @@ def portfolio_backtest_nav_blend(
     years = n_days / 252.0 if n_days > 0 else 0.0
     cagr = float((1.0 + total_return) ** (1.0 / years) - 1.0) if years > 0 else 0.0
     vol = float(daily.std() * (252.0**0.5)) if n_days > 1 else 0.0
-    sharpe = float((daily.mean() * 252.0) / (daily.std() * (252.0**0.5))) if n_days > 1 and daily.std() > 0 else 0.0
+    import sys as _sys, pathlib as _pl
+    _sys.path.insert(0, str(_pl.Path(__file__).resolve().parents[3]))
+    from metrics_utils import annualized_sharpe as _ann_sharpe
+    sharpe = _ann_sharpe(daily.to_numpy()) if n_days > 1 else 0.0
     roll_max = blended.cummax()
     dd = (blended / roll_max) - 1.0
     max_dd = float(dd.min()) if not dd.empty else 0.0
@@ -293,7 +296,10 @@ def portfolio_backtest_holdings_union(*args, **kwargs) -> dict:
     years = n_days / 252.0 if n_days > 0 else 0.0
     cagr = float((1.0 + total_return) ** (1.0 / years) - 1.0) if years > 0 else 0.0
     vol = float(daily.std() * (252.0**0.5)) if n_days > 1 else 0.0
-    sharpe = float((daily.mean() * 252.0) / (daily.std() * (252.0**0.5))) if n_days > 1 and daily.std() > 0 else 0.0
+    import sys as _sys, pathlib as _pl
+    _sys.path.insert(0, str(_pl.Path(__file__).resolve().parents[3]))
+    from metrics_utils import annualized_sharpe as _ann_sharpe
+    sharpe = _ann_sharpe(daily.to_numpy()) if n_days > 1 else 0.0
     roll_max = blended.cummax()
     dd = (blended / roll_max) - 1.0
     max_dd = float(dd.min()) if not dd.empty else 0.0

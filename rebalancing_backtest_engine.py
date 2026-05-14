@@ -11,8 +11,11 @@ Runs time-series strategy replication with:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
+from pathlib import Path
+import re
+import subprocess
 import sys
 import time
 from typing import Dict, List, Optional, Tuple
@@ -24,7 +27,7 @@ from backtest_engine import BacktestEngine
 from quiver_engine import QuiverStrategyEngine
 from quiver_strategy_rules import QuiverStrategyRules
 from strategy_replicator import StrategyReplicator
-from metrics_utils import period_return_from_equity, regression_vs_benchmark, win_loss_stats
+from metrics_utils import annualized_sharpe, annualized_sortino, period_return_from_equity, regression_vs_benchmark, win_loss_stats
 
 
 @dataclass(frozen=True)
@@ -43,22 +46,63 @@ class RebalancingBacktestEngine:
     to daily returns until the next rebalance.
     """
 
+    # Defaults loaded from costs/ib_equities.yaml; can be overridden per-call.
+    _DEFAULT_COST_BPS: float = 5.0
+    _DEFAULT_SLIPPAGE_BPS: float = 2.5
+
+    @classmethod
+    def _load_cost_defaults(cls) -> dict:
+        """Load cost defaults from costs/ib_equities.yaml if present."""
+        try:
+            import yaml  # optional; fall back to hardcoded defaults if missing
+            yaml_path = Path(__file__).resolve().parent / "costs" / "ib_equities.yaml"
+            if yaml_path.exists():
+                data = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
+                if isinstance(data, dict):
+                    return data
+        except Exception:
+            pass
+        return {}
+
     def __init__(
         self,
         quiver_api_key: str,
         initial_capital: float = 100000.0,
-        transaction_cost_bps: float = 0.0,
+        transaction_cost_bps: Optional[float] = None,
         price_source: Optional[str] = None,
+        slippage_bps_per_side: Optional[float] = None,
     ):
         """
         Args:
             quiver_api_key: Quiver API key
             initial_capital: starting portfolio value
-            transaction_cost_bps: cost applied on each rebalance based on turnover.
-                Example: 10 bps = 0.10% per unit turnover.
+            transaction_cost_bps: round-trip cost on turnover in bps.
+                Defaults to 5.0 (loaded from costs/ib_equities.yaml) if None.
+                Override via env TRANSACTION_COST_BPS.
+            slippage_bps_per_side: additional per-leg market-impact in bps.
+                Defaults to 2.5 bps per side (loaded from YAML).
         """
+        cost_yaml = self._load_cost_defaults()
+
+        env_cost = os.getenv("TRANSACTION_COST_BPS", "").strip()
+        if transaction_cost_bps is not None:
+            resolved_cost = float(transaction_cost_bps)
+        elif env_cost:
+            resolved_cost = float(env_cost)
+        else:
+            resolved_cost = float(cost_yaml.get("transaction_cost_bps", self._DEFAULT_COST_BPS))
+
+        env_slip = os.getenv("SLIPPAGE_BPS_PER_SIDE", "").strip()
+        if slippage_bps_per_side is not None:
+            resolved_slip = float(slippage_bps_per_side)
+        elif env_slip:
+            resolved_slip = float(env_slip)
+        else:
+            resolved_slip = float(cost_yaml.get("slippage_bps_per_side", self._DEFAULT_SLIPPAGE_BPS))
+
         self.initial_capital = float(initial_capital)
-        self.transaction_cost_bps = float(transaction_cost_bps)
+        self.transaction_cost_bps = resolved_cost
+        self.slippage_bps_per_side = resolved_slip
 
         self.quiver = QuiverStrategyEngine(quiver_api_key)
         self.replicator = StrategyReplicator(initial_capital=self.initial_capital)
@@ -110,9 +154,31 @@ class RebalancingBacktestEngine:
         return out
 
     @staticmethod
-    def _date_range_mask(index: pd.DatetimeIndex, start: datetime, end: datetime) -> pd.Series:
-        # inclusive start, exclusive end (end is next rebalance)
+    def _date_range_mask(
+        index: pd.DatetimeIndex,
+        start: datetime,
+        end: datetime,
+        *,
+        offset_trading_days: int = 0,
+    ) -> pd.Series:
+        """Return boolean mask for [start + offset, end).
+
+        offset_trading_days: advance the start by this many NYSE trading days.
+        This implements EXECUTION_OFFSET_DAYS — the signal date is known at
+        *start* close, but execution happens on the next trading-day open.
+        Controlled by env EXECUTION_OFFSET_DAYS (default 1).
+        """
         start_ts = pd.Timestamp(start)
+        if offset_trading_days > 0:
+            try:
+                import sys as _sys
+                from pathlib import Path as _Path
+                _sys.path.insert(0, str(_Path(__file__).resolve().parent / "backend"))
+                from app.services.market_calendar import shift_trading_days
+                start_ts = shift_trading_days(start_ts, n=offset_trading_days)
+            except Exception:
+                # Graceful fallback: calendar days
+                start_ts = start_ts + pd.Timedelta(days=offset_trading_days)
         end_ts = pd.Timestamp(end)
         return (index >= start_ts) & (index < end_ts)
 
@@ -191,6 +257,74 @@ class RebalancingBacktestEngine:
         tickers = set(prev) | set(nxt)
         return float(sum(abs(nxt.get(t, 0.0) - prev.get(t, 0.0)) for t in tickers))
 
+    def _apply_single_weight_cap(
+        self,
+        weights: Dict[str, float],
+        rules: Dict,
+    ) -> Dict[str, float]:
+        """
+        Apply Quiver-style max single-stock cap (e.g. 50% per Jul 10 2024
+        version-history note). Caps each ticker's absolute weight at
+        `max_single_weight × per-side gross` and renormalizes so the per-side
+        gross is preserved (long target + short target unchanged).
+
+        Iterative because capping one ticker frees weight that the renormalize
+        step pushes onto others, which may then breach the cap. Converges in a
+        handful of passes; bounded to 8 to be safe.
+        """
+        cap = rules.get("max_single_weight")
+        if not cap or not weights:
+            return weights
+        try:
+            cap = float(cap)
+        except Exception:
+            return weights
+        if cap <= 0 or cap >= 1.0:
+            return weights
+
+        # Split long / short to preserve net exposure intent.
+        def _cap_side(side: Dict[str, float]) -> Dict[str, float]:
+            if not side:
+                return side
+            gross_target = sum(abs(v) for v in side.values())
+            if gross_target <= 0:
+                return side
+            out = dict(side)
+            for _ in range(8):
+                gross = sum(abs(v) for v in out.values())
+                if gross <= 0:
+                    return out
+                ceiling = cap * gross
+                breaches = {t: v for t, v in out.items() if abs(v) > ceiling + 1e-12}
+                if not breaches:
+                    break
+                # Pin breach tickers at ceiling (preserving sign), redistribute residual
+                pinned_mass = 0.0
+                free = {}
+                for t, v in out.items():
+                    if t in breaches:
+                        sign = 1.0 if v >= 0 else -1.0
+                        out[t] = sign * ceiling
+                        pinned_mass += ceiling
+                    else:
+                        free[t] = v
+                free_mass = sum(abs(v) for v in free.values())
+                # Re-target the side's total gross to its original; scale free names up.
+                residual = gross_target - pinned_mass
+                if residual <= 0 or free_mass <= 0:
+                    break
+                scale = residual / free_mass
+                for t in free:
+                    out[t] = out[t] * scale
+            return out
+
+        longs = {t: v for t, v in weights.items() if v > 0}
+        shorts = {t: v for t, v in weights.items() if v < 0}
+        zeros = {t: v for t, v in weights.items() if v == 0}
+        new_long = _cap_side(longs)
+        new_short = _cap_side(shorts)
+        return {**new_long, **new_short, **zeros}
+
     def _clean_weight_map(self, weights: Dict[str, float]) -> Dict[str, float]:
         """
         Clean/normalize ticker symbols in a weight map to be compatible with yfinance:
@@ -214,7 +348,11 @@ class RebalancingBacktestEngine:
             # Heuristics to drop obvious non-ticker identifiers (CUSIPs, headers, placeholders)
             if t in {"SYMBOL", "TICKER", "CUSIP"}:
                 continue
-            if len(t) > 7:
+            # Reject anything longer than 7 chars OR containing characters that are
+            # illegal in exchange-listed equity tickers (digits-only, slashes, spaces,
+            # dots after normalisation, etc.).  Pattern: 1-7 uppercase letters/digits,
+            # optionally a single dash followed by 1-2 uppercase letters (e.g. BRK-B).
+            if not re.fullmatch(r"[A-Z]{1,7}(?:-[A-Z]{1,2})?", t):
                 continue
             if not any(ch.isalpha() for ch in t):
                 continue
@@ -347,6 +485,34 @@ class RebalancingBacktestEngine:
             )
 
             weights = self._clean_weight_map(weights)
+
+            # Quiver methodology: dynamically extend rolling window for committee
+            # strategies that don't yet have enough distinct stocks. Caps at 3
+            # iterations / ~12× original lookback so we don't spiral.
+            min_n = int(rules.get("min_distinct_stocks", 0) or 0)
+            if min_n > 0 and len(weights) < min_n:
+                expanded_lb = lb
+                for _ in range(3):
+                    if len(weights) >= min_n:
+                        break
+                    expanded_lb = int(expanded_lb * 2)
+                    raw_ext = self.quiver._get_raw_data_with_metadata_at_date(
+                        strategy_name=strategy_name,
+                        as_of_date=d,
+                        lookback_days=expanded_lb,
+                    )
+                    weights = self.replicator.apply_strategy_weights_at_date(
+                        raw_data=raw_ext,
+                        strategy_name=strategy_name,
+                        as_of_date=d,
+                        lookback_days=expanded_lb,
+                    )
+                    weights = self._clean_weight_map(weights)
+
+            # Quiver methodology: cap any single ticker at max_single_weight of
+            # the per-side gross. Applied long/short independently to preserve
+            # net exposure intent. Re-normalizes post-cap.
+            weights = self._apply_single_weight_cap(weights, rules)
             # If this is a 13F mirror strategy and we have a filing "known as of" d,
             # but it yields zero common-stock holdings after filtering, we should
             # liquidate to cash (not carry the previous portfolio).
@@ -370,11 +536,31 @@ class RebalancingBacktestEngine:
         start_date: str | datetime,
         end_date: str | datetime,
         lookback_days_override: Optional[int] = None,
+        alpha_only: bool = False,
     ) -> Dict:
+        run_started_at = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
         start = self._to_datetime(start_date)
         end = self._to_datetime(end_date)
         if end <= start:
             return {"error": "end_date must be after start_date"}
+
+        # Stale-cache guard. Only applies when running cache-only; otherwise
+        # the fetcher can refresh.
+        price_source = os.getenv("PRICE_SOURCE", "cache_only").strip().lower()
+        cache_age_seconds = _newest_cache_age_seconds()
+        max_cache_hours_env = os.getenv("MAX_CACHE_AGE_HOURS", "").strip()
+        if max_cache_hours_env and price_source == "cache_only":
+            try:
+                limit_s = float(max_cache_hours_env) * 3600.0
+                if cache_age_seconds is not None and cache_age_seconds > limit_s:
+                    return {
+                        "error": (
+                            f"cache stale: age={cache_age_seconds / 3600.0:.1f}h, "
+                            f"limit={max_cache_hours_env}h"
+                        )
+                    }
+            except ValueError:
+                pass
 
         events = self._generate_rebalance_events(
             strategy_name=strategy_name,
@@ -384,6 +570,19 @@ class RebalancingBacktestEngine:
         )
         if not events:
             return {"error": "No rebalance events generated"}
+
+        if alpha_only:
+            hedged_events: List[RebalanceEvent] = []
+            for ev in events:
+                if ev.liquidate_to_cash or not ev.weights:
+                    hedged_events.append(ev)
+                    continue
+                spy_offset = -sum(weight for ticker, weight in ev.weights.items() if ticker != "SPY")
+                new_weights = {**ev.weights, "SPY": ev.weights.get("SPY", 0.0) + spy_offset}
+                hedged_events.append(
+                    RebalanceEvent(date=ev.date, weights=new_weights, liquidate_to_cash=False)
+                )
+            events = hedged_events
 
         rules = QuiverStrategyRules.get_strategy_rules(strategy_name)
         precomputed_returns: Optional[pd.DataFrame] = None
@@ -445,12 +644,16 @@ class RebalancingBacktestEngine:
         # Walk each rebalance segment.
         seg_prog = _ProgressBar(total=max(1, len(events)), prefix=f"{strategy_name} | segments")
 
-        # Missing ticker policy:
-        # - Default to "cash" for cache-only pricing to avoid survivorship / renormalization blowups.
-        # - Otherwise default to "renormalize" (fully invested), unless overridden.
+        # Missing ticker policy: default "cash" everywhere (phase-3 fix).
+        # "renormalize" inflates surviving-name returns — opt in explicitly.
         mtp = os.getenv("MISSING_TICKER_POLICY", "").strip().lower()
         if mtp not in {"cash", "renormalize"}:
-            mtp = "cash" if getattr(self.pricer, "price_source", "").lower().strip() == "cache_only" else "renormalize"
+            mtp = "cash"
+
+        exec_offset = int(os.getenv("EXECUTION_OFFSET_DAYS", "1"))
+        n_missing_ticker_segments = 0
+        dropped_weight_per_segment: List[float] = []
+
         for i, ev in enumerate(events):
             seg_start = ev.date
             seg_end = events[i + 1].date if i + 1 < len(events) else end
@@ -465,7 +668,7 @@ class RebalancingBacktestEngine:
                     # Walk the segment dates and apply 0% return to keep equity curve continuous.
                     date_index = precomputed_returns.index if precomputed_returns is not None else prefetched_index
                     if date_index is not None:
-                        mask = self._date_range_mask(date_index, seg_start, seg_end)
+                        mask = self._date_range_mask(date_index, seg_start, seg_end, offset_trading_days=exec_offset)
                         seg_idx = date_index[mask]
                         for dt in seg_idx:
                             if equity_dates and equity_dates[-1] == dt:
@@ -528,15 +731,21 @@ class RebalancingBacktestEngine:
                 returns = self._sanitize_returns_for_splits(prices.pct_change())
 
             # Determine availability in this segment.
-            mask = self._date_range_mask(returns.index, seg_start, seg_end)
+            # exec_offset shifts the first applicable return to the next trading day
+            # (avoids same-day close lookahead: signal known at close, trades next open).
+            mask = self._date_range_mask(returns.index, seg_start, seg_end, offset_trading_days=exec_offset)
             seg_returns = returns.loc[mask]
             if seg_returns.empty:
                 continue
 
-            # Turnover + transaction cost on rebalance day
-            if self.transaction_cost_bps > 0:
-                turnover = self._compute_turnover(prev_weights, raw_weights)
-                cost = (self.transaction_cost_bps / 10000.0) * turnover
+            # Turnover + transaction cost + slippage on rebalance day
+            turnover = self._compute_turnover(prev_weights, raw_weights)
+            total_cost_bps = (
+                self.transaction_cost_bps          # round-trip commission
+                + self.slippage_bps_per_side * 2   # slippage each leg (sell + buy)
+            )
+            if total_cost_bps > 0 and turnover > 0:
+                cost = (total_cost_bps / 10000.0) * turnover
                 portfolio_value *= max(0.0, 1.0 - cost)
 
             prev_weights = raw_weights
@@ -565,6 +774,16 @@ class RebalancingBacktestEngine:
             tickers_in_segment = [t for t in seg_returns.columns if t in raw_weights]
             if not tickers_in_segment:
                 continue
+
+            if len(tickers_in_segment) < len(raw_weights):
+                n_missing_ticker_segments += 1
+                _gross = sum(abs(v) for v in raw_weights.values())
+                if _gross > 0:
+                    _missing = sum(
+                        abs(v) for t, v in raw_weights.items()
+                        if t not in tickers_in_segment
+                    )
+                    dropped_weight_per_segment.append(_missing / _gross)
 
             weights = self._normalize_weights_for_available_tickers(
                 weights=raw_weights,
@@ -618,7 +837,8 @@ class RebalancingBacktestEngine:
         total_return = (equity_values[-1] / self.initial_capital) - 1.0
         cagr = (equity_values[-1] / self.initial_capital) ** (1.0 / n_years) - 1.0 if n_years > 0 else 0.0
         volatility = float(np.std(daily_returns) * np.sqrt(252.0))
-        sharpe_ratio = (cagr - 0.02) / volatility if volatility > 0 else 0.0
+        sharpe_ratio = annualized_sharpe(daily_returns)
+        sortino_ratio = annualized_sortino(daily_returns)
 
         equity_arr = np.array(equity_values, dtype=float)
         peak = np.maximum.accumulate(equity_arr)
@@ -702,8 +922,28 @@ class RebalancingBacktestEngine:
         except Exception:
             pass
 
+        provenance = {
+            "run_started_at": run_started_at,
+            "price_source": price_source,
+            "options_mode": os.getenv("SEC_13F_OPTIONS_MODE", "delta_adjusted"),
+            "missing_ticker_policy": mtp,
+            "code_sha": _git_sha_short(),
+            "cache_age_seconds": cache_age_seconds,
+            "fallback_counts": dict(getattr(self.pricer, "last_fallback_counts", {}) or {}),
+        }
+
+        dropped_weight_avg = (
+            float(np.mean(dropped_weight_per_segment))
+            if dropped_weight_per_segment else 0.0
+        )
+        dropped_weight_max = (
+            float(np.max(dropped_weight_per_segment))
+            if dropped_weight_per_segment else 0.0
+        )
+
         return {
             "strategy": strategy_name,
+            "alpha_only": bool(alpha_only),
             "start_date": str(pd.Timestamp(start).date()),
             "end_date": str(pd.Timestamp(end).date()),
             "initial_capital": self.initial_capital,
@@ -713,6 +953,7 @@ class RebalancingBacktestEngine:
             "volatility": float(volatility),
             "std_dev": float(std_dev),
             "sharpe_ratio": float(sharpe_ratio),
+            "sortino_ratio": float(sortino_ratio),
             "max_drawdown": max_drawdown,
             "n_days": int(len(daily_returns)),
             "trades": int(trades),
@@ -731,6 +972,14 @@ class RebalancingBacktestEngine:
             "info_ratio": float(info_ratio) if info_ratio is not None else None,
             "treynor": float(treynor) if treynor is not None else None,
             "transaction_cost_bps": self.transaction_cost_bps,
+            "slippage_bps_per_side": self.slippage_bps_per_side,
+            "execution_offset_days": exec_offset,
+            "missing_ticker_policy": mtp,
+            "n_missing_ticker_segments": n_missing_ticker_segments,
+            "segment_drops": int(n_missing_ticker_segments),
+            "dropped_weight_avg": dropped_weight_avg,
+            "dropped_weight_max": dropped_weight_max,
+            "provenance": provenance,
             "equity_curve": equity_curve,
             "returns_series": returns_series,
             "drawdown_series": pd.Series(drawdown, index=pd.DatetimeIndex(equity_dates)),
@@ -739,6 +988,48 @@ class RebalancingBacktestEngine:
                 for ev in events
             ],
         }
+
+
+def _git_sha_short() -> str:
+    """Best-effort short git SHA of the working tree. Returns 'unknown' on failure."""
+    try:
+        sha = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=Path(__file__).resolve().parent,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=2.0,
+        ).strip()
+        return sha or "unknown"
+    except Exception:
+        return "unknown"
+
+
+def _newest_cache_age_seconds() -> Optional[float]:
+    """Newest mtime across known price-cache dirs, in seconds. None if no caches."""
+    roots = [
+        Path(".cache/yf_prices"),
+        Path(".cache/ib_prices"),
+        Path.home() / ".cache" / "yf_prices",
+        Path.home() / ".cache" / "ib_prices",
+    ]
+    newest: Optional[float] = None
+    now = time.time()
+    for root in roots:
+        try:
+            if not root.exists():
+                continue
+            for p in root.iterdir():
+                try:
+                    mt = p.stat().st_mtime
+                    age = now - mt
+                    if newest is None or age < newest:
+                        newest = age
+                except Exception:
+                    continue
+        except Exception:
+            continue
+    return newest
 
 
 def _progress_enabled() -> bool:

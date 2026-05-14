@@ -23,8 +23,10 @@ class QuiverStrategyRules:
             "rebalance_day": "monday",
             "universe": "all_congress",
             "lookback_days": 30,
+            # Quiver methodology (Jul 10 2024): cap any single stock at 50% of allocation.
+            "max_single_weight": 0.50,
         },
-        
+
         "Congress Sells": {
             "type": "congressional_aggregate",
             "selection": "top_10_sold",
@@ -33,8 +35,9 @@ class QuiverStrategyRules:
             "rebalance_day": "monday",
             "universe": "all_congress",
             "lookback_days": 30,
+            "max_single_weight": 0.50,  # Quiver methodology Jul 10 2024.
         },
-        
+
         "Congress Long-Short": {
             "type": "long_short",
             "long_allocation": 1.30,
@@ -46,46 +49,92 @@ class QuiverStrategyRules:
             "rebalance_day": "monday",
             "universe": "all_congress",
             "lookback_days": 30,
+            "max_single_weight": 0.50,  # Quiver methodology Jul 10 2024.
         },
         
         # Individual Politicians (Event-Driven)
-        "Nancy Pelosi": {
-            "type": "portfolio_mirror",
-            "weighting": "equal",  # Equal weight portfolio
-            "rebalance_frequency": "on_trade",  # When new trade filed
-            "min_rebalance_days": 1,  # Check daily for new trades
-            "include_family": True,
-        },
-        
-        "Dan Meuser": {
+        # Two variants per politician:
+        #   (equal) — equal-weight at each rebalance (matches Quiver published methodology)
+        #   (size)  — weight proportional to reported transaction amount
+        # The un-suffixed name is a deprecated alias that resolves to (equal).
+        "Nancy Pelosi (equal)": {
             "type": "portfolio_mirror",
             "weighting": "equal",
-            "rebalance_frequency": "on_trade",
-            "min_rebalance_days": 1,
+            # Per Quiver's Dec-2023 version-history note: per-politician
+            # strategies "incorporate annual filings to get a more accurate
+            # estimate of the portfolio" — they also rebalance weekly to keep
+            # the inferred portfolio fresh between filings. Empirically this
+            # closes ~4pt of CAGR gap for Gottheimer-style sparse-trade
+            # politicians without hurting active-trade ones.
+            "rebalance_frequency": "weekly",
+            "rebalance_day": "monday",
             "include_family": True,
         },
-        
-        "Josh Gottheimer": {
+        "Nancy Pelosi (size)": {
             "type": "portfolio_mirror",
-            "weighting": "equal",
-            "rebalance_frequency": "on_trade",
-            "min_rebalance_days": 1,
+            "weighting": "position_size",
+            "rebalance_frequency": "weekly",
+            "rebalance_day": "monday",
             "include_family": True,
         },
-        
-        "Sheldon Whitehouse": {
+
+        "Dan Meuser (equal)": {
             "type": "portfolio_mirror",
             "weighting": "equal",
-            "rebalance_frequency": "on_trade",
-            "min_rebalance_days": 1,
+            "rebalance_frequency": "weekly",
+            "rebalance_day": "monday",
             "include_family": True,
         },
-        
-        "Donald Beyer": {
+        "Dan Meuser (size)": {
+            "type": "portfolio_mirror",
+            "weighting": "position_size",
+            "rebalance_frequency": "weekly",
+            "rebalance_day": "monday",
+            "include_family": True,
+        },
+
+        "Josh Gottheimer (equal)": {
             "type": "portfolio_mirror",
             "weighting": "equal",
-            "rebalance_frequency": "on_trade",
-            "min_rebalance_days": 1,
+            "rebalance_frequency": "weekly",
+            "rebalance_day": "monday",
+            "include_family": True,
+        },
+        "Josh Gottheimer (size)": {
+            "type": "portfolio_mirror",
+            "weighting": "position_size",
+            "rebalance_frequency": "weekly",
+            "rebalance_day": "monday",
+            "include_family": True,
+        },
+
+        "Sheldon Whitehouse (equal)": {
+            "type": "portfolio_mirror",
+            "weighting": "equal",
+            "rebalance_frequency": "weekly",
+            "rebalance_day": "monday",
+            "include_family": True,
+        },
+        "Sheldon Whitehouse (size)": {
+            "type": "portfolio_mirror",
+            "weighting": "position_size",
+            "rebalance_frequency": "weekly",
+            "rebalance_day": "monday",
+            "include_family": True,
+        },
+
+        "Donald Beyer (equal)": {
+            "type": "portfolio_mirror",
+            "weighting": "equal",
+            "rebalance_frequency": "weekly",
+            "rebalance_day": "monday",
+            "include_family": True,
+        },
+        "Donald Beyer (size)": {
+            "type": "portfolio_mirror",
+            "weighting": "position_size",
+            "rebalance_frequency": "weekly",
+            "rebalance_day": "monday",
             "include_family": True,
         },
         
@@ -98,6 +147,9 @@ class QuiverStrategyRules:
             "rebalance_day": "monday",
             "committee": "House Transportation & Infrastructure",
             "lookback_days": 30,
+            # Quiver methodology (Oct 13 2024): dynamically extend rolling window
+            # to include at least N distinct stocks to avoid single-stock allocation.
+            "min_distinct_stocks": 5,
         },
         
         # Long-Short Strategies
@@ -111,6 +163,7 @@ class QuiverStrategyRules:
             "rebalance_frequency": "weekly",
             "rebalance_day": "monday",
             "lookback_days": 30,
+            "max_single_weight": 0.50,  # Quiver methodology Jul 10 2024.
         },
         
         # Alternative Data - Lobbying
@@ -179,12 +232,14 @@ class QuiverStrategyRules:
             "weighting": "provided",
             "rebalance_frequency": "weekly",
             "rebalance_day": "monday",
+            "min_distinct_stocks": 5,  # Quiver methodology Oct 13 2024.
         },
         "Homeland Security Committee (Senate)": {
             "type": "official_holdings",
             "weighting": "provided",
             "rebalance_frequency": "weekly",
             "rebalance_day": "monday",
+            "min_distinct_stocks": 5,  # Quiver methodology Oct 13 2024.
         },
         
         # 13F Hedge Fund Managers
@@ -245,10 +300,30 @@ class QuiverStrategyRules:
         },
     }
     
+    # Deprecated un-suffixed names → canonical (equal) variant.
+    # These are kept so old DB rows and audit logs still resolve.
+    _DEPRECATED_ALIASES: Dict[str, str] = {
+        "Nancy Pelosi":       "Nancy Pelosi (equal)",
+        "Dan Meuser":         "Dan Meuser (equal)",
+        "Josh Gottheimer":    "Josh Gottheimer (equal)",
+        "Sheldon Whitehouse": "Sheldon Whitehouse (equal)",
+        "Donald Beyer":       "Donald Beyer (equal)",
+    }
+
+    @classmethod
+    def resolve_strategy_name(cls, name: str) -> str:
+        """Resolve a deprecated alias to its canonical name."""
+        return cls._DEPRECATED_ALIASES.get(name, name)
+
     @classmethod
     def get_strategy_rules(cls, strategy_name: str) -> Dict:
-        """Get the exact trading rules for a strategy."""
-        return cls.STRATEGY_RULES.get(strategy_name, {})
+        """Get the exact trading rules for a strategy.
+
+        Accepts both the canonical suffixed names and the deprecated
+        un-suffixed aliases (resolved to the `(equal)` variant).
+        """
+        canonical = cls.resolve_strategy_name(strategy_name)
+        return cls.STRATEGY_RULES.get(canonical, {})
     
     @classmethod
     def get_rebalance_dates(cls, strategy_name: str, start_date: datetime, end_date: datetime) -> List[datetime]:

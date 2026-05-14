@@ -282,6 +282,8 @@ export function MetricsTable() {
               <Th className="text-right">Sharpe (Q)</Th>
               <Th className="text-right">ΔSharpe</Th>
 
+              <Th className="text-right">Sortino (Our)</Th>
+
               <Th className="text-right">MaxDD (Our)</Th>
               <Th className="text-right">MaxDD (Q)</Th>
               <Th className="text-right">ΔMaxDD</Th>
@@ -313,6 +315,12 @@ export function MetricsTable() {
               <Th className="text-right">Vol (Our)</Th>
               <Th className="text-right">Vol (Q)</Th>
               <Th className="text-right">ΔVol</Th>
+
+              <Th className="text-right">Offset (d)</Th>
+              <Th className="text-right">Cost (bps)</Th>
+              <Th className="text-right">Slippage (bps)</Th>
+              <Th className="text-right">Missing segs</Th>
+              <Th className="text-right">Ticker policy</Th>
             </tr>
           </thead>
           <tbody>
@@ -339,6 +347,8 @@ export function MetricsTable() {
                   <Td className={`text-right font-mono ${clsDiff(d.sharpe ?? null)}`}>
                     {d.sharpe === null || d.sharpe === undefined ? "—" : d.sharpe.toFixed(2)}
                   </Td>
+
+                  <Td className="text-right font-mono">{fmtNum(r.ours?.sortino)}</Td>
 
                   <Td className="text-right font-mono">{fmtPct(r.ours?.max_drawdown)}</Td>
                   <Td className="text-right font-mono">{fmtPct(r.quiver?.max_drawdown)}</Td>
@@ -386,6 +396,22 @@ export function MetricsTable() {
                   <Td className="text-right font-mono">{fmtPct(r.quiver?.volatility)}</Td>
                   <Td className={`text-right font-mono ${clsDiff(d.volatility ?? null)}`}>
                     {d.volatility === null || d.volatility === undefined ? "—" : `${d.volatility.toFixed(2)}%`}
+                  </Td>
+
+                  <Td className="text-right font-mono text-muted-foreground">
+                    {r.ours?.execution_offset_days ?? "—"}
+                  </Td>
+                  <Td className="text-right font-mono text-muted-foreground">
+                    {r.ours?.transaction_cost_bps != null ? `${r.ours.transaction_cost_bps}` : "—"}
+                  </Td>
+                  <Td className="text-right font-mono text-muted-foreground">
+                    {r.ours?.slippage_bps_per_side != null ? `${r.ours.slippage_bps_per_side}` : "—"}
+                  </Td>
+                  <Td className={`text-right font-mono ${(r.ours?.n_missing_ticker_segments ?? 0) > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>
+                    {r.ours?.n_missing_ticker_segments ?? "—"}
+                  </Td>
+                  <Td className="text-right font-mono text-muted-foreground">
+                    {r.ours?.missing_ticker_policy ?? "—"}
                   </Td>
                 </tr>
               );

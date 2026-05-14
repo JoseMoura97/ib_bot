@@ -9,13 +9,14 @@ export const navItems: NavItem[] = [
   { href: "/strategies", label: "Strategies" },
   { href: "/portfolios", label: "Portfolios" },
   { href: "/allocations", label: "Allocations" },
-  { href: "/runs", label: "Runs" },
+  { href: "/backtest", label: "Backtest" },
   { href: "/paper", label: "Paper" },
   { href: "/live", label: "Live" },
 ];
 
 export function routeTitle(pathname: string): string {
   if (pathname === "/") return "Home";
+  if (pathname === "/runs" || pathname.startsWith("/runs/")) return "Runs";
   const hit = navItems.find((i) => pathname === i.href || pathname.startsWith(`${i.href}/`));
   return hit?.label ?? "IB Bot";
 }

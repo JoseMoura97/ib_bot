@@ -41,6 +41,22 @@ except Exception:
     Stock = None  # type: ignore
     util = None  # type: ignore
 
+try:
+    from ib_insync import MutualFund  # type: ignore
+except Exception:
+    MutualFund = None  # type: ignore
+
+try:
+    from instrument_classifier import (
+        classify as _classify_instrument,
+        ib_sec_type as _ib_sec_type,
+    )
+    CLASSIFIER_AVAILABLE = True
+except Exception:
+    CLASSIFIER_AVAILABLE = False
+    _classify_instrument = None  # type: ignore
+    _ib_sec_type = None  # type: ignore
+
 
 # Global cache for historical data to avoid repeated downloads
 _historical_data_cache = {}
@@ -62,7 +78,11 @@ class BacktestEngine:
         self._ib_port = int(os.getenv("IB_PORT", "4001"))
         self._ib_client_id = int(os.getenv("IB_CLIENT_ID", str(random.randint(10, 1000))))
         self._ib_use_rth = os.getenv("IB_USE_RTH", "1").strip() not in {"0", "false", "False"}
-        self._ib_pace_sleep_s = float(os.getenv("IB_PACE_SLEEP_S", "0.25"))
+        # IB enforces a 60-request / 600-second rolling window on
+        # reqHistoricalData. 1.1s between calls = ~55 req/min, safely under
+        # 60-in-600s for the first minute and within sustainable territory.
+        # Override via IB_PACE_SLEEP_S env if you need to burst-and-cool.
+        self._ib_pace_sleep_s = float(os.getenv("IB_PACE_SLEEP_S", "1.1"))
         self._ib_disabled_until_ts: float = 0.0
 
         self._ib_cache_dir = os.path.join(os.path.dirname(__file__), ".cache", "ib_prices")
@@ -71,7 +91,13 @@ class BacktestEngine:
 
         self._yf_cache_dir = os.path.join(os.path.dirname(__file__), ".cache", "yf_prices")
         os.makedirs(self._yf_cache_dir, exist_ok=True)
-        
+
+        # IB cool-down (set on HMDS error 162 etc.)
+        self._ib_cooldown_until: float = 0.0
+        # Filled after each fetch_historical_data() so callers/provenance can read.
+        self.last_fallback_counts: Dict[str, int] = {}
+
+
     def _clean_tickers(self, tickers: List[str]) -> List[str]:
         """Clean ticker strings: remove $, convert to upper, handle special characters."""
         cleaned = []
@@ -336,8 +362,24 @@ class BacktestEngine:
         if end <= start:
             return pd.DataFrame()
 
+        # Honor IB cool-down window after a pacing/HMDS error.
+        if time.time() < self._ib_cooldown_until:
+            return pd.DataFrame()
+
         cached = self._load_ib_cache(ticker)
+        # Stale-cache refetch: when end_date is close to "today" and the cache
+        # max is older than CACHE_MAX_STALENESS_DAYS, force a refresh even if
+        # the historical window is technically covered.
+        max_stale_days = int(os.getenv("CACHE_MAX_STALENESS_DAYS", "3"))
+        today = pd.Timestamp.utcnow().tz_localize(None).normalize().to_pydatetime()
+        end_is_recent = (today - end).days <= max_stale_days
+        cache_is_fresh = True
         if cached is not None and not cached.empty:
+            cache_max = cached.index.max().to_pydatetime()
+            if end_is_recent and (today - cache_max).days > max_stale_days:
+                cache_is_fresh = False
+
+        if cached is not None and not cached.empty and cache_is_fresh:
             # If cache covers range, slice and return
             # NOTE: IB daily bars end on the last trading day <= end_date.
             # If end_date is a weekend/holiday (or intraday on a trading day),
@@ -349,6 +391,28 @@ class BacktestEngine:
         if not self._ib_connect() or self._ib is None:
             return pd.DataFrame()
 
+        # Classifier-driven contract routing. If the ticker looks like a mutual
+        # fund / option / bond, do NOT build a Stock contract (it would fail
+        # silently). Skip IB for non-STK types and let yfinance/cache handle.
+        if CLASSIFIER_AVAILABLE and _classify_instrument is not None:
+            try:
+                klass = _classify_instrument(ticker=ticker)
+                sec_type = _ib_sec_type(klass) if _ib_sec_type else None
+                if sec_type is not None and sec_type != "STK":
+                    if sec_type == "MF" and MutualFund is not None:
+                        # Mutual fund — handled below.
+                        pass
+                    else:
+                        logging.info(
+                            "ib_fetch_skip: ticker=%s sec_type=%s reason=non_stk_routed_to_fallback",
+                            ticker, sec_type,
+                        )
+                        return pd.DataFrame()
+            except Exception:
+                sec_type = "STK"
+        else:
+            sec_type = "STK"
+
         ib_symbol = self._normalize_symbol_for_ib(ticker)
         # Use split-adjusted prices by default to avoid artificial jumps on splits/reverse-splits.
         # IB supports whatToShow="ADJUSTED_LAST" for many stock contracts.
@@ -358,7 +422,10 @@ class BacktestEngine:
         try:
             contract = self._ib_contract_cache.get(ib_symbol)
             if contract is None:
-                contract = Stock(ib_symbol, "SMART", "USD")
+                if sec_type == "MF" and MutualFund is not None:
+                    contract = MutualFund(ib_symbol, "FUNDSERV", "USD")
+                else:
+                    contract = Stock(ib_symbol, "SMART", "USD")
                 self._ib.qualifyContracts(contract)
                 self._ib_contract_cache[ib_symbol] = contract
         except Exception:
@@ -368,26 +435,46 @@ class BacktestEngine:
         # environments (can return 0 bars). Using endDateTime='' is consistently
         # supported; we then slice to [start, end]. This also reduces calls vs.
         # chunking backwards per ticker.
-        try:
-            anchor_end = datetime.now()
-            span_days = max(1, int((anchor_end - start).days))
-            if span_days >= 365:
-                years = int(min(10, max(1, (span_days + 364) // 365)))
-                duration_str = f"{years} Y"
-            else:
-                duration_str = f"{span_days} D"
+        bars = None
+        anchor_end = datetime.now()
+        span_days = max(1, int((anchor_end - start).days))
+        if span_days >= 365:
+            years = int(min(10, max(1, (span_days + 364) // 365)))
+            duration_str = f"{years} Y"
+        else:
+            duration_str = f"{span_days} D"
 
-            bars = self._ib.reqHistoricalData(
-                contract,
-                endDateTime="",
-                durationStr=duration_str,
-                barSizeSetting="1 day",
-                whatToShow=what_to_show,
-                useRTH=self._ib_use_rth,
-                formatDate=1,
-                keepUpToDate=False,
-            )
-        except Exception:
+        last_exc: Optional[Exception] = None
+        for attempt in range(3):
+            try:
+                bars = self._ib.reqHistoricalData(
+                    contract,
+                    endDateTime="",
+                    durationStr=duration_str,
+                    barSizeSetting="1 day",
+                    whatToShow=what_to_show,
+                    useRTH=self._ib_use_rth,
+                    formatDate=1,
+                    keepUpToDate=False,
+                )
+                break
+            except Exception as e:
+                last_exc = e
+                msg = str(e)
+                # IB error 162: pacing / HMDS / no-data. Apply a cool-down so
+                # downstream callers stop hammering IB this run.
+                if "162" in msg or "HMDS" in msg or "pacing" in msg.lower():
+                    self._ib_cooldown_until = time.time() + 30.0
+                    logging.info(
+                        "ib_pacing_cooldown: ticker=%s setting 30s IB cool-down (err=%s)",
+                        ticker, msg[:120],
+                    )
+                    return pd.DataFrame()
+                # Retryable-ish: brief backoff with jitter.
+                sleep_s = (2 ** attempt) + random.random()
+                time.sleep(min(sleep_s, 6.0))
+
+        if bars is None:
             return pd.DataFrame()
 
         df_all = self._bars_to_df(bars)
@@ -443,14 +530,15 @@ class BacktestEngine:
         Fetch historical OHLCV data for a list of tickers.
 
         price_source:
-          - 'yfinance': Yahoo via yfinance
-          - 'ib': Interactive Brokers (reqHistoricalData)
-          - 'auto': try IB first, fallback to yfinance
+          - 'yfinance': Yahoo via yfinance (then cache fallback for misses)
+          - 'ib': Interactive Brokers primary, then yfinance, then cache fallback.
+                  Set PRICE_SOURCE_REQUIRED=ib to disable yfinance/cache fallback.
+          - 'auto': same chain as 'ib'.
           - 'cache_only': only use cached data, no API calls (fast, offline mode)
         """
         if not tickers:
             return {}
-        
+
         # Clean tickers first
         tickers = self._clean_tickers(tickers)
         if not tickers:
@@ -460,38 +548,75 @@ class BacktestEngine:
         if src not in {"yfinance", "ib", "auto", "cache_only"}:
             src = "yfinance"
 
-        # If caller explicitly requests IB-only pricing, never fall back to Yahoo.
-        if src == "ib" and not IB_AVAILABLE:
-            return {}
-        
+        required = os.getenv("PRICE_SOURCE_REQUIRED", "").strip().lower()
+
         # Cache-only mode: load from disk cache without any API calls
         if src == "cache_only":
-            return self._fetch_from_cache_only(tickers, start_date, end_date, progress_callback)
+            data = self._fetch_from_cache_only(tickers, start_date, end_date, progress_callback)
+            self.last_fallback_counts = {
+                "ib_hit": 0, "yfinance_hit": 0,
+                "cache_hit": len(data),
+                "all_failed": len(tickers) - len(data),
+            }
+            return data
 
+        fallback_counts = {"ib_hit": 0, "yfinance_hit": 0, "cache_hit": 0, "all_failed": 0}
+
+        # ── 1) IB primary (when src in {ib, auto}) ──────────────────────────
         ib_data: Dict[str, pd.DataFrame] = {}
         if src in {"ib", "auto"} and IB_AVAILABLE:
-            # In auto mode, if IB isn't reachable right now, skip IB entirely.
             if self._ib_connect():
+                pace_s = max(0.0, self._ib_pace_sleep_s)
+                last_ib_call_ts = 0.0
                 for i, ticker in enumerate(tickers):
                     if progress_callback:
                         progress_callback(i / max(1, len(tickers)), f"IB historical: {ticker} ({i+1}/{len(tickers)})")
+                    # Pace requests to stay under the 60-in-600s rolling cap.
+                    if pace_s > 0 and last_ib_call_ts > 0:
+                        elapsed = time.time() - last_ib_call_ts
+                        if elapsed < pace_s:
+                            time.sleep(pace_s - elapsed)
+                    t_call = time.time()
                     df = self._fetch_ib_ticker_history(ticker, start_date, end_date)
+                    # Only arm the pacer when the inner call actually round-tripped
+                    # to IB. Cache hits return in microseconds and shouldn't burn
+                    # 1.1s/each of pacing budget.
+                    if (time.time() - t_call) > 0.05:
+                        last_ib_call_ts = time.time()
                     if df is not None and not df.empty and "Close" in df.columns and len(df) > 1:
                         ib_data[ticker] = df
                 if progress_callback:
                     progress_callback(1.0, "IB data fetch complete.")
 
-            if src == "ib":
-                return ib_data
-        elif src == "ib":
-            # Explicit IB-only request but IB is unavailable or disabled.
-            return {}
+        fallback_counts["ib_hit"] = len(ib_data)
 
-        # yfinance path
+        if required == "ib" and len(ib_data) < len(tickers):
+            missing = [t for t in tickers if t not in ib_data]
+            self.last_fallback_counts = fallback_counts
+            raise RuntimeError(
+                f"PRICE_SOURCE_REQUIRED=ib: IB returned no data for "
+                f"{len(missing)} ticker(s): {missing[:10]}"
+            )
+
+        # If user requested IB-only and IB unavailable, surface that explicitly.
+        if src == "ib" and not IB_AVAILABLE:
+            logging.warning("price_source=ib but ib_insync unavailable — falling through to yfinance.")
+
+        # ── 2) yfinance for what IB didn't return ───────────────────────────
         if not YFINANCE_AVAILABLE:
-            return ib_data if ib_data else {}
+            # No yfinance — try cache for what's still missing.
+            data = dict(ib_data)
+            remaining = [t for t in tickers if t not in data]
+            if remaining:
+                cache_data = self._fetch_from_cache_only(remaining, start_date, end_date)
+                for t, df in cache_data.items():
+                    data[t] = df
+                    fallback_counts["cache_hit"] += 1
+            fallback_counts["all_failed"] = len([t for t in tickers if t not in data])
+            self.last_fallback_counts = fallback_counts
+            return data
 
-        data = {}
+        data: Dict[str, pd.DataFrame] = dict(ib_data)
         # Fetch yfinance data with batching to reduce request count/rate limits.
         yf_targets = [t for t in tickers if t not in ib_data]
         if yf_targets:
@@ -559,10 +684,65 @@ class BacktestEngine:
         
         if progress_callback:
             progress_callback(1.0, "Data download complete.")
-            
-        # If we're in auto mode and IB returned some data, merge (IB wins).
-        if src == "auto" and ib_data:
-            data.update(ib_data)
+
+        # Tally yfinance hits (tickers in data that weren't from IB).
+        fallback_counts["yfinance_hit"] = sum(1 for t in data if t not in ib_data)
+
+        # ── 3) Disk-cache fallback for anything still missing ───────────────
+        remaining = [t for t in tickers if t not in data]
+        if remaining:
+            cache_data = self._fetch_from_cache_only(remaining, start_date, end_date)
+            for t, df in cache_data.items():
+                data[t] = df
+                fallback_counts["cache_hit"] += 1
+                logging.info(
+                    "price_fallback: ticker=%s from=yfinance to=cache reason=no_bars",
+                    t,
+                )
+
+        # ── 4) Delisted-ticker continuation map (last-resort synthesis) ─────
+        # For known M&A targets / take-privates / cash buyouts, splice in the
+        # successor's prices or freeze at deal close so the strategy gets a
+        # plausible return series instead of dropping the position to cash.
+        # Off by default — cash-buyout entries in the curated map currently
+        # have ratio=0.0 which zeroes positions post-deal (regression for
+        # strategies that held them). Set USE_DELISTED_MAP=1 to enable after
+        # fixing the cash prices in delisted_ticker_map.DELISTED_MAP.
+        if os.environ.get("USE_DELISTED_MAP", "0").strip() not in {"0", "false", "False", "no"}:
+            still_missing = [t for t in tickers if t not in data]
+            if still_missing:
+                try:
+                    from delisted_ticker_map import synthesize_continuation_dataframe, resolve as _resolve
+
+                    def _fetch_one(sym, s_dt, e_dt):
+                        # Reuse the same orchestrator (recursion guarded by
+                        # absence of the original ticker in the call chain).
+                        sub = self.fetch_historical_data(
+                            [sym],
+                            (s_dt or pd.to_datetime(start_date)).strftime("%Y-%m-%d") if s_dt else start_date,
+                            (e_dt or pd.to_datetime(end_date)).strftime("%Y-%m-%d") if e_dt else end_date,
+                        )
+                        return sub.get(sym)
+
+                    s_dt = pd.to_datetime(start_date).to_pydatetime()
+                    e_dt = pd.to_datetime(end_date).to_pydatetime()
+                    for t in still_missing:
+                        if _resolve(t) is None:
+                            continue
+                        try:
+                            df = synthesize_continuation_dataframe(t, _fetch_one, s_dt, e_dt)
+                        except Exception as ex:
+                            logging.info("delisted_map: %s synthesis failed: %s", t, ex)
+                            continue
+                        if df is not None and not df.empty and "Close" in df.columns and len(df) > 1:
+                            data[t] = df
+                            fallback_counts["delisted_synth_hit"] = fallback_counts.get("delisted_synth_hit", 0) + 1
+                            logging.info("delisted_map: %s resolved via continuation rule", t)
+                except Exception as e:
+                    logging.warning("Delisted-map step failed: %s", e)
+
+        fallback_counts["all_failed"] = len([t for t in tickers if t not in data])
+        self.last_fallback_counts = fallback_counts
         return data
     
     @staticmethod

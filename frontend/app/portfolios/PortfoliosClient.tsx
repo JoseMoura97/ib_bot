@@ -474,6 +474,14 @@ export function PortfoliosClient(props: { initialPortfolios: PortfolioOut[]; str
         }
       />
 
+      <p className="mb-4 text-sm text-muted-foreground">
+        Portfolio backtests with equity curves and run history live on{" "}
+        <Link href="/backtest" className="font-medium text-foreground underline-offset-4 hover:underline">
+          Backtest
+        </Link>
+        . This page stays focused on weights and metadata.
+      </p>
+
       {loadError ? (
         <Card className="border-destructive/30 bg-destructive/10 shadow-none">
           <CardContent className="py-4 text-sm text-destructive whitespace-pre-wrap">{loadError}</CardContent>

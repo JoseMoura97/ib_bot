@@ -76,3 +76,9 @@ frontend/.env*
 # auto-added 2026-04-30 to stop tracking IB price cache
 .cache/
 *.pkl
+
+# junk / build artifacts / data dumps
+$LOG
+*.tsbuildinfo
+*.bak.*
+backtest_results_*.json

@@ -1,6 +1,13 @@
 # EPYC-specific overrides — avoid host port collisions with Grafana (3000),
 # host PostgreSQL (5432), and host redis-server (6379). Keep services
 # Docker-internal-only where possible. Drafted by migration agent 2026-04-29.
+#
+# MODES:
+#   shadow/dev (current):   IB_HOST=127.0.0.1, IB_PORT=4999 (unreachable stub)
+#   paper (pre-cutover):    IB_HOST=host.docker.internal, IB_PORT=4003, LIVE_DRY_RUN=true
+#   live (post-cutover):    IB_HOST=host.docker.internal, IB_PORT=4003, ENABLE_LIVE_TRADING=true, LIVE_DRY_RUN=false
+#
+# To switch modes: edit environment blocks below + `docker compose up -d --force-recreate api worker beat`
 services:
   db:
     ports: !reset []   # do not expose 5432 on host (collides with system postgres)
@@ -8,23 +15,36 @@ services:
     ports: !reset []   # do not expose 6379 on host (collides with system redis)
   api:
     ports:
-      - "8001:8000"    # API on host:8001 (8000 free, but reserve room)
+      - "8001:8000"
+    extra_hosts:
+      - "host.docker.internal:172.18.0.1"
     environment:
-      # Don't try to reach a non-existent IB Gateway during dry-run bring-up.
-      # Override later (or unset) when IB Gateway is migrated to EPYC.
-      IB_HOST: "127.0.0.1"
-      IB_PORT: "4999"
+      # PAPER MODE — IB Gateway connected, testing before live
+      IB_HOST: "host.docker.internal"
+      IB_PORT: "4003"
       ENABLE_LIVE_TRADING: "false"
       LIVE_DRY_RUN: "true"
+      # SHADOW MODE (stub):
+      # IB_HOST: "127.0.0.1"
+      # IB_PORT: "4999"
+      # LIVE MODE (uncomment + comment shadow block above — ONLY after paper confirmed):
+      # IB_HOST: "host.docker.internal"
+      # IB_PORT: "4003"
+      # ENABLE_LIVE_TRADING: "true"
+      # LIVE_DRY_RUN: "false"
   worker:
+    extra_hosts:
+      - "host.docker.internal:172.18.0.1"
     environment:
-      IB_HOST: "127.0.0.1"
-      IB_PORT: "4999"
+      IB_HOST: "host.docker.internal"
+      IB_PORT: "4003"
       LIVE_DRY_RUN: "true"
   beat:
+    extra_hosts:
+      - "host.docker.internal:172.18.0.1"
     environment:
-      IB_HOST: "127.0.0.1"
-      IB_PORT: "4999"
+      IB_HOST: "host.docker.internal"
+      IB_PORT: "4003"
   web:
     ports: !reset []                # avoid collision with Grafana on :3000
   nginx:

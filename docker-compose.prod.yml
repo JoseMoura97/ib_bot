@@ -2,6 +2,7 @@ services:
   # In production, we use a stronger password from .env
   db:
     restart: always
+    mem_limit: 4g
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
@@ -9,11 +10,13 @@ services:
 
   redis:
     restart: always
+    mem_limit: 1g
     # Persistence enabled for production safety
     command: redis-server --appendonly yes
 
   api:
     restart: always
+    mem_limit: 2g
     environment:
       IB_HOST: 172.17.0.1
       IB_PORT: ${IB_PORT:-4001}
@@ -29,7 +32,8 @@ services:
       - "host.docker.internal:host-gateway"
 
   worker:
-    restart: always
+    restart: "no"
+    mem_limit: 12g
     environment:
       IB_HOST: 172.17.0.1
       LIVE_DRY_RUN: ${LIVE_DRY_RUN:-true}
@@ -40,7 +44,8 @@ services:
       - "host.docker.internal:host-gateway"
 
   beat:
-    restart: always
+    restart: "no"
+    mem_limit: 512m
     environment:
       IB_HOST: 172.17.0.1
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
@@ -50,12 +55,14 @@ services:
 
   web:
     restart: always
+    mem_limit: 1g
     environment:
       NODE_ENV: production
       INTERNAL_API_KEY: ${API_KEY:-}
 
   nginx:
     restart: always
+    mem_limit: 256m
     ports:
       - "80:80"
       - "443:443"

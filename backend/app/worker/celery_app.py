@@ -46,6 +46,11 @@ celery_app.conf.update(
             "task": "paper_snapshot_daily_task",
             "schedule": crontab(hour=21, minute=30),  # 21:30 UTC = ~4:30 PM ET
         },
+        # Phase 2: Reconcile stuck IN_PROGRESS execution rows every 5 minutes
+        "reconcile_stuck_executions": {
+            "task": "reconcile_stuck_executions_task",
+            "schedule": 300,  # every 5 minutes
+        },
     },
 )
 

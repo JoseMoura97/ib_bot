@@ -7,6 +7,53 @@ import numpy as np
 import pandas as pd
 
 
+def annualized_sharpe(
+    daily_returns: np.ndarray | list,
+    rf_annual: float = 0.02,
+    periods: int = 252,
+) -> float:
+    """Standard annualized Sharpe ratio using mean/std of excess daily returns.
+
+    Uses sample std (ddof=1) and scales by sqrt(periods).  This is the single
+    canonical implementation — call it from every metric surface instead of
+    computing CAGR/vol variants inline.
+    """
+    r = np.asarray(daily_returns, dtype=float)
+    r = r[np.isfinite(r)]
+    if len(r) < 2:
+        return 0.0
+    rf_daily = rf_annual / periods
+    excess = r - rf_daily
+    std = float(np.std(excess, ddof=1))
+    # Absolute floor handles constant-value inputs where floating-point pairwise
+    # summation leaves a non-zero but tiny std (~machine-epsilon range).
+    if std < 1e-9:
+        return 0.0
+    return float(np.mean(excess) / std * np.sqrt(periods))
+
+
+def annualized_sortino(
+    daily_returns: np.ndarray | list,
+    rf_annual: float = 0.02,
+    periods: int = 252,
+) -> float:
+    """Annualized Sortino ratio — downside deviation below rf."""
+    r = np.asarray(daily_returns, dtype=float)
+    r = r[np.isfinite(r)]
+    if len(r) < 2:
+        return 0.0
+    rf_daily = rf_annual / periods
+    excess = r - rf_daily
+    downside = excess[excess < 0]
+    if len(downside) == 0:
+        return 0.0
+    downside_std = float(np.std(downside, ddof=1)) * np.sqrt(periods)
+    if downside_std <= 0:
+        return 0.0
+    ann_excess = float(np.mean(excess)) * periods
+    return ann_excess / downside_std
+
+
 @dataclass(frozen=True)
 class RegressionStats:
     beta: Optional[float]

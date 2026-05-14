@@ -7,13 +7,9 @@ services:
       POSTGRES_DB: ibbot
     volumes:
       - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
 
   redis:
     image: redis:7
-    ports:
-      - "6379:6379"
 
   api:
     build:
@@ -40,7 +36,7 @@ services:
     volumes:
       - ./.cache:/app/.cache
     ports:
-      - "8000:8000"
+      - "8001:8000"
 
   worker:
     build:
@@ -95,8 +91,6 @@ services:
       INTERNAL_API_KEY: ${API_KEY-}
     depends_on:
       - api
-    ports:
-      - "3000:3000"
 
   web-lint:
     build:
@@ -114,7 +108,7 @@ services:
       - api
       - web
     ports:
-      - "8080:80"
+      - "8090:80"
 
 volumes:
   pgdata:

@@ -11,6 +11,7 @@ import warnings
 import os
 warnings.filterwarnings('ignore')
 
+from metrics_utils import annualized_sharpe as _ann_sharpe
 from quiver_strategy_rules import QuiverStrategyRules
 
 try:
@@ -202,13 +203,36 @@ class StrategyReplicator:
             }
         
         # Congressional Individual Strategies
-        if strategy_name in ["Nancy Pelosi", "Dan Meuser", "Josh Gottheimer", "Donald Beyer", "Sheldon Whitehouse"]:
+        # Canonical names are suffixed with (equal) or (size).
+        # Un-suffixed names are deprecated aliases → resolved to (equal) here.
+        _politician_equal = {
+            "Nancy Pelosi (equal)", "Dan Meuser (equal)", "Josh Gottheimer (equal)",
+            "Donald Beyer (equal)", "Sheldon Whitehouse (equal)",
+            # deprecated aliases
+            "Nancy Pelosi", "Josh Gottheimer", "Donald Beyer", "Sheldon Whitehouse",
+        }
+        _politician_size = {
+            "Nancy Pelosi (size)", "Dan Meuser (size)", "Josh Gottheimer (size)",
+            "Donald Beyer (size)", "Sheldon Whitehouse (size)",
+            # Dan Meuser un-suffixed was incorrectly using position_size in prior code;
+            # keep for backward compatibility of any saved DB row
+            "Dan Meuser",
+        }
+        if strategy_name in _politician_equal:
+            return {
+                'type': 'portfolio_mirror',
+                'rebalance': 'on_trade',
+                'weighting': 'equal',
+                'mirror_mode': 'latest_action',
+                'lookback_days': 3650,
+            }
+        if strategy_name in _politician_size:
             return {
                 'type': 'portfolio_mirror',
                 'rebalance': 'on_trade',
                 'weighting': 'position_size',
                 'mirror_mode': 'latest_action',
-                'lookback_days': 3650
+                'lookback_days': 3650,
             }
         
         # Lobbying Strategies
@@ -251,14 +275,19 @@ class StrategyReplicator:
                 'lookback_days': 90
             }
         
-        # Insider Purchases
+        # Insider Purchases — fed by `/beta/strategies/holdings` (Insider Purchases),
+        # which delivers a pre-selected top-10 with explicit weights, so the normal
+        # path is the Weight-column short-circuit in apply_strategy_weights.
+        # If that endpoint ever fails over to raw insider_trades, _equal_weight
+        # will refuse to silently pick first-N because insider_score is missing.
         if strategy_name == "Insider Purchases":
             return {
                 'type': 'equal_weighted',
                 'top_n': 10,
                 'rebalance': 'weekly',
                 'sort_by': 'insider_score',
-                'lookback_days': 90
+                'require_sort_column': True,
+                'lookback_days': 90,
             }
         
         # Analyst Buys
@@ -310,20 +339,29 @@ class StrategyReplicator:
             Dictionary mapping ticker to weight (weights sum to 1.0)
         """
         
-        # If upstream provides explicit weights (e.g. strategies/holdings time-series),
-        # respect them regardless of strategy type.
-        if raw_data is not None and not raw_data.empty and 'Ticker' in raw_data.columns and 'Weight' in raw_data.columns:
-            dfw = raw_data[['Ticker', 'Weight']].copy()
-            dfw['Weight'] = pd.to_numeric(dfw['Weight'], errors='coerce')
-            dfw = dfw.dropna(subset=['Weight'])
-            if not dfw.empty:
-                w = dfw.groupby('Ticker')['Weight'].sum()
-                total = float(w.sum())
-                if total > 0:
-                    return (w / total).to_dict()
-
         strategy_type = config.get('type', 'equal_weighted')
-        
+
+        # Disabled strategies return no weights — prevents broken selection from
+        # silently falling through to first-N picks. Must run BEFORE the
+        # upstream-Weight short-circuit, otherwise data sources that attach a
+        # Weight column (e.g. insider-trades) bypass the gate.
+        if config.get('disabled'):
+            return {}
+
+        # If upstream provides explicit weights, respect them — EXCEPT for
+        # sector_weighted strategies, which must run the sector logic regardless
+        # (the Weight column would bypass sector allocation entirely).
+        if strategy_type != 'sector_weighted':
+            if raw_data is not None and not raw_data.empty and 'Ticker' in raw_data.columns and 'Weight' in raw_data.columns:
+                dfw = raw_data[['Ticker', 'Weight']].copy()
+                dfw['Weight'] = pd.to_numeric(dfw['Weight'], errors='coerce')
+                dfw = dfw.dropna(subset=['Weight'])
+                if not dfw.empty:
+                    w = dfw.groupby('Ticker')['Weight'].sum()
+                    total = float(w.sum())
+                    if total > 0:
+                        return (w / total).to_dict()
+
         if strategy_type == 'equal_weighted':
             return self._equal_weight(raw_data, config)
         
@@ -387,6 +425,10 @@ class StrategyReplicator:
             if sort_by and sort_by in data.columns:
                 data_sorted = data.sort_values(sort_by, ascending=False)
                 tickers = data_sorted['Ticker'].unique()[:top_n].tolist()
+            elif sort_by and config.get('require_sort_column'):
+                # Selection column missing and caller demanded it — refuse
+                # to silently fall through to a positional first-N pick.
+                return {}
             else:
                 tickers = tickers[:top_n]
         
@@ -578,15 +620,24 @@ class StrategyReplicator:
                                     ]
                                 else:
                                     t_buys = t_rows
-                                if "Amount" in t_buys.columns:
-                                    amt = pd.to_numeric(t_buys["Amount"], errors="coerce").sum()
-                                    amounts[t] = max(float(amt) if not pd.isna(amt) else 0.0, 0.0)
-                                elif "Range" in t_buys.columns:
-                                    amounts[t] = max(
-                                        float(t_buys["Range"].apply(self._parse_amount_range).sum()), 0.0
-                                    )
-                                else:
-                                    amounts[t] = 1.0
+                                # Try every common size column. Some Quiver endpoints emit
+                                # `Trade_Size_USD` (politician PTRs), others `Amount`, others
+                                # only the `Range` string ("$1,001-$15,000"). Fall back to
+                                # 1.0 only when nothing usable is present (degrades to
+                                # equal-weight gracefully).
+                                size = 0.0
+                                if "Trade_Size_USD" in t_buys.columns:
+                                    s = pd.to_numeric(t_buys["Trade_Size_USD"], errors="coerce").sum()
+                                    if not pd.isna(s):
+                                        size = max(float(s), 0.0)
+                                if size <= 0 and "Amount" in t_buys.columns:
+                                    s = pd.to_numeric(t_buys["Amount"], errors="coerce").sum()
+                                    if not pd.isna(s):
+                                        size = max(float(s), 0.0)
+                                if size <= 0 and "Range" in t_buys.columns:
+                                    s = float(t_buys["Range"].apply(self._parse_amount_range).sum())
+                                    size = max(s, 0.0)
+                                amounts[t] = size if size > 0 else 1.0
                             total = sum(amounts.values())
                             if total > 0:
                                 return {t: a / total for t, a in amounts.items()}
@@ -933,7 +984,7 @@ class StrategyReplicator:
         total_return = (portfolio_values[-1] / self.initial_capital) - 1
         cagr = (portfolio_values[-1] / self.initial_capital) ** (1 / n_years) - 1 if n_years > 0 else 0
         volatility = np.std(portfolio_returns) * np.sqrt(252)
-        sharpe_ratio = (cagr - 0.02) / volatility if volatility > 0 else 0
+        sharpe_ratio = _ann_sharpe(portfolio_returns)
         
         equity = np.array(portfolio_values)
         peak = np.maximum.accumulate(equity)
@@ -1009,7 +1060,7 @@ class StrategyReplicator:
         total_return = (portfolio_values[-1] / self.initial_capital) - 1
         cagr = (portfolio_values[-1] / self.initial_capital) ** (1 / n_years) - 1 if n_years > 0 else 0
         volatility = np.std(portfolio_returns) * np.sqrt(252)
-        sharpe_ratio = (cagr - 0.02) / volatility if volatility > 0 else 0
+        sharpe_ratio = _ann_sharpe(portfolio_returns)
         
         equity = np.array(portfolio_values)
         peak = np.maximum.accumulate(equity)

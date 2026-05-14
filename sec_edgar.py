@@ -14,6 +14,12 @@ from typing import Optional, Dict, List
 import xml.etree.ElementTree as ET
 import re
 
+from instrument_classifier import (
+    SecurityType,
+    classify,
+    DEFAULT_ADMISSIBLE,
+)
+
 class SECEdgarClient:
     """Free SEC EDGAR API client for 13F filings and institutional holdings."""
     
@@ -398,13 +404,11 @@ class SECEdgarClient:
             if holdings:
                 df = pd.DataFrame(holdings)
                 
-                # Handle options based on include_options mode
-                # Mode is controlled by environment variable or can be set programmatically
-                # Default to stock-only for accuracy:
-                # - 13F option rows lack strike/expiry, so any delta mapping is heuristic.
-                # - If you want an approximation of directional exposure, set:
-                #   SEC_13F_OPTIONS_MODE=delta_adjusted (and optionally SEC_13F_PUT_DELTA / SEC_13F_CALL_DELTA)
-                include_options_mode = os.environ.get('SEC_13F_OPTIONS_MODE', 'filter')
+                # Handle options based on include_options mode.
+                # Default: delta_adjusted — validated against Quiver reference (Burry, Ackman,
+                # Marks) to be the closest approximation. `filter` undershoots, `as_exposure`
+                # overcounts PUT drag, `include` is wrong (treats options as equities).
+                include_options_mode = os.environ.get('SEC_13F_OPTIONS_MODE', 'delta_adjusted')
                 # Options modes:
                 # - 'filter': Remove all options (conservative)
                 # - 'as_exposure': Treat PUT as 100% SHORT, CALL as 100% LONG
@@ -458,14 +462,53 @@ class SECEdgarClient:
                         df = df[~options_mask]
                     # else 'include': keep options as-is (legacy)
                 
-                # Filter out preferred shares (typically have different price behavior)
-                if 'TitleOfClass' in df.columns:
-                    # Keep only common stock (COM, CL A, CL B, etc.) not PREF
-                    pref_mask = df['TitleOfClass'].str.upper().str.contains('PREF|PREFERRED', na=False)
-                    pref_count = pref_mask.sum()
-                    if pref_count > 0:
-                        logging.info(f"Filtering out {pref_count} preferred share positions")
-                    df = df[~pref_mask]
+                # Security-type classification at ingest. Drops non-equity instruments
+                # (preferred, warrants, units, rights, mutual funds, bonds) before the
+                # row hits the price fetcher. Replaces the legacy preferred-only filter.
+                #
+                # Admissible types are controlled by SEC_13F_ADMISSIBLE_TYPES env var
+                # (comma-separated SecurityType values). Default = common_stock + etf.
+                #
+                # When options mode is delta_adjusted or as_exposure, option rows have
+                # already been converted into directional equity exposure on the
+                # underlying — we must NOT pass put_call to the classifier for those
+                # rows or they would be re-classified as OPTION and dropped.
+                admissible_env = os.environ.get('SEC_13F_ADMISSIBLE_TYPES', '').strip()
+                if admissible_env:
+                    admissible = {s.strip().lower() for s in admissible_env.split(',') if s.strip()}
+                else:
+                    admissible = {t.value for t in DEFAULT_ADMISSIBLE}
+
+                options_already_exposure = include_options_mode in {'delta_adjusted', 'as_exposure'}
+
+                def _row_admissible(row):
+                    pc = row.get('PutCall') if 'PutCall' in df.columns else None
+                    if options_already_exposure and pc:
+                        # Option row already converted to underlying equity exposure
+                        pc = None
+                    c = classify(
+                        ticker=row.get('Ticker') if 'Ticker' in df.columns else None,
+                        name=row.get('Name'),
+                        title_of_class=row.get('TitleOfClass'),
+                        put_call=pc,
+                    )
+                    return c.security_type.value in admissible, c.security_type.value
+
+                if not df.empty:
+                    classifications = df.apply(_row_admissible, axis=1)
+                    admissible_mask = classifications.apply(lambda x: x[0])
+                    type_breakdown = classifications.apply(lambda x: x[1]).value_counts().to_dict()
+                    n_dropped = int((~admissible_mask).sum())
+                    if n_dropped > 0:
+                        dropped_breakdown = {
+                            k: v for k, v in type_breakdown.items()
+                            if k not in admissible
+                        }
+                        logging.info(
+                            f"Instrument classifier dropped {n_dropped} non-admissible rows: "
+                            f"{dropped_breakdown}"
+                        )
+                    df = df[admissible_mask].copy()
                 
                 # Try to add tickers using CUSIP lookup
                 if 'CUSIP' in df.columns:

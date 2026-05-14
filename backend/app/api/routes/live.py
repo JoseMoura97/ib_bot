@@ -12,13 +12,78 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.limiter import limiter
 from app.db.session import get_db
-from app.models.ib_audit import IBOrder, IBTrade, LiveExecutionRequest, LiveRebalanceAudit
+from app.models.ib_audit import IBOrder, IBTrade, LiveExecutionRequest, LiveRebalanceAudit, SystemState
 from app.models.portfolio import Portfolio, PortfolioStrategy
 from app.services.ib_worker import call_ib
 from app.services.market_calendar import market_is_open
 from app.services.paper_trading import PriceQuote, fetch_last_close_price, fetch_prices
 
 router = APIRouter()
+
+TERMINAL_STATUSES = frozenset({"Filled", "Cancelled", "ApiCancelled", "Inactive", "Rejected"})
+
+# ---------------------------------------------------------------------------
+# IB account whitelist cache
+# ---------------------------------------------------------------------------
+
+_managed_accounts_cache: list[str] = []
+_managed_accounts_cache_at: float = 0.0
+_MANAGED_ACCOUNTS_TTL = 300.0  # 5 minutes
+
+
+def _assert_account_allowed(account_id: str) -> None:
+    """Raise 400 if account_id is not in IB managed accounts or LIVE_ALLOWED_ACCOUNTS."""
+    global _managed_accounts_cache, _managed_accounts_cache_at
+    now = time.time()
+    if now - _managed_accounts_cache_at > _MANAGED_ACCOUNTS_TTL or not _managed_accounts_cache:
+        from app.api.routes.ib import _managed_accounts
+        cached = call_ib(lambda ib: _managed_accounts(ib), timeout=10.0)
+        _managed_accounts_cache = [str(a) for a in (cached or []) if a]
+        _managed_accounts_cache_at = now
+
+    if _managed_accounts_cache and account_id not in _managed_accounts_cache:
+        raise HTTPException(
+            status_code=400,
+            detail=f"account_id {account_id!r} not in IB managed accounts",
+        )
+
+    allowed_raw = settings.live_allowed_accounts
+    if allowed_raw:
+        allowed = [a.strip() for a in allowed_raw.replace(";", ",").split(",") if a.strip()]
+        if allowed and account_id not in allowed:
+            raise HTTPException(
+                status_code=400,
+                detail=f"account_id {account_id!r} not in LIVE_ALLOWED_ACCOUNTS allowlist",
+            )
+
+
+# ---------------------------------------------------------------------------
+# Persistent halt helpers
+# ---------------------------------------------------------------------------
+
+
+def _load_halt_from_db(db: Session) -> bool:
+    row = db.query(SystemState).filter(SystemState.key == "trading_halt").one_or_none()
+    if row is not None:
+        return str(row.value).lower() in {"1", "true", "yes"}
+    return False
+
+
+def _persist_halt(db: Session, halted: bool) -> None:
+    row = db.query(SystemState).filter(SystemState.key == "trading_halt").one_or_none()
+    now = datetime.utcnow()
+    if row is None:
+        row = SystemState(key="trading_halt", value=str(int(halted)), updated_at=now)
+        db.add(row)
+    else:
+        row.value = str(int(halted))
+        row.updated_at = now
+    db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Status endpoint
+# ---------------------------------------------------------------------------
 
 
 @router.get("/status")
@@ -109,6 +174,34 @@ def _extract_nlv(summary_rows: list[Any]) -> float | None:
     return None
 
 
+def _extract_realized_pnl(summary_rows: list[Any]) -> float | None:
+    for row in summary_rows or []:
+        tag = str(getattr(row, "tag", "") or "")
+        ccy = str(getattr(row, "currency", "") or "")
+        if tag != "RealizedPnL":
+            continue
+        if ccy not in {"USD", "BASE", ""}:
+            continue
+        val = _to_float(getattr(row, "value", None))
+        if val is not None:
+            return float(val)
+    return None
+
+
+def _extract_unrealized_pnl(summary_rows: list[Any]) -> float | None:
+    for row in summary_rows or []:
+        tag = str(getattr(row, "tag", "") or "")
+        ccy = str(getattr(row, "currency", "") or "")
+        if tag != "UnrealizedPnL":
+            continue
+        if ccy not in {"USD", "BASE", ""}:
+            continue
+        val = _to_float(getattr(row, "value", None))
+        if val is not None:
+            return float(val)
+    return None
+
+
 def _normalize_idempotency_key(value: str | None) -> str | None:
     if value is None:
         return None
@@ -138,6 +231,22 @@ def _account_nlv(account_id: str) -> float | None:
 
     rows = call_ib(lambda ib: _account_values_for_account(ib, account_id), timeout=15.0)
     return _extract_nlv(rows or [])
+
+
+def _account_realized_pnl(account_id: str) -> float | None:
+    """Read RealizedPnL from IB accountSummary (today's session P&L)."""
+    from app.api.routes.ib import _account_values_for_account
+
+    rows = call_ib(lambda ib: _account_values_for_account(ib, account_id), timeout=15.0)
+    return _extract_realized_pnl(rows or [])
+
+
+def _account_total_pnl(account_id: str) -> tuple[float | None, float | None]:
+    """Return (realized_pnl, unrealized_pnl) from IB accountSummary in one call."""
+    from app.api.routes.ib import _account_values_for_account
+
+    rows = call_ib(lambda ib: _account_values_for_account(ib, account_id), timeout=15.0) or []
+    return _extract_realized_pnl(rows), _extract_unrealized_pnl(rows)
 
 
 def _build_target_weights(
@@ -421,29 +530,30 @@ def _check_circuit_breaker(
         if streak >= max_consecutive_errors:
             raise HTTPException(status_code=429, detail="circuit breaker: consecutive errors")
 
-    # Daily loss limit
+    # Daily loss limit — read from IB accountSummary (RealizedPnL + UnrealizedPnL).
+    # Both legs are required so a large unrealised drawdown triggers the halt even
+    # before positions are closed — preventing a strategy from digging deeper.
     if account_id:
         try:
-            today_start = datetime(now.year, now.month, now.day)
-            today_trades = (
-                db.query(IBTrade)
-                .join(IBOrder, IBTrade.order_id == IBOrder.id)
-                .filter(IBTrade.timestamp >= today_start, IBOrder.account == account_id)
-                .all()
-            )
-            if today_trades:
-                daily_pnl = sum(
-                    float(t.quantity) * float(t.price) * (-1 if float(t.quantity) > 0 else 1)
-                    for t in today_trades
-                )
-                nlv = _account_nlv(account_id)
-                if nlv and nlv > 0:
-                    loss_pct = abs(min(0, daily_pnl)) / nlv
+            realized_pnl, unrealized_pnl = _account_total_pnl(account_id)
+            nlv = _account_nlv(account_id)
+            if nlv and nlv > 0:
+                r = realized_pnl or 0.0
+                u = unrealized_pnl or 0.0
+                total_pnl = r + u
+                if total_pnl < 0:
+                    loss_pct = abs(total_pnl) / nlv
                     if loss_pct > float(settings.live_max_daily_loss_pct):
                         from app.services.alerting import send_halt_alert
                         settings.trading_halt = True
+                        try:
+                            _persist_halt(db, True)
+                        except Exception:
+                            pass
                         send_halt_alert(
-                            f"daily loss {loss_pct*100:.1f}% exceeded limit {settings.live_max_daily_loss_pct*100:.1f}%"
+                            f"daily loss {loss_pct*100:.1f}% exceeded limit "
+                            f"{settings.live_max_daily_loss_pct*100:.1f}% "
+                            f"(realized={r:+.2f} unrealized={u:+.2f}) — trading halted"
                         )
                         raise HTTPException(
                             status_code=429,
@@ -593,45 +703,52 @@ def live_rebalance_execute(
     if not body.confirm:
         raise HTTPException(status_code=400, detail="confirm must be true to execute live rebalance")
 
+    # Phase 1: Mandatory idempotency key
     key = _normalize_idempotency_key(idempotency_key)
+    if not key:
+        raise HTTPException(
+            status_code=400,
+            detail="Idempotency-Key header is required for execute",
+        )
+
     idem_row: LiveExecutionRequest | None = None
-    if key:
-        existing = db.query(LiveExecutionRequest).filter(LiveExecutionRequest.idempotency_key == key).one_or_none()
-        if existing:
-            if existing.status == "OK" and existing.result:
-                return LiveRebalancePreviewOut(**existing.result)
-            if existing.status == "IN_PROGRESS":
-                raise HTTPException(status_code=409, detail="Idempotency key already in progress")
-            if existing.status == "ERROR":
-                raise HTTPException(status_code=409, detail=existing.error or "Idempotency key already failed")
+    existing = db.query(LiveExecutionRequest).filter(LiveExecutionRequest.idempotency_key == key).one_or_none()
+    if existing:
+        if existing.status == "OK" and existing.result:
+            return LiveRebalancePreviewOut(**existing.result)
+        if existing.status == "IN_PROGRESS":
+            raise HTTPException(status_code=409, detail="Idempotency key already in progress")
+        if existing.status == "ERROR":
+            raise HTTPException(status_code=409, detail=existing.error or "Idempotency key already failed")
 
     if settings.trading_halt:
         from app.services.alerting import send_error_alert
         send_error_alert("live_rebalance_execute", "Blocked: trading is halted")
         raise HTTPException(status_code=403, detail="Trading halted (TRADING_HALT=1)")
 
-    if key:
-        idem_row = LiveExecutionRequest(
-            account_id=body.account_id,
-            portfolio_id=body.portfolio_id,
-            idempotency_key=key,
-            status="IN_PROGRESS",
-            request=body.model_dump(mode="json"),
-            result={},
-        )
-        db.add(idem_row)
-        db.commit()
-        db.refresh(idem_row)
+    # Phase 1: Account whitelist check
+    _assert_account_allowed(body.account_id)
+
+    idem_row = LiveExecutionRequest(
+        account_id=body.account_id,
+        portfolio_id=body.portfolio_id,
+        idempotency_key=key,
+        status="IN_PROGRESS",
+        request=body.model_dump(mode="json"),
+        result={},
+    )
+    db.add(idem_row)
+    db.commit()
+    db.refresh(idem_row)
 
     is_open, reason = market_is_open(settings.market_calendar)
     if not is_open:
         detail = reason or "market is closed"
-        if idem_row is not None:
-            idem_row.status = "ERROR"
-            idem_row.error = detail
-            idem_row.result = {"error": detail}
-            db.add(idem_row)
-            db.commit()
+        idem_row.status = "ERROR"
+        idem_row.error = detail
+        idem_row.result = {"error": detail}
+        db.add(idem_row)
+        db.commit()
         raise HTTPException(status_code=403, detail=detail)
 
     _check_circuit_breaker(
@@ -646,6 +763,26 @@ def live_rebalance_execute(
 
     if not preview.legs:
         raise HTTPException(status_code=400, detail="No orders to execute")
+
+    # Phase 2: Server-side NLV cap — enforced here, not just in checklist
+    nlv_for_cap = _account_nlv(body.account_id)
+    if nlv_for_cap and nlv_for_cap > 0:
+        cap = float(nlv_for_cap) * float(settings.live_max_order_pct_nlv)
+        if float(preview.estimated_notional) > cap:
+            detail = (
+                f"estimated notional ${preview.estimated_notional:,.2f} exceeds "
+                f"LIVE_MAX_ORDER_PCT_NLV cap ${cap:,.2f} "
+                f"({settings.live_max_order_pct_nlv*100:.0f}% of NLV ${nlv_for_cap:,.2f})"
+            )
+            idem_row.status = "ERROR"
+            idem_row.error = detail
+            idem_row.result = {"error": detail}
+            db.add(idem_row)
+            db.commit()
+            raise HTTPException(status_code=403, detail=detail)
+
+    per_leg_timeout = float(settings.live_per_leg_timeout_seconds)
+    execute_timeout = len(preview.legs) * per_leg_timeout + 60.0
 
     def _execute(ib: Any):
         try:
@@ -666,6 +803,26 @@ def live_rebalance_execute(
             }
 
         for leg in preview.legs:
+            # Phase 1: Cooperative halt check between legs
+            if settings.trading_halt:
+                ib.reqGlobalCancel()
+                results.append(
+                    {
+                        "ticker": leg.ticker,
+                        "side": leg.side,
+                        "quantity": abs(int(leg.delta_quantity)),
+                        "order_id": None,
+                        "perm_id": None,
+                        "status": "Cancelled",
+                        "filled": None,
+                        "remaining": None,
+                        "avg_fill_price": None,
+                        "fills": [],
+                        "error": "trading halted mid-rebalance",
+                    }
+                )
+                break
+
             contract = Stock(leg.ticker, "SMART", "USD")
             try:
                 ib.qualifyContracts(contract)
@@ -676,6 +833,7 @@ def live_rebalance_execute(
             try:
                 trade = ib.placeOrder(contract, order)
             except Exception as e:
+                ib.reqGlobalCancel()
                 results.append(
                     {
                         "ticker": leg.ticker,
@@ -692,28 +850,36 @@ def live_rebalance_execute(
                     }
                 )
                 break
-            status = None
-            filled = None
-            remaining = None
-            avg_fill_price = None
-            started = time.time()
-            while time.time() - started < 10:
+
+            # Phase 1: Wait for terminal status up to per_leg_timeout
+            deadline = time.time() + per_leg_timeout
+            while time.time() < deadline:
                 ib.sleep(0.2)
                 status = getattr(getattr(trade, "orderStatus", None), "status", None)
-                filled = _to_float(getattr(getattr(trade, "orderStatus", None), "filled", None))
-                remaining = _to_float(getattr(getattr(trade, "orderStatus", None), "remaining", None))
-                avg_fill_price = _to_float(getattr(getattr(trade, "orderStatus", None), "avgFillPrice", None))
-                if status in {"Filled", "Cancelled", "ApiCancelled", "Inactive", "Rejected"}:
+                if status in TERMINAL_STATUSES:
                     break
+
+            final_status = getattr(getattr(trade, "orderStatus", None), "status", None)
+            filled = _to_float(getattr(getattr(trade, "orderStatus", None), "filled", None))
+            remaining = _to_float(getattr(getattr(trade, "orderStatus", None), "remaining", None))
+            avg_fill_price = _to_float(getattr(getattr(trade, "orderStatus", None), "avgFillPrice", None))
+
+            timed_out = final_status not in TERMINAL_STATUSES
+            if timed_out:
+                # Phase 1: abort remaining legs, cancel in-flight order
+                ib.reqGlobalCancel()
 
             fills: list[dict[str, Any]] = []
             for f in getattr(trade, "fills", []) or []:
                 exe = getattr(f, "execution", None)
                 fills.append({"execution": _execution_to_dict(exe) if exe is not None else {}, "raw": {}})
-            final_status = getattr(getattr(trade, "orderStatus", None), "status", None)
+
             error = None
-            if final_status in {"Rejected", "Cancelled", "ApiCancelled", "Inactive"}:
+            if timed_out:
+                error = f"fill timeout after {per_leg_timeout:.0f}s (last_status={final_status})"
+            elif final_status in {"Rejected", "Cancelled", "ApiCancelled", "Inactive"}:
                 error = f"order status {final_status}"
+
             results.append(
                 {
                     "ticker": leg.ticker,
@@ -734,7 +900,7 @@ def live_rebalance_execute(
         return results
 
     try:
-        results = call_ib(_execute, timeout=30.0)
+        results = call_ib(_execute, timeout=execute_timeout)
         _persist_ib_results(db, account_id=body.account_id, results=results)
         failure = next((r for r in results if r.get("error")), None)
         if failure:
@@ -762,12 +928,11 @@ def live_rebalance_execute(
                 f"Error: {detail}\n"
                 f"Completed: {completed} / {len(preview.legs)} legs",
             )
-            if idem_row is not None:
-                idem_row.status = "ERROR"
-                idem_row.error = str(detail)
-                idem_row.result = {"error": str(detail)}
-                db.add(idem_row)
-                db.commit()
+            idem_row.status = "ERROR"
+            idem_row.error = str(detail)
+            idem_row.result = {"error": str(detail)}
+            db.add(idem_row)
+            db.commit()
             raise HTTPException(status_code=409, detail=str(detail))
 
         _audit_event(
@@ -785,11 +950,10 @@ def live_rebalance_execute(
             max_orders=body.max_orders,
             allow_short=body.allow_short,
         )
-        if idem_row is not None:
-            idem_row.status = "OK"
-            idem_row.result = preview.model_dump(mode="json")
-            db.add(idem_row)
-            db.commit()
+        idem_row.status = "OK"
+        idem_row.result = preview.model_dump(mode="json")
+        db.add(idem_row)
+        db.commit()
         from app.services.alerting import send_rebalance_alert
         legs_summary = ", ".join(
             f"{l.side} {abs(int(l.delta_quantity))} {l.ticker}" for l in preview.legs[:5]
@@ -820,21 +984,24 @@ def live_rebalance_execute(
             max_orders=body.max_orders,
             allow_short=body.allow_short,
         )
-        if idem_row is not None:
-            idem_row.status = "ERROR"
-            idem_row.error = str(e.detail)
-            idem_row.result = {"error": str(e.detail)}
-            db.add(idem_row)
-            db.commit()
+        idem_row.status = "ERROR"
+        idem_row.error = str(e.detail)
+        idem_row.result = {"error": str(e.detail)}
+        db.add(idem_row)
+        db.commit()
         raise
     except Exception as e:
-        if idem_row is not None:
-            idem_row.status = "ERROR"
-            idem_row.error = str(e)
-            idem_row.result = {"error": str(e)}
-            db.add(idem_row)
-            db.commit()
+        idem_row.status = "ERROR"
+        idem_row.error = str(e)
+        idem_row.result = {"error": str(e)}
+        db.add(idem_row)
+        db.commit()
         raise
+
+
+# ---------------------------------------------------------------------------
+# Audit endpoints
+# ---------------------------------------------------------------------------
 
 
 class LiveRebalanceAuditOut(BaseModel):
@@ -850,6 +1017,11 @@ class LiveRebalanceAuditOut(BaseModel):
     max_percent_nlv: float | None
     max_orders: int | None
     allow_short: bool
+
+
+class LiveRebalanceAuditDetailOut(LiveRebalanceAuditOut):
+    request: dict
+    orders: dict
 
 
 @router.get("/audit", response_model=list[LiveRebalanceAuditOut])
@@ -879,29 +1051,61 @@ def list_live_rebalance_audit(limit: int = Query(default=50, ge=1, le=200), db: 
     ]
 
 
+@router.get("/audit/{audit_id}", response_model=LiveRebalanceAuditDetailOut)
+def get_live_rebalance_audit(audit_id: UUID, db: Session = Depends(get_db)):
+    """Return full request + orders payload for forensic replay."""
+    row = db.query(LiveRebalanceAudit).filter(LiveRebalanceAudit.id == str(audit_id)).one_or_none()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Audit record not found")
+    return LiveRebalanceAuditDetailOut(
+        id=row.id,
+        created_at=row.created_at,
+        action=row.action,
+        status=row.status,
+        error=row.error,
+        account_id=row.account_id,
+        portfolio_id=row.portfolio_id,
+        allocation_amount=row.allocation_amount,
+        max_notional_usd=row.max_notional_usd,
+        max_percent_nlv=row.max_percent_nlv,
+        max_orders=row.max_orders,
+        allow_short=bool(row.allow_short),
+        request=row.request or {},
+        orders=row.orders or {},
+    )
+
+
 # ---------------------------------------------------------------------------
 # Kill-switch / Resume
 # ---------------------------------------------------------------------------
 
 
 @router.post("/halt")
-def halt_trading():
+def halt_trading(db: Session = Depends(get_db)):
     """Emergency kill-switch: set trading_halt=True at runtime and send alert."""
     from app.services.alerting import send_halt_alert
 
     settings.trading_halt = True
+    try:
+        _persist_halt(db, True)
+    except Exception:
+        pass
     send_halt_alert("API /live/halt")
-    return {"halted": True, "message": "Trading halted. Set TRADING_HALT=false in .env and restart to re-enable, or call POST /live/resume."}
+    return {"halted": True, "message": "Trading halted. Call POST /live/resume to re-enable."}
 
 
 @router.post("/resume")
-def resume_trading():
+def resume_trading(db: Session = Depends(get_db)):
     """Resume trading after a halt."""
     from app.services.alerting import send_resume_alert
 
     if not settings.enable_live_trading:
         raise HTTPException(status_code=403, detail="Live trading is not enabled (ENABLE_LIVE_TRADING=0)")
     settings.trading_halt = False
+    try:
+        _persist_halt(db, False)
+    except Exception:
+        pass
     send_resume_alert("API /live/resume")
     return {"halted": False, "message": "Trading resumed."}
 
@@ -950,7 +1154,14 @@ def pre_trade_checklist(
     except Exception as e:
         checks.append({"check": "ib_connected", "pass": False, "detail": str(e)})
 
-    # 6. Account NLV within range
+    # 6. Account in IB managed accounts
+    try:
+        _assert_account_allowed(body.account_id)
+        checks.append({"check": "account_whitelisted", "pass": True, "detail": body.account_id})
+    except HTTPException as e:
+        checks.append({"check": "account_whitelisted", "pass": False, "detail": str(e.detail)})
+
+    # 7. Account NLV within range
     try:
         nlv = _account_nlv(body.account_id)
         nlv_ok = nlv is not None and nlv > 0
@@ -959,7 +1170,7 @@ def pre_trade_checklist(
     except Exception as e:
         checks.append({"check": "account_nlv_valid", "pass": False, "detail": str(e)})
 
-    # 7. Total order value < max % NLV
+    # 8. Total order value < max % NLV (server-side cap)
     try:
         preview = _build_preview(db, body)
         nlv_val = nlv if nlv else 0
@@ -967,12 +1178,12 @@ def pre_trade_checklist(
         total_ok = True
         if nlv_val > 0:
             total_ok = preview.estimated_notional <= nlv_val * max_pct
-        detail_msg = f"notional=${preview.estimated_notional:,.2f}, max={max_pct*100:.0f}% of NLV"
-        checks.append({"check": "total_order_within_limit", "pass": total_ok, "detail": detail_msg})
+        detail_msg = f"notional=${preview.estimated_notional:,.2f}, cap={max_pct*100:.0f}% of NLV"
+        checks.append({"check": "total_order_within_nlv_cap", "pass": total_ok, "detail": detail_msg})
     except Exception as e:
-        checks.append({"check": "total_order_within_limit", "pass": False, "detail": str(e)})
+        checks.append({"check": "total_order_within_nlv_cap", "pass": False, "detail": str(e)})
 
-    # 8. Circuit breaker
+    # 9. Circuit breaker
     try:
         _check_circuit_breaker(
             db,
@@ -984,33 +1195,6 @@ def pre_trade_checklist(
         checks.append({"check": "circuit_breaker_ok", "pass": True, "detail": ""})
     except HTTPException as e:
         checks.append({"check": "circuit_breaker_ok", "pass": False, "detail": str(e.detail)})
-
-    # 9. Daily loss limit
-    try:
-        now_for_dl = datetime.utcnow()
-        today_start = datetime(now_for_dl.year, now_for_dl.month, now_for_dl.day)
-        today_trades = (
-            db.query(IBTrade)
-            .join(IBOrder, IBTrade.order_id == IBOrder.id)
-            .filter(IBTrade.timestamp >= today_start, IBOrder.account == body.account_id)
-            .all()
-        )
-        daily_pnl = 0.0
-        if today_trades:
-            daily_pnl = sum(
-                float(t.quantity) * float(t.price) * (-1 if float(t.quantity) > 0 else 1)
-                for t in today_trades
-            )
-        nlv_val_dl = nlv if nlv else 0
-        loss_pct = abs(min(0, daily_pnl)) / nlv_val_dl if nlv_val_dl > 0 else 0
-        limit = float(settings.live_max_daily_loss_pct)
-        checks.append({
-            "check": "daily_loss_within_limit",
-            "pass": loss_pct <= limit,
-            "detail": f"loss={loss_pct*100:.1f}%, limit={limit*100:.1f}%",
-        })
-    except Exception as e:
-        checks.append({"check": "daily_loss_within_limit", "pass": True, "detail": f"skipped: {e}"})
 
     # 10. Portfolio concentration check
     try:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -553,6 +553,50 @@ def paper_snapshot_daily_task() -> None:
     except Exception as e:
         db.rollback()
         logger.warning(f"paper_snapshot_daily: error: {e}")
+    finally:
+        db.close()
+
+
+@celery_app.task(
+    name="reconcile_stuck_executions_task",
+    autoretry_for=(Exception,),
+    retry_backoff=30,
+    retry_backoff_max=120,
+    max_retries=2,
+)
+def reconcile_stuck_executions_task() -> None:
+    """
+    Phase 2: Flip LiveExecutionRequest rows that have been IN_PROGRESS for more
+    than 10 minutes to FAILED, preventing the idempotency table from locking out
+    retries after a worker crash or API restart mid-execute.
+    """
+    import logging
+    from datetime import timezone
+    from app.models.ib_audit import LiveExecutionRequest
+
+    logger = logging.getLogger(__name__)
+    db = _db()
+    try:
+        cutoff = datetime.utcnow() - timedelta(minutes=10)
+        stuck = (
+            db.query(LiveExecutionRequest)
+            .filter(
+                LiveExecutionRequest.status == "IN_PROGRESS",
+                LiveExecutionRequest.created_at < cutoff,
+            )
+            .all()
+        )
+        if not stuck:
+            return
+        for row in stuck:
+            row.status = "FAILED"
+            row.error = "reconciled: IN_PROGRESS exceeded 10-minute TTL (worker crash or restart)"
+            row.result = {"error": row.error}
+        db.commit()
+        logger.warning(
+            "reconcile_stuck_executions: reset %d stuck IN_PROGRESS row(s) to FAILED",
+            len(stuck),
+        )
     finally:
         db.close()
 

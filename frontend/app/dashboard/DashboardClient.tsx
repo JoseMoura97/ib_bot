@@ -14,7 +14,6 @@ import {
 } from "chart.js";
 import "chartjs-adapter-date-fns";
 import { Line } from "react-chartjs-2";
-import { BacktestWizard } from "./BacktestWizard";
 import { PageHeader } from "../_components/PageHeader";
 import { cn } from "../_components/cn";
 import { useTheme } from "../_components/theme";
@@ -34,9 +33,16 @@ type PlotSeries = {
   name: string;
   dates: string[];
   values: number[];
+  alpha_only?: boolean;
   cagr?: number;
   sharpe?: number;
+  sortino?: number;
   max_drawdown?: number;
+  transaction_cost_bps?: number | null;
+  slippage_bps_per_side?: number | null;
+  execution_offset_days?: number | null;
+  missing_ticker_policy?: string | null;
+  n_missing_ticker_segments?: number | null;
 };
 
 type PlotData = {
@@ -50,6 +56,7 @@ type PlotData = {
 };
 
 type NormalizationMode = "anchor_to_spy" | "start_at_100";
+type AlphaViewMode = "base" | "alpha" | "all";
 
 type StrategyCatalogRow = {
   name: string;
@@ -130,10 +137,14 @@ function isLobbyingOrContracts(name: string) {
   return name.includes("Lobbying") || name.includes("Contract");
 }
 function isIndividuals(name: string) {
-  return ["Nancy Pelosi", "Dan Meuser", "Josh Gottheimer", "Donald Beyer", "Sheldon Whitehouse"].includes(name);
+  const base = ["Nancy Pelosi", "Dan Meuser", "Josh Gottheimer", "Donald Beyer", "Sheldon Whitehouse"];
+  return base.some((b) => name === b || name === `${b} (equal)` || name === `${b} (size)`);
 }
 function is13F(name: string) {
   return ["Michael Burry", "Bill Ackman", "Howard Marks", "Bill Gates"].includes(name);
+}
+function isAlphaOnly(name: string) {
+  return name.endsWith("(alpha only)");
 }
 
 export function DashboardClient(props: { onRequestRefresh?: () => Promise<void> }) {
@@ -147,7 +158,48 @@ export function DashboardClient(props: { onRequestRefresh?: () => Promise<void> 
   const [refreshProgress, setRefreshProgress] = useState<number>(0);
   const [refreshStage, setRefreshStage] = useState<string>("");
 
+  // ── Backtest progress polling ────────────────────────────────────────────
+  type BacktestProgress = {
+    running: boolean;
+    pid?: number;
+    current_idx: number;
+    total: number;
+    percent: number;
+    current_strategy: string;
+    avg_elapsed_seconds: number;
+    eta_seconds: number | null;
+    started_at: string;
+    last_updated: string;
+    completed: { name: string; status: string; elapsed_seconds: number; cagr: number | null }[];
+    detail?: string;
+  };
+  const [backtestProgress, setBacktestProgress] = useState<BacktestProgress | null>(null);
+  const [btPollActive, setBtPollActive] = useState(false);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    async function pollProgress() {
+      try {
+        const res = await fetch("/api/plot-data/backtest-progress", { cache: "no-store" });
+        if (res.ok) {
+          const data = (await res.json()) as BacktestProgress;
+          setBacktestProgress(data);
+          // If actively running, keep polling every 5 s; otherwise slow to 30 s
+          const interval = data.running ? 5000 : 30000;
+          setBtPollActive(data.running);
+          timer = setTimeout(pollProgress, interval);
+        }
+      } catch {
+        timer = setTimeout(pollProgress, 30000);
+      }
+    }
+    pollProgress();
+    return () => clearTimeout(timer);
+  }, []);
+
   const [mode, setMode] = useState<NormalizationMode>("anchor_to_spy");
+  const [alphaView, setAlphaView] = useState<AlphaViewMode>("base");
+  const [missingPolicy, setMissingPolicy] = useState<"cash" | "renormalize">("cash");
   const [filter, setFilter] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -155,7 +207,7 @@ export function DashboardClient(props: { onRequestRefresh?: () => Promise<void> 
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/plot-data", { cache: "no-store" });
+      const res = await fetch(`/api/plot-data?view=${missingPolicy}`, { cache: "no-store" });
       if (!res.ok) throw new Error(`API error ${res.status}`);
       const data = (await res.json()) as PlotData;
       setPlotData(data);
@@ -174,9 +226,10 @@ export function DashboardClient(props: { onRequestRefresh?: () => Promise<void> 
       if (names.length && selected.size === 0) {
         // pick best by CAGR if present
         const best = names
+          .filter((name) => !isAlphaOnly(name))
           .slice()
           .sort((a, b) => (data.strategies[b]?.cagr ?? -Infinity) - (data.strategies[a]?.cagr ?? -Infinity))[0];
-        setSelected(new Set(best ? [best] : []));
+        setSelected(new Set(best ? [best] : names.slice(0, 1)));
       }
     } catch (e: any) {
       setError(String(e?.message || e));
@@ -188,14 +241,19 @@ export function DashboardClient(props: { onRequestRefresh?: () => Promise<void> 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [missingPolicy]);
 
   const strategyNames = useMemo(() => {
     const names = Object.keys(plotData?.strategies || {});
     const q = filter.trim().toLowerCase();
-    const filtered = q ? names.filter((n) => n.toLowerCase().includes(q)) : names;
+    const visible = names.filter((name) => {
+      if (alphaView === "alpha") return isAlphaOnly(name);
+      if (alphaView === "all") return true;
+      return !isAlphaOnly(name);
+    });
+    const filtered = q ? visible.filter((n) => n.toLowerCase().includes(q)) : visible;
     return filtered.sort((a, b) => (plotData?.strategies?.[b]?.cagr ?? -Infinity) - (plotData?.strategies?.[a]?.cagr ?? -Infinity));
-  }, [plotData, filter]);
+  }, [plotData, filter, alphaView]);
 
   const chartData = useMemo(() => {
     const benchmark = plotData?.benchmark;
@@ -284,6 +342,7 @@ export function DashboardClient(props: { onRequestRefresh?: () => Promise<void> 
 
     let totalCAGR = 0;
     let totalSharpe = 0;
+    let totalSortino = 0;
     let worstDD = 0;
     let bestCAGR = -Infinity;
     let bestName = "";
@@ -293,9 +352,11 @@ export function DashboardClient(props: { onRequestRefresh?: () => Promise<void> 
       if (!s) return;
       const cagr = s.cagr ?? 0;
       const sharpe = s.sharpe ?? 0;
+      const sortino = s.sortino ?? 0;
       const dd = s.max_drawdown ?? 0;
       totalCAGR += cagr;
       totalSharpe += sharpe;
+      totalSortino += sortino;
       worstDD = Math.min(worstDD, dd);
       if (cagr > bestCAGR) {
         bestCAGR = cagr;
@@ -308,6 +369,7 @@ export function DashboardClient(props: { onRequestRefresh?: () => Promise<void> 
       n,
       avgCAGR: totalCAGR / n,
       avgSharpe: totalSharpe / n,
+      avgSortino: totalSortino / n,
       worstDD,
       bestName,
     };
@@ -520,6 +582,47 @@ export function DashboardClient(props: { onRequestRefresh?: () => Promise<void> 
         </Card>
       ) : null}
 
+      {/* ── Backtest progress banner (shown while run_all_backtests.py is active) ── */}
+      {backtestProgress && (backtestProgress.running || (backtestProgress.total > 0 && backtestProgress.percent < 100)) ? (
+        <Card className="border-amber-500/40 bg-amber-500/10 shadow-none">
+          <CardContent className="py-4 space-y-3">
+            <div className="flex items-center justify-between text-sm font-medium">
+              <span className="text-amber-700 dark:text-amber-400 flex items-center gap-2">
+                {backtestProgress.running ? (
+                  <span className="inline-block h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                ) : (
+                  <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
+                )}
+                {backtestProgress.running
+                  ? `Backtests running — ${backtestProgress.current_strategy}`
+                  : "Backtests complete"}
+              </span>
+              <span className="text-muted-foreground text-xs">
+                {backtestProgress.completed.length} / {backtestProgress.total} strategies
+              </span>
+            </div>
+            <ProgressBar
+              value={backtestProgress.percent}
+              label={
+                backtestProgress.running && backtestProgress.eta_seconds != null
+                  ? `ETA ~${backtestProgress.eta_seconds >= 60
+                      ? `${Math.round(backtestProgress.eta_seconds / 60)} min`
+                      : `${backtestProgress.eta_seconds}s`}`
+                  : backtestProgress.running
+                  ? "Calculating ETA…"
+                  : "Done"
+              }
+            />
+            {backtestProgress.running && (
+              <p className="text-xs text-muted-foreground">
+                avg {backtestProgress.avg_elapsed_seconds}s/strategy · started{" "}
+                {new Date(backtestProgress.started_at).toLocaleTimeString()}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
       {plotData?.missing || (!plotData?.strategies || Object.keys(plotData.strategies).length === 0) ? (
         <InfoBox variant="warning" title="⚠️ No Plot Data Available">
           <p className="mb-2">
@@ -568,7 +671,7 @@ export function DashboardClient(props: { onRequestRefresh?: () => Promise<void> 
               <span className="font-semibold">Hedge Funds (13F)</span>
               <span className="text-xs text-muted-foreground">Burry, Ackman, Gates, etc.</span>
             </Button>
-            <Button onClick={() => setPreset(Object.keys(plotData.strategies))} variant="outline" className="h-auto flex-col items-start gap-1 py-3">
+            <Button onClick={() => setPreset(strategyNames)} variant="outline" className="h-auto flex-col items-start gap-1 py-3">
               <span className="font-semibold">Show All</span>
               <span className="text-xs text-muted-foreground">View every strategy</span>
             </Button>
@@ -672,9 +775,18 @@ export function DashboardClient(props: { onRequestRefresh?: () => Promise<void> 
             <CardContent className="py-4">
               <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
                 <span>Avg Sharpe</span>
-                <HelpTooltip content="Risk-adjusted return. Higher is better. Above 1.0 is good, above 2.0 is excellent. Shows return per unit of risk." />
+                <HelpTooltip content="Excess return over a 2% risk-free rate, divided by daily return volatility, annualised. Above 1.0 is good, above 2.0 is excellent." />
               </div>
               <div className="mt-1 text-2xl font-bold">{stats.avgSharpe.toFixed(2)}</div>
+            </CardContent>
+          </Card>
+          <Card className="shadow-none">
+            <CardContent className="py-4">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                <span>Avg Sortino</span>
+                <HelpTooltip content="Like Sharpe but only penalises downside volatility. Higher is better; a Sortino materially above Sharpe suggests limited downside tail risk." />
+              </div>
+              <div className="mt-1 text-2xl font-bold">{stats.avgSortino.toFixed(2)}</div>
             </CardContent>
           </Card>
           <Card className="shadow-none">
@@ -705,8 +817,26 @@ export function DashboardClient(props: { onRequestRefresh?: () => Promise<void> 
               <h3 className="text-base font-semibold">Browse All Strategies</h3>
               <HelpTooltip content="Click checkboxes to add strategies to the chart. Strategies are sorted by CAGR (best performers first)." />
             </div>
-            <div className="w-full sm:w-80">
-              <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Search strategies…" />
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <Select
+                value={missingPolicy}
+                onChange={(e) => setMissingPolicy(e.target.value as "cash" | "renormalize")}
+                className="w-full sm:w-56"
+                title="How to handle tickers we couldn't price during a rebalance segment. 'Default to cash' is the conservative honest view; 'Renormalize to survivors' redistributes the dropped weight across tickers we did price."
+              >
+                <option value="cash">Missing → cash (default)</option>
+                <option value="renormalize">Missing → renormalize</option>
+              </Select>
+              <Select
+                value={alphaView}
+                onChange={(e) => setAlphaView(e.target.value as AlphaViewMode)}
+                className="w-full sm:w-40"
+              >
+                <option value="base">Base only</option>
+                <option value="alpha">Alpha only</option>
+                <option value="all">All variants</option>
+              </Select>
+              <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Search strategies…" className="w-full sm:w-80" />
             </div>
           </div>
 
@@ -730,8 +860,14 @@ export function DashboardClient(props: { onRequestRefresh?: () => Promise<void> 
                       <PerformanceBadge cagr={s.cagr ?? 0} />
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      Return: {(s.cagr ?? 0).toFixed(1)}% · Sharpe: {(s.sharpe ?? 0).toFixed(2)}
+                      Return: {(s.cagr ?? 0).toFixed(1)}% · Sharpe: {(s.sharpe ?? 0).toFixed(2)} · Sortino: {(s.sortino ?? 0).toFixed(2)}
                     </div>
+                    {(s.n_missing_ticker_segments ?? 0) > 0 ? (
+                      <div className="mt-1.5 flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400">
+                        <span>⚠</span>
+                        <span>{s.n_missing_ticker_segments} missing-ticker segments (policy: {s.missing_ticker_policy ?? "cash"})</span>
+                      </div>
+                    ) : null}
                     {cat?.subcategory ? (
                       <div className="mt-1.5 truncate text-[11px] text-muted-foreground">
                         {cat.subcategory}
@@ -749,22 +885,17 @@ export function DashboardClient(props: { onRequestRefresh?: () => Promise<void> 
         </CardContent>
       </Card>
 
-      <CollapsibleSection
-        title="Advanced: Custom Backtest"
-        description="Test your own strategy combinations with custom weights and parameters"
-        defaultOpen={false}
-      >
-        <BacktestWizard
-          strategies={
-            catalog
-              ? catalog
-                  .filter((r) => r.has_plot)
-                  .map((r) => ({ name: r.name, category: r.category, subcategory: r.subcategory, description: r.description }))
-              : Object.keys(plotData.strategies || {}).map((name) => ({ name }))
-          }
-          defaultSelectedNames={Array.from(selected)}
-        />
-      </CollapsibleSection>
+      <Card className="shadow-none">
+        <CardContent className="flex flex-col items-center gap-3 py-8 text-center">
+          <div className="text-sm font-semibold">Custom portfolio backtest</div>
+          <p className="max-w-lg text-sm text-muted-foreground">
+            Run weighted strategy blends over any date range, then inspect equity curves and risk metrics on one page.
+          </p>
+          <Link href="/backtest">
+            <Button variant="primary">Open Backtest</Button>
+          </Link>
+        </CardContent>
+      </Card>
 
       <div className="flex justify-center">
         <Link href="/dashboard/metrics">
