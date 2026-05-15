@@ -308,12 +308,17 @@ def refresh_plot_data_task(self, force: bool = True, max_age_hours: int = 24) ->
     backup_dir = Path("/app/.cache/backups")
     backup_dir.mkdir(parents=True, exist_ok=True)
 
-    # SAFETY: Create backup of existing data before any refresh
+    # SAFETY: Create backup of existing data before any refresh.
+    # `prior_strategy_count` is used post-generation to reject partial runs
+    # (e.g. a live-API run that rate-limits mid-way and only completes a
+    # subset) from clobbering a complete file.
+    prior_strategy_count = 0
     if out_path.exists():
         try:
             existing = json.loads(out_path.read_text(encoding="utf-8"))
             existing_strategies = existing.get("strategies", {})
-            if len(existing_strategies) > 0:
+            prior_strategy_count = len(existing_strategies)
+            if prior_strategy_count > 0:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 backup_path = backup_dir / f"plot_data_backup_{timestamp}.json"
                 shutil.copy2(out_path, backup_path)
@@ -324,9 +329,15 @@ def refresh_plot_data_task(self, force: bool = True, max_age_hours: int = 24) ->
         except Exception:
             pass  # Don't fail if backup fails
 
+    # Keep live price-fetching (this nightly run is also what warms the
+    # price cache — there is no separate price-warming task). `--yes` skips
+    # the api_caution confirmation prompt for unattended execution. If a run
+    # rate-limits mid-way and produces partial output, the partial-run guard
+    # in _validate_output rejects it and restores the backup.
     cmd = [
         sys.executable,
         "generate_plot_data.py",
+        "--yes",
     ]
 
     self.update_state(state="PROGRESS", meta={"stage": "generating", "percent": 20})
@@ -363,6 +374,17 @@ def refresh_plot_data_task(self, force: bool = True, max_age_hours: int = 24) ->
         if not isinstance(strats, dict) or len(strats) == 0:
             _restore_backup()
             raise RuntimeError("plot_data.json has 0 strategies; backup restored")
+        # Partial-run guard: a refresh that completes far fewer strategies
+        # than the prior file almost always means generation died mid-way
+        # (rate-limit, crash). Don't let a partial result clobber a complete
+        # one — restore the backup instead. 10% shrink tolerance covers
+        # legitimate registry changes.
+        if prior_strategy_count > 0 and len(strats) < prior_strategy_count * 0.9:
+            _restore_backup()
+            raise RuntimeError(
+                f"plot_data.json has {len(strats)} strategies vs prior "
+                f"{prior_strategy_count} (partial run); backup restored"
+            )
         return payload, True
 
     if result.returncode != 0:
