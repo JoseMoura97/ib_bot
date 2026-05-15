@@ -120,7 +120,15 @@ function normalizeSeries(opts: {
 
   const base = values[0] || 100;
   let scale = 1;
-  if (mode === "start_at_100") {
+
+  // "(alpha only)" series represent excess return vs SPY, so anchoring them
+  // to SPY's level at their start date produces visually misleading offsets
+  // (each series starts at a different SPY value, lines never share a
+  // baseline). Always plot alpha-only from $100 regardless of mode.
+  const alphaOnly =
+    !!strategy.alpha_only || (strategy.name?.endsWith("(alpha only)") ?? false);
+
+  if (alphaOnly || mode === "start_at_100") {
     scale = base ? 100 / base : 1;
   } else {
     const spyAtStart = getBenchmarkValueAtOrBefore(benchmark, dates[0]);
