@@ -51,6 +51,11 @@ celery_app.conf.update(
             "task": "reconcile_stuck_executions_task",
             "schedule": 300,  # every 5 minutes
         },
+        # Reconcile orphaned RUNNING rows in `runs` (worker crash / SIGKILL)
+        "reconcile_stuck_runs": {
+            "task": "reconcile_stuck_runs_task",
+            "schedule": 600,  # every 10 minutes
+        },
     },
 )
 

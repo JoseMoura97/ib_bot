@@ -624,6 +624,55 @@ def reconcile_stuck_executions_task() -> None:
 
 
 @celery_app.task(
+    name="reconcile_stuck_runs_task",
+    autoretry_for=(Exception,),
+    retry_backoff=30,
+    retry_backoff_max=120,
+    max_retries=2,
+)
+def reconcile_stuck_runs_task(max_age_minutes: int = 60) -> None:
+    """
+    Reset `runs` rows that have been RUNNING longer than `max_age_minutes`
+    to ERROR. These are orphans from worker crashes / SIGKILL'd containers
+    where the task's exception handler never got to run.
+
+    The longest legitimate backtest in this codebase finishes well under
+    an hour, so a 60-minute TTL is conservative.
+    """
+    import logging
+
+    logger = logging.getLogger(__name__)
+    db = _db()
+    try:
+        cutoff = datetime.utcnow() - timedelta(minutes=max_age_minutes)
+        stuck = (
+            db.query(Run)
+            .filter(
+                Run.status == "RUNNING",
+                Run.started_at < cutoff,
+            )
+            .all()
+        )
+        if not stuck:
+            return
+        for r in stuck:
+            r.status = "ERROR"
+            r.error = (
+                f"reconciled: RUNNING exceeded {max_age_minutes}-minute TTL "
+                "(worker crash or restart)"
+            )
+            r.progress = {"stage": "error", "reason": "orphaned"}
+            r.finished_at = datetime.utcnow()
+        db.commit()
+        logger.warning(
+            "reconcile_stuck_runs: reset %d stuck RUNNING row(s) to ERROR",
+            len(stuck),
+        )
+    finally:
+        db.close()
+
+
+@celery_app.task(
     name="refresh_validation_results_task",
     autoretry_for=(Exception,),
     retry_backoff=60,
