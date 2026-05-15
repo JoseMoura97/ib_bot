@@ -258,8 +258,16 @@ export function DashboardClient(props: { onRequestRefresh?: () => Promise<void> 
   const chartData = useMemo(() => {
     const benchmark = plotData?.benchmark;
     const datasets: any[] = [];
+    const picked = Array.from(selected);
 
-    if (benchmark) {
+    // Hide SPY when every selected strategy is "(alpha only)" — those series
+    // are already excess return vs SPY, so an SPY benchmark line is
+    // redundant/misleading. Keep SPY whenever at least one absolute-return
+    // strategy is selected (or when nothing is selected).
+    const showBenchmark =
+      !!benchmark && (picked.length === 0 || picked.some((n) => !isAlphaOnly(n)));
+
+    if (showBenchmark && benchmark) {
       datasets.push({
         label: "SPY (Benchmark)",
         data: benchmark.dates.map((d, i) => ({ x: d, y: benchmark.values[i] })),
@@ -272,7 +280,6 @@ export function DashboardClient(props: { onRequestRefresh?: () => Promise<void> 
       });
     }
 
-    const picked = Array.from(selected);
     picked.forEach((name, idx) => {
       const s = plotData?.strategies?.[name];
       if (!s) return;
