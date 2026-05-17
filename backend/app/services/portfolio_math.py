@@ -26,8 +26,17 @@ def nav_blend_equity_curves(
 ) -> pd.Series:
     """
     Blend strategy equity curves by portfolio weights (NAV blend).
-    - Aligns by date index (inner join).
-    - Returns weighted sum of values.
+
+    Aligns by date index using an OUTER join and forward-fills each
+    strategy's value over its missing days. The result spans the full
+    union of dates across all strategies — same behaviour as the
+    dashboard's per-strategy equity curves — so total_return is
+    comparable across portfolios with different underlying coverage.
+
+    Leading NaNs (dates before a strategy's first datapoint) are
+    bfilled to that strategy's first value, which is the engine's
+    initial_capital — equivalent to "held cash at the starting value
+    until the strategy had data."
     """
     if not curves:
         return pd.Series(dtype="float64")
@@ -40,7 +49,12 @@ def nav_blend_equity_curves(
     if not cols:
         return pd.Series(dtype="float64")
 
-    df = pd.DataFrame(cols).dropna(how="any")
+    df = pd.DataFrame(cols).sort_index()
+    # Forward-fill: a missing day inherits the prior day's value.
+    # Backward-fill the leading gap: pre-existence of a strategy is
+    # treated as "held at initial_capital", not as zero (which would
+    # tank the blended NAV).
+    df = df.ffill().bfill()
     if df.empty:
         return pd.Series(dtype="float64")
 
