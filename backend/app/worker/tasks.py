@@ -110,6 +110,14 @@ def portfolio_backtest_task(run_id: str) -> None:
 
     except Exception as e:
         # Ensure the run doesn't get stuck in RUNNING if the worker crashes mid-task.
+        # If the exception came from a failed commit (e.g. non-serializable
+        # artifacts), the session is in aborted-transaction state — we MUST
+        # rollback before issuing new queries, otherwise every subsequent
+        # statement silently fails and the row stays at RUNNING forever.
+        try:
+            db.rollback()
+        except Exception:
+            pass
         try:
             r = db.query(Run).filter(Run.id == run_id).one_or_none()
             if r is not None:

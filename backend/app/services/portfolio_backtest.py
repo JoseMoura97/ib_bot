@@ -54,9 +54,38 @@ def portfolio_backtest_nav_blend(
     results: dict[str, dict] = {}
     curves: dict[str, pd.Series] = {}
 
+    # Fields from run_rebalancing_backtest that are safe to JSON-serialize for
+    # the per-strategy breakdown. The full result also contains a pandas
+    # DataFrame in `equity_curve` plus other np-typed fields that crash
+    # SQLAlchemy when stored in the artifacts JSON column.
+    _JSON_SAFE_KEYS = {
+        "strategy", "alpha_only", "start_date", "end_date", "initial_capital",
+        "final_value", "total_return", "cagr", "sharpe_ratio", "sortino_ratio",
+        "max_drawdown", "volatility", "n_days", "missing_ticker_policy",
+        "n_missing_ticker_segments", "transaction_cost_bps",
+        "slippage_bps_per_side", "execution_offset_days", "error", "status",
+    }
+
+    def _strip(res: dict) -> dict:
+        out = {}
+        for k in _JSON_SAFE_KEYS:
+            v = res.get(k)
+            if v is None:
+                continue
+            # numpy / pandas scalars → python builtin
+            try:
+                if hasattr(v, "item") and not isinstance(v, (str, bytes)):
+                    v = v.item()
+            except (ValueError, TypeError):
+                pass
+            out[k] = v
+        return out
+
     for name in strategy_names:
         res = run_strategy_backtest(name, start_date, end_date, transaction_cost_bps=transaction_cost_bps)
-        results[name] = res
+        # Keep only JSON-safe scalars; drop the DataFrame equity_curve which
+        # is large anyway and not useful in the per-strategy breakdown.
+        results[name] = _strip(res)
         if "error" in res:
             continue
         curve_records = equity_curve_to_records(res.get("equity_curve"))
