@@ -115,18 +115,40 @@ function deriveLabel(run: Run | null, fallbackId: string): string {
   return bits.join(" · ") || fallbackId.slice(0, 8);
 }
 
-type NormalizationMode = "start_at_100" | "raw";
+type NormalizationMode = "start_at_100" | "raw" | "anchor_to_longest";
 
 function normalizeCurve(
   curve: { x: string; y: number }[],
   mode: NormalizationMode,
+  anchorAtStart?: number,
 ): { x: string; y: number }[] {
   if (!curve.length) return [];
   if (mode === "raw") return curve;
   const base = curve[0]?.y;
   if (!base) return curve;
-  const scale = 100 / base;
+  // anchor_to_longest: scale so this curve starts where the longest curve
+  // is at THIS curve's first date. Lets you eyeball "did the shorter
+  // portfolio outperform the longer one over its own window?" instead of
+  // visually restarting every curve at the same baseline.
+  const targetStart = mode === "anchor_to_longest" && anchorAtStart ? anchorAtStart : 100;
+  const scale = targetStart / base;
   return curve.map((p) => ({ x: p.x, y: p.y * scale }));
+}
+
+// Find the value of `curve` on or before `dateStr`. Used for anchor mode —
+// we look up where the longest curve was on the shorter curve's start date.
+function valueAtOrBefore(
+  curve: { x: string; y: number }[],
+  dateStr: string,
+): number | undefined {
+  if (!curve.length) return undefined;
+  const target = new Date(dateStr).getTime();
+  let last: number | undefined;
+  for (const p of curve) {
+    if (new Date(p.x).getTime() > target) break;
+    last = p.y;
+  }
+  return last ?? curve[0].y;
 }
 
 export function CompareClient(props: { runIds: string[] }) {
@@ -183,23 +205,44 @@ export function CompareClient(props: { runIds: string[] }) {
   }, [runIds]);
 
   const chartData = useMemo(() => {
-    const datasets = items
+    // Precompute each item's raw curve so anchor mode can look up the longest
+    // curve's value at shorter curves' start dates.
+    const enriched = items
       .map((it, idx) => {
         const pr = it.results?.portfolio_results?.[0];
         const curve = coerceEquityCurve(pr?.artifacts?.equity_curve);
-        if (curve.length < 2) return null;
-        const normalized = normalizeCurve(curve, mode);
-        return {
-          label: it.label,
-          data: normalized.map((p) => ({ x: p.x, y: p.y })),
-          borderColor: COLORS[idx % COLORS.length],
-          backgroundColor: "transparent",
-          borderWidth: 2,
-          pointRadius: 0,
-          tension: 0.1,
-        };
+        return curve.length >= 2 ? { it, idx, curve } : null;
       })
-      .filter(Boolean) as Array<Record<string, unknown>>;
+      .filter(Boolean) as Array<{ it: Loaded; idx: number; curve: { x: string; y: number }[] }>;
+
+    // For anchor_to_longest: the "anchor" is the longest curve (start_at_100
+    // normalized so the picture is on the same axis as the other modes).
+    let anchorCurve: { x: string; y: number }[] | null = null;
+    if (mode === "anchor_to_longest" && enriched.length) {
+      const longest = enriched.reduce((a, b) => (b.curve.length > a.curve.length ? b : a));
+      anchorCurve = normalizeCurve(longest.curve, "start_at_100");
+    }
+
+    const datasets = enriched.map(({ it, idx, curve }) => {
+      let normalized: { x: string; y: number }[];
+      if (mode === "anchor_to_longest" && anchorCurve) {
+        const startDate = curve[0].x;
+        const anchorValue = valueAtOrBefore(anchorCurve, startDate);
+        normalized = normalizeCurve(curve, "anchor_to_longest", anchorValue);
+      } else {
+        normalized = normalizeCurve(curve, mode);
+      }
+      return {
+        label: it.label,
+        data: normalized.map((p) => ({ x: p.x, y: p.y })),
+        borderColor: COLORS[idx % COLORS.length],
+        backgroundColor: "transparent",
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.1,
+      };
+    }) as Array<Record<string, unknown>>;
+
     return { datasets };
   }, [items, mode]);
 
@@ -293,7 +336,8 @@ export function CompareClient(props: { runIds: string[] }) {
             onChange={(e) => setMode(e.target.value as NormalizationMode)}
             className="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
-            <option value="start_at_100">Start at $100</option>
+            <option value="start_at_100">Start at $100 (shape)</option>
+            <option value="anchor_to_longest">Anchor to longest curve</option>
             <option value="raw">Portfolio value (raw)</option>
           </select>
           <Link href="/runs">
