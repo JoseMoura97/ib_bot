@@ -21,13 +21,25 @@ export default async function RunsPage() {
       <div className="space-y-2">
         <h1>Runs</h1>
         <p className="text-sm text-muted-foreground">
-          Runs are created from the dashboard backtest wizard. Click a run to view status and results,
-          or tick 2+ successful portfolio_backtest runs and click <span className="font-semibold">Compare selected</span>.
+          Click any row to view the full result (equity curve, metrics, SPY overlay, per-strategy
+          breakdown).{" "}
+          <span className="font-medium text-foreground">
+            To compare portfolios side-by-side: tick 2+ successful portfolio_backtest rows and click
+            “Compare selected” at the top of the list.
+          </span>
         </p>
       </div>
 
       <div className="rounded-xl border bg-card p-5 text-sm text-muted-foreground shadow-none">
-        Tip: If you don’t see runs yet, create one from <Link href="/dashboard">Dashboard</Link>.
+        Tip: create new runs from{" "}
+        <Link className="underline" href="/backtest">
+          Backtest
+        </Link>{" "}
+        or{" "}
+        <Link className="underline" href="/portfolios">
+          Portfolios
+        </Link>
+        .
       </div>
 
       <RunsListClient runs={runs || []} />

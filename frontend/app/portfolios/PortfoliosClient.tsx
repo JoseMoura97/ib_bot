@@ -455,9 +455,15 @@ export function PortfoliosClient(props: { initialPortfolios: PortfolioOut[]; str
     <div className="space-y-6">
       <PageHeader
         title="Portfolios"
-        description="Create portfolios and configure strategy weights."
+        description="Create portfolios and configure strategy weights. Compare backtest runs side-by-side via Runs → Compare selected."
         right={
           <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/runs"
+              className="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border bg-background px-4 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+            >
+              Compare runs →
+            </Link>
             <Link
               href="/allocations"
               className="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border bg-background px-4 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"

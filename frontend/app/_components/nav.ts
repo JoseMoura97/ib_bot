@@ -10,6 +10,7 @@ export const navItems: NavItem[] = [
   { href: "/portfolios", label: "Portfolios" },
   { href: "/allocations", label: "Allocations" },
   { href: "/backtest", label: "Backtest" },
+  { href: "/runs", label: "Runs" },
   { href: "/paper", label: "Paper" },
   { href: "/live", label: "Live" },
 ];
