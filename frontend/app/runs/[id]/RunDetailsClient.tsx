@@ -87,9 +87,12 @@ export function RunDetailsClient(props: { runId: string }) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold">Run</h1>
+          <h1 className="text-xl font-semibold">
+            {(run?.params as { portfolio_name?: string } | undefined)?.portfolio_name || "Run"}
+          </h1>
           <p className="text-sm text-muted-foreground">
-            ID: <code className="rounded bg-muted px-1.5 py-0.5">{runId}</code>
+            {run?.type ? <span className="mr-2 rounded bg-muted px-1.5 py-0.5">{run.type}</span> : null}
+            ID: <code className="rounded bg-muted px-1.5 py-0.5">{runId.slice(0, 8)}…</code>
           </p>
         </div>
         <Link href="/backtest">

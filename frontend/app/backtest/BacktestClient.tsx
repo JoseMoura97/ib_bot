@@ -19,6 +19,7 @@ type RunRow = {
   status: string;
   created_at?: string;
   error?: string | null;
+  params?: Record<string, unknown>;
 };
 
 function todayIso(): string {
@@ -418,7 +419,9 @@ export function BacktestClient(props: {
                     )}
                   >
                     <div className="min-w-0">
-                      <div className="truncate font-medium">{r.type}</div>
+                      <div className="truncate font-medium">
+                        {(r.params as { portfolio_name?: string } | undefined)?.portfolio_name || r.type}
+                      </div>
                       <div className="text-[11px] text-muted-foreground">
                         {r.created_at ? new Date(r.created_at).toLocaleString() : r.id.slice(0, 8)}
                       </div>

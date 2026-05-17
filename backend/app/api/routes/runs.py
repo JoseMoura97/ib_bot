@@ -97,6 +97,11 @@ def create_portfolio_backtest(body: CreatePortfolioBacktestRun, db: Session = De
 
     # Ensure JSON-serializable (UUID -> str)
     params = body.model_dump(mode="json")
+    # Snapshot human-readable identifiers so the UI doesn't need to re-fetch
+    # the portfolio row to display them (and so they survive a portfolio
+    # being renamed or deleted after the run).
+    params["portfolio_name"] = p.name
+    params["portfolio_description"] = p.description
     params["strategies"] = [{"name": s.strategy_name, "weight": float(s.weight)} for s in ps]
 
     r = Run(type="portfolio_backtest", status="PENDING", params=params, progress={})

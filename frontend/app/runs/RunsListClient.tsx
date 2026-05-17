@@ -13,7 +13,13 @@ type Run = {
   started_at?: string | null;
   finished_at?: string | null;
   error?: string | null;
+  params?: Record<string, unknown>;
 };
+
+function runLabel(r: Run): string {
+  const p = (r.params as { portfolio_name?: string } | undefined)?.portfolio_name;
+  return p ? `${p}` : r.type;
+}
 
 function fmtTime(s: string | undefined | null): string {
   if (!s) return "—";
@@ -94,8 +100,11 @@ export function RunsListClient(props: { runs: Run[] }) {
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <div className="font-semibold">{r.type}</div>
-                    <div className="text-xs text-muted-foreground">{r.id}</div>
+                    <div className="font-semibold">{runLabel(r)}</div>
+                    <div className="text-xs text-muted-foreground">
+                      <span className="rounded bg-muted/40 px-1.5 py-0.5 mr-2">{r.type}</span>
+                      {r.id.slice(0, 8)}
+                    </div>
                   </div>
                   <div className="text-right">
                     <div className="font-semibold">{r.status}</div>

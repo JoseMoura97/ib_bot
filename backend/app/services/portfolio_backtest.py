@@ -18,6 +18,23 @@ def _parse_dt(s: str) -> datetime:
     return pd.to_datetime(s).to_pydatetime()
 
 
+def _sortino_ratio(daily_returns: pd.Series, cagr: float, rf: float = 0.02) -> float:
+    """Annualized Sortino: like Sharpe but only penalises downside vol.
+    Same rf=2% convention as `metrics_utils.annualized_sharpe` so the two
+    are directly comparable. Returns 0.0 when there's no downside variance.
+    """
+    if daily_returns is None or len(daily_returns) < 2:
+        return 0.0
+    excess = daily_returns - (rf / 252.0)
+    downside = excess[excess < 0]
+    if len(downside) < 2:
+        return 0.0
+    d_vol = float(downside.std() * (252.0**0.5))
+    if d_vol <= 0:
+        return 0.0
+    return float((cagr - rf) / d_vol)
+
+
 def run_strategy_backtest(strategy_name: str, start_date: str, end_date: str, transaction_cost_bps: float = None) -> dict:
     """
     Thin wrapper around the existing rebalancing engine in the repo root.
@@ -113,6 +130,7 @@ def portfolio_backtest_nav_blend(
     _sys.path.insert(0, str(_pl.Path(__file__).resolve().parents[3]))
     from metrics_utils import annualized_sharpe as _ann_sharpe
     sharpe = _ann_sharpe(daily.to_numpy()) if n_days > 1 else 0.0
+    sortino = _sortino_ratio(daily, cagr) if n_days > 1 else 0.0
     roll_max = blended.cummax()
     dd = (blended / roll_max) - 1.0
     max_dd = float(dd.min()) if not dd.empty else 0.0
@@ -128,6 +146,7 @@ def portfolio_backtest_nav_blend(
             "cagr": cagr,
             "volatility": vol,
             "sharpe_ratio": sharpe,
+            "sortino_ratio": sortino,
             "max_drawdown": max_dd,
             "n_days": n_days,
             "final_value": float(blended.iloc[-1]),
@@ -329,6 +348,7 @@ def portfolio_backtest_holdings_union(*args, **kwargs) -> dict:
     _sys.path.insert(0, str(_pl.Path(__file__).resolve().parents[3]))
     from metrics_utils import annualized_sharpe as _ann_sharpe
     sharpe = _ann_sharpe(daily.to_numpy()) if n_days > 1 else 0.0
+    sortino = _sortino_ratio(daily, cagr) if n_days > 1 else 0.0
     roll_max = blended.cummax()
     dd = (blended / roll_max) - 1.0
     max_dd = float(dd.min()) if not dd.empty else 0.0
@@ -344,6 +364,7 @@ def portfolio_backtest_holdings_union(*args, **kwargs) -> dict:
             "cagr": cagr,
             "volatility": vol,
             "sharpe_ratio": sharpe,
+            "sortino_ratio": sortino,
             "max_drawdown": max_dd,
             "n_days": n_days,
             "final_value": float(blended.iloc[-1]),

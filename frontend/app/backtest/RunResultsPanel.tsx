@@ -74,31 +74,59 @@ function fmtNum(n: number | undefined, digits = 2): string {
   return n.toFixed(digits);
 }
 
+type RunPayload = {
+  id?: string;
+  type?: string;
+  status?: string;
+  params?: {
+    portfolio_name?: string;
+    portfolio_description?: string;
+    start_date?: string;
+    end_date?: string;
+    mode?: string;
+    transaction_cost_bps?: number;
+    strategies?: Array<{ name: string; weight: number }>;
+  };
+};
+
+type Benchmark = { name?: string; dates: string[]; values: number[] };
+
 export function RunResultsPanel(props: { runId: string | null; runStatus?: string }) {
   const { runId, runStatus } = props;
   const { theme } = useTheme();
   const [results, setResults] = useState<RunResultsPayload | null>(null);
+  const [runMeta, setRunMeta] = useState<RunPayload | null>(null);
+  const [benchmark, setBenchmark] = useState<Benchmark | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
 
   useEffect(() => {
     if (!runId) {
       setResults(null);
+      setRunMeta(null);
       return;
     }
     let cancelled = false;
     (async () => {
       setLoadErr(null);
       try {
-        const rr = await fetch(`/api/runs/${encodeURIComponent(runId)}/results`, { cache: "no-store" });
-        if (!rr.ok) {
-          if (rr.status === 404) {
+        const [rrRes, runRes] = await Promise.all([
+          fetch(`/api/runs/${encodeURIComponent(runId)}/results`, { cache: "no-store" }),
+          fetch(`/api/runs/${encodeURIComponent(runId)}`, { cache: "no-store" }),
+        ]);
+        if (!rrRes.ok) {
+          if (rrRes.status === 404) {
             if (!cancelled) setResults(null);
-            return;
+          } else {
+            throw new Error(await rrRes.text());
           }
-          throw new Error(await rr.text());
+        } else {
+          const data = (await rrRes.json()) as RunResultsPayload;
+          if (!cancelled) setResults(data);
         }
-        const data = (await rr.json()) as RunResultsPayload;
-        if (!cancelled) setResults(data);
+        if (runRes.ok) {
+          const data = (await runRes.json()) as RunPayload;
+          if (!cancelled) setRunMeta(data);
+        }
       } catch (e: unknown) {
         if (!cancelled) setLoadErr(String((e as Error)?.message || e));
       }
@@ -107,6 +135,24 @@ export function RunResultsPanel(props: { runId: string | null; runStatus?: strin
       cancelled = true;
     };
   }, [runId, runStatus]);
+
+  // SPY benchmark — fetched once, reused across run selections.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch("/api/plot-data?view=cash", { cache: "no-store" });
+        if (!r.ok) return;
+        const d = (await r.json()) as { benchmark?: Benchmark };
+        if (!cancelled && d.benchmark?.dates?.length) setBenchmark(d.benchmark);
+      } catch {
+        /* benchmark is optional, fail silently */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const pr = results?.portfolio_results?.[0];
   const metrics = pr?.metrics || {};
@@ -147,20 +193,51 @@ export function RunResultsPanel(props: { runId: string | null; runStatus?: strin
   }, [pr?.artifacts?.strategy_results, results?.strategy_results]);
 
   const chartData = useMemo(() => {
-    return {
-      datasets: [
-        {
-          label: "Portfolio equity",
-          data: curve.map((p) => ({ x: p.x, y: p.y })),
-          borderColor: "#7aa2f7",
+    const datasets: Array<Record<string, unknown>> = [
+      {
+        label: runMeta?.params?.portfolio_name || "Portfolio equity",
+        data: curve.map((p) => ({ x: p.x, y: p.y })),
+        borderColor: "#7aa2f7",
+        backgroundColor: "transparent",
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.1,
+      },
+    ];
+
+    // Overlay SPY rescaled so it starts at the same $ value as the portfolio.
+    // Lets the user eyeball "did we beat SPY?" without doing the mental math.
+    if (benchmark && curve.length > 1) {
+      const startStr = curve[0].x;
+      const startTs = new Date(startStr).getTime();
+      let spyStart: number | null = null;
+      const spyPoints: { x: string; y: number }[] = [];
+      for (let i = 0; i < benchmark.dates.length; i++) {
+        const d = benchmark.dates[i];
+        const v = benchmark.values[i];
+        if (!Number.isFinite(v)) continue;
+        const ts = new Date(d).getTime();
+        if (ts < startTs) continue;
+        if (spyStart == null) spyStart = v;
+        spyPoints.push({ x: d, y: v });
+      }
+      if (spyStart && spyPoints.length > 1) {
+        const scale = (curve[0].y || 1) / spyStart;
+        datasets.push({
+          label: "SPY (rescaled)",
+          data: spyPoints.map((p) => ({ x: p.x, y: p.y * scale })),
+          borderColor: "#9fb0c0",
           backgroundColor: "transparent",
           borderWidth: 2,
+          borderDash: [5, 5],
           pointRadius: 0,
           tension: 0.1,
-        },
-      ],
-    };
-  }, [curve]);
+        });
+      }
+    }
+
+    return { datasets };
+  }, [curve, benchmark, runMeta?.params?.portfolio_name]);
 
   const chartOptions = useMemo(() => {
     const isDark = theme === "dark";
@@ -250,8 +327,79 @@ export function RunResultsPanel(props: { runId: string | null; runStatus?: strin
   const missingPolicy = anyStrategy != null ? (anyStrategy.missing_ticker_policy as string | null | undefined) : null;
   const hasAssumptions = costBps != null || slippageBps != null || execOffset != null || missingPolicy != null;
 
+  const portfolioName = runMeta?.params?.portfolio_name;
+  const portfolioDesc = runMeta?.params?.portfolio_description;
+  const strategies = runMeta?.params?.strategies || [];
+  const startDate = runMeta?.params?.start_date;
+  const endDate = runMeta?.params?.end_date;
+  const portfolioCost = runMeta?.params?.transaction_cost_bps;
+
   return (
     <div className="space-y-4">
+      {/* Portfolio identity + window */}
+      {(portfolioName || portfolioDesc || startDate) && (
+        <Card className="shadow-none">
+          <CardContent className="flex flex-wrap items-start justify-between gap-3 py-4">
+            <div className="min-w-0">
+              {portfolioName ? <div className="text-base font-semibold">{portfolioName}</div> : null}
+              {portfolioDesc ? <div className="text-xs text-muted-foreground">{portfolioDesc}</div> : null}
+              {(startDate || endDate) && (
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {startDate} → {endDate || "today"}
+                </div>
+              )}
+            </div>
+            {strategies.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5 justify-end">
+                {strategies.map((s) => (
+                  <span
+                    key={s.name}
+                    className="inline-flex items-center gap-1 rounded-full bg-muted/40 px-2 py-0.5 text-[11px]"
+                    title={`Weight: ${(s.weight * 100).toFixed(1)}%`}
+                  >
+                    <span className="font-medium">{s.name}</span>
+                    <span className="font-mono text-muted-foreground">{(s.weight * 100).toFixed(0)}%</span>
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Assumptions row — always visible (was hidden in a <details>) */}
+      {(hasAssumptions || portfolioCost != null) && (
+        <Card className="shadow-none">
+          <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-1 py-3 text-xs">
+            <span className="text-muted-foreground">Assumptions:</span>
+            {portfolioCost != null && (
+              <span className="font-mono">
+                <span className="text-muted-foreground">cost </span>
+                {portfolioCost} bps
+              </span>
+            )}
+            {slippageBps != null && (
+              <span className="font-mono">
+                <span className="text-muted-foreground">slippage </span>
+                {slippageBps} bps/side
+              </span>
+            )}
+            {execOffset != null && (
+              <span className="font-mono">
+                <span className="text-muted-foreground">exec lag </span>
+                {execOffset}d
+              </span>
+            )}
+            {missingPolicy != null && (
+              <span className="font-mono">
+                <span className="text-muted-foreground">missing→</span>
+                {missingPolicy}
+              </span>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <MetricCard label="CAGR" value={cagr != null ? fmtPct(cagr, 2) : "—"} positive={cagr != null && cagr >= 0} />
         <MetricCard label="Sharpe (rf=2%)" value={fmtNum(sharpe, 2)} />
@@ -316,41 +464,6 @@ export function RunResultsPanel(props: { runId: string | null; runStatus?: strin
         <pre className="max-h-[280px] overflow-auto border-t p-4 text-[11px] leading-relaxed">{JSON.stringify(results, null, 2)}</pre>
       </details>
 
-      {hasAssumptions ? (
-        <details className="rounded-lg border bg-card">
-          <summary className="cursor-pointer px-4 py-3 text-xs font-medium text-muted-foreground">
-            Backtest assumptions
-          </summary>
-          <div className="border-t px-4 py-3">
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs sm:grid-cols-4">
-              {execOffset != null && (
-                <>
-                  <dt className="text-muted-foreground">Execution lag</dt>
-                  <dd className="font-mono">{execOffset} trading day{execOffset !== 1 ? "s" : ""}</dd>
-                </>
-              )}
-              {costBps != null && (
-                <>
-                  <dt className="text-muted-foreground">Transaction cost</dt>
-                  <dd className="font-mono">{costBps} bps</dd>
-                </>
-              )}
-              {slippageBps != null && (
-                <>
-                  <dt className="text-muted-foreground">Slippage (per side)</dt>
-                  <dd className="font-mono">{slippageBps} bps</dd>
-                </>
-              )}
-              {missingPolicy != null && (
-                <>
-                  <dt className="text-muted-foreground">Missing ticker policy</dt>
-                  <dd className="font-mono">{missingPolicy}</dd>
-                </>
-              )}
-            </dl>
-          </div>
-        </details>
-      ) : null}
     </div>
   );
 }
