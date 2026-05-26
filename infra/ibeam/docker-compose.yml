@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  ibeam-primary:
+    image: voyz/ibeam:latest
+    container_name: ibeam-primary
+    env_file:
+      - .env.ibeam
+    ports:
+      - "5055:5000"
+    volumes:
+      - ./conf:/srv/ibeam/conf
+      - ./conf/conf.yaml:/srv/clientportal.gw/root/conf.yaml
+      - ./outputs:/srv/outputs
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "--insecure",
+          "https://localhost:5000/v1/api/one/user/user",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s

@@ -1,0 +1,152 @@
+<!doctype html>
+<html><head>
+<meta charset='utf-8'>
+<title>IB Bot — New strategies, preliminary backtests</title>
+<style>
+    html,body{background:#0f1117!important;color:#e6e6e6;font-family:'Inter','Segoe UI',Roboto,sans-serif;margin:0;padding:0;}
+    *{box-sizing:border-box}
+    a{color:#7ab8ff}
+    .wrap{max-width:1180px;margin:0 auto;padding:32px 24px 64px}
+    h1{font-size:26px;margin:0 0 6px}
+    h2{font-size:18px;margin:34px 0 12px;color:#d8d8e0;border-bottom:1px solid #232735;padding-bottom:6px}
+    .sub{color:#8a8fa3;font-size:13px;margin:0 0 8px}
+    .badges{margin:10px 0 20px;display:flex;gap:8px;flex-wrap:wrap}
+    .badge{background:#1a1d2b;border:1px solid #2a2f44;padding:4px 10px;border-radius:14px;font-size:12px;color:#cdd2e0}
+    table{width:100%;border-collapse:collapse;background:#151824;border:1px solid #232735;border-radius:8px;overflow:hidden;font-size:13px}
+    th,td{padding:9px 11px;text-align:right;border-bottom:1px solid #1d2030}
+    th{background:#1a1d2b;color:#b9becf;text-align:right;font-weight:600;letter-spacing:.02em;font-size:12px}
+    th:first-child,td.name,td:first-child{text-align:left}
+    tr:hover td{background:#181b29}
+    tr.err td{color:#ff8585;background:#28161a}
+    td.pos{color:#5fd28b}
+    td.neg{color:#ff6b6b}
+    td.neutral{color:#a4abbd}
+    .chip{display:inline-block;font-size:10.5px;padding:2px 7px;border-radius:9px;margin-right:8px;letter-spacing:.04em;text-transform:uppercase;font-weight:600}
+    .chip.new{background:#1b4a30;color:#7ee5a4;border:1px solid #2b6644}
+    .chip.base{background:#262936;color:#9aa1b8;border:1px solid #353b50}
+    .note{background:#15182a;border:1px solid #232a40;padding:12px 14px;border-radius:6px;margin:8px 0 14px;font-size:13px;color:#b5bbcb;line-height:1.5}
+    code{background:#1d2030;padding:1px 6px;border-radius:4px;font-size:12px;color:#c9d0e3}
+    tr.alt td{font-size:12.5px;vertical-align:top}
+    tr.alt td.notes{text-align:left;color:#b5bbcb;max-width:380px;line-height:1.45}
+    tr.alt td:first-child{text-align:left;color:#9aa1b8}
+    tr.divider td{border-top:1px solid #2a3050}
+    tr.cost-strat td{background:#1a1d2b;color:#cdd2e0;font-size:13px;text-align:left;padding-top:11px;border-top:1px solid #2a3050}
+    td.cost-label{text-align:left;color:#b9becf}
+    .delta{color:#ff9d6b;font-size:11.5px;margin-left:6px}
+    ol li{margin:3px 0}
+    </style>
+</head>
+<body>
+<div class='wrap'>
+  <h1>IB Bot — Tier 1–3 strategy expansion, preliminary backtests</h1>
+  <p class='sub'>Generated 2026-05-19 18:05 UTC · period 2023-05-18 → 2026-05-18 · $ 100,000 initial · cached prices · 13F mirrors rebalance on actual filing dates</p>
+  <div class='badges'>
+    <span class='badge'>12 new 13F managers (SEC EDGAR)</span>
+    <span class='badge'>1 new FINRA short signal (live + backtested)</span>
+    <span class='badge'>1 new WSB sentiment signal (live, no backtest)</span>
+  </div>
+
+  <h2>Tier 2 — 13F mirror backtests (sorted by Sharpe, desc)</h2>
+  <div class='note'>
+    <b>Read with care.</b> Cached-price run on weights derived from SEC EDGAR 13F parses. Ticker-resolution improved this pass via batched OpenFIGI (Pabrai 3/25 → 8/25, Druckenmiller 41/66 → 40/66 useable). <b>Remaining gap on Druckenmiller (~21% AUM):</b> CINS-prefixed CUSIPs (foreign-domiciled issuers like CRH, JBS, Linde) that OpenFIGI with <code>exchCode=US</code> doesn't return; fixable in a follow-up by retrying without the exchange filter. Klarman's elevated 1y stat is driven by VST (+200% on AI power demand) — the data is right, the headline metric is just regime-specific.
+  </div>
+  <table>
+    <thead><tr>
+      <th>Strategy</th><th>CAGR</th><th>Sharpe</th><th>Sortino</th><th>MaxDD</th>
+      <th>1y</th><th>SPY 1y</th><th>Vol</th><th>Alpha</th><th>β</th><th>Trades</th><th>Final</th>
+    </tr></thead>
+    <tbody>
+      <tr><td class='name'><span class='chip new'>new</span> Coatue</td><td class='pos'>12.29%</td><td class='pos'>3.94</td><td class='pos'>9.60</td><td class='neg'>-7.57%</td><td class='pos'>41.58%</td><td class='neutral'>nan%</td><td>40.34%</td><td class='neutral'>—</td><td>—</td><td>54</td><td>$141,584</td></tr><tr><td class='name'><span class='chip new'>new</span> Tiger Global</td><td class='pos'>4.05%</td><td class='pos'>2.22</td><td class='pos'>3.67</td><td class='neg'>-11.64%</td><td class='pos'>12.64%</td><td class='neutral'>nan%</td><td>24.18%</td><td class='neutral'>—</td><td>—</td><td>52</td><td>$112,643</td></tr><tr><td class='name'><span class='chip new'>new</span> David Tepper</td><td class='pos'>3.29%</td><td class='pos'>1.67</td><td class='pos'>3.15</td><td class='neg'>-14.88%</td><td class='pos'>10.19%</td><td class='neutral'>nan%</td><td>24.60%</td><td class='neutral'>—</td><td>—</td><td>67</td><td>$110,189</td></tr><tr><td class='name'><span class='chip new'>new</span> Seth Klarman</td><td class='pos'>50.41%</td><td class='pos'>1.45</td><td class='neutral'>—</td><td class='neg'>-23.76%</td><td class='pos'>104.29%</td><td class='neutral'>—</td><td>30.80%</td><td class='pos'>11.78%</td><td>1.12</td><td>353</td><td>$340,398</td></tr><tr><td class='name'><span class='chip base'>baseline</span> Howard Marks</td><td class='pos'>26.91%</td><td class='pos'>1.36</td><td class='neutral'>—</td><td class='neg'>-18.66%</td><td class='pos'>31.30%</td><td class='neutral'>—</td><td>17.76%</td><td class='pos'>8.12%</td><td>0.84</td><td>938</td><td>$204,421</td></tr><tr><td class='name'><span class='chip new'>new</span> Li Lu</td><td class='pos'>3.35%</td><td class='pos'>1.15</td><td class='pos'>2.15</td><td class='neg'>-12.86%</td><td class='pos'>10.40%</td><td class='neutral'>nan%</td><td>17.24%</td><td class='pos'>18.95%</td><td>1.15</td><td>33</td><td>$110,401</td></tr><tr><td class='name'><span class='chip new'>new</span> Off-Exchange Short Squeeze</td><td class='pos'>9.40%</td><td class='pos'>1.06</td><td class='neutral'>—</td><td class='neg'>-23.07%</td><td class='pos'>38.23%</td><td class='neutral'>—</td><td>20.14%</td><td class='pos'>8.08%</td><td>0.61</td><td>5018</td><td>$130,942</td></tr><tr><td class='name'><span class='chip new'>new</span> Dan Loeb</td><td class='pos'>1.44%</td><td class='pos'>1.05</td><td class='pos'>1.71</td><td class='neg'>-9.37%</td><td class='pos'>4.37%</td><td class='neutral'>nan%</td><td>17.87%</td><td class='neutral'>—</td><td>—</td><td>45</td><td>$104,373</td></tr><tr><td class='name'><span class='chip base'>baseline</span> Bill Ackman</td><td class='pos'>16.42%</td><td class='neg'>0.87</td><td class='pos'>1.24</td><td class='neg'>-22.40%</td><td class='pos'>36.50%</td><td class='neutral'>nan%</td><td>17.71%</td><td class='neg'>-4.30%</td><td>0.96</td><td>127</td><td>$157,792</td></tr><tr><td class='name'><span class='chip base'>baseline</span> Michael Burry</td><td class='pos'>20.41%</td><td class='neg'>0.78</td><td class='neutral'>—</td><td class='neg'>-27.46%</td><td class='pos'>2.97%</td><td class='neutral'>—</td><td>26.96%</td><td class='pos'>13.11%</td><td>0.73</td><td>68</td><td>$174,594</td></tr><tr><td class='name'><span class='chip new'>new</span> Warren Buffett</td><td class='pos'>1.76%</td><td class='neg'>0.77</td><td class='pos'>1.03</td><td class='neg'>-8.73%</td><td class='pos'>5.36%</td><td class='neutral'>nan%</td><td>12.80%</td><td class='neg'>-4.37%</td><td>0.68</td><td>66</td><td>$105,360</td></tr><tr><td class='name'><span class='chip new'>new</span> David Einhorn</td><td class='pos'>13.30%</td><td class='neg'>0.74</td><td class='pos'>1.24</td><td class='neg'>-24.69%</td><td class='pos'>15.29%</td><td class='neutral'>nan%</td><td>21.26%</td><td class='pos'>5.58%</td><td>0.67</td><td>42</td><td>$145,465</td></tr><tr><td class='name'><span class='chip new'>new</span> Mohnish Pabrai</td><td class='pos'>0.53%</td><td class='neg'>0.47</td><td class='neg'>0.74</td><td class='neg'>-6.77%</td><td class='pos'>1.60%</td><td class='neutral'>nan%</td><td>15.45%</td><td class='neutral'>—</td><td>—</td><td>17</td><td>$101,600</td></tr><tr><td class='name'><span class='chip new'>new</span> Chuck Akre</td><td class='pos'>0.67%</td><td class='neg'>0.23</td><td class='neg'>0.33</td><td class='neg'>-14.25%</td><td class='pos'>2.03%</td><td class='neutral'>nan%</td><td>16.22%</td><td class='neg'>-41.30%</td><td>1.04</td><td>25</td><td>$102,027</td></tr><tr><td class='name'><span class='chip new'>new</span> Stanley Druckenmiller</td><td class='neg'>-0.20%</td><td class='neg'>-0.08</td><td class='neg'>-0.14</td><td class='neg'>-13.31%</td><td class='neg'>-0.61%</td><td class='neutral'>nan%</td><td>17.37%</td><td class='neg'>-24.49%</td><td>0.96</td><td>177</td><td>$99,391</td></tr><tr><td class='name'><span class='chip new'>new</span> Sequoia Fund</td><td class='neg'>-0.60%</td><td class='neg'>-0.32</td><td class='neg'>-0.72</td><td class='neg'>-12.74%</td><td class='neg'>-1.78%</td><td class='neutral'>nan%</td><td>21.37%</td><td class='neutral'>—</td><td>—</td><td>19</td><td>$98,219</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Tier 1 — blocked by Quiver subscription tier</h2>
+  <p class='sub'>Probed each candidate endpoint with a tiny request. Results:</p>
+  <table>
+    <thead><tr><th>Strategy</th><th>Endpoint</th><th>Status</th></tr></thead>
+    <tbody><tr><td>WallStreetBets mentions momentum</td><td><code>/beta/live/wallstreetbets</code></td><td class='neg'>403 — subscription tier</td></tr><tr><td>Off-exchange short volume</td><td><code>/beta/live/offexchangeshort</code></td><td class='neg'>404 — endpoint not exposed on this tier</td></tr><tr><td>Patent grants momentum</td><td><code>/beta/live/allpatents</code></td><td class='neg'>403 — subscription tier</td></tr><tr><td>App downloads / ratings</td><td><code>/beta/live/appratings</code></td><td class='neg'>403 — subscription tier</td></tr><tr><td>Google Trends</td><td><code>/beta/live/googletrends</code></td><td class='neg'>404 — endpoint not exposed on this tier</td></tr><tr><td>StockTwits / r/Stocks sentiment</td><td><code>/beta/live/stocktwits</code></td><td class='neg'>404 — endpoint not exposed on this tier</td></tr><tr><td>Twitter mentions</td><td><code>/beta/live/twitter</code></td><td class='neg'>403 — subscription tier</td></tr><tr><td>Insider transactions (Quiver)</td><td><code>/beta/live/insiders</code></td><td class='neg'>403 — subscription tier</td></tr></tbody>
+  </table>
+  <div class='note'>
+    Quiver's tiered access: base tier (congress / lobbying / contracts / 13F-strategies / strategies-holdings) is unlocked. Premium alt-data tier (WSB / patents / off-exchange short / app downloads / Google Trends / Twitter / insider trades) requires plan upgrade.
+  </div>
+
+  <h2>Alt-data sources besides Quiver (all liveness-verified 2026-05-18)</h2>
+  <p class='sub'>For each blocked strategy: the best free and best paid alternatives. Free options exist for 6/8 — only app downloads and Twitter genuinely require paying someone. Effort is rough engineering hours.</p>
+  <table>
+    <thead><tr>
+      <th>Strategy</th><th>Source</th><th>Cost tier</th><th>Cost $</th>
+      <th>Endpoint</th><th>Effort</th><th>Notes</th>
+    </tr></thead>
+    <tbody><tr class='alt'><td>WSB mentions momentum</td><td><b>ApeWisdom</b></td><td class='pos'>FREE</td><td>$0</td><td><code>GET https://apewisdom.io/api/v1.0/filter/wallstreetbets/page/N</code></td><td>&lt;2h</td><td class='notes'>Ranked tickers + mention count + 24h change. ~1207 tickers covered today. No auth, no rate limit doc — reasonable to poll every 1–6h. Drop-in replacement for Quiver WSB endpoint.</td></tr><tr class='alt'><td>WSB mentions momentum</td><td><b>Reddit JSON / PRAW</b></td><td class='pos'>FREE</td><td>$0 (OAuth app)</td><td><code>https://www.reddit.com/r/wallstreetbets/top.json + r/stocks, r/options</code></td><td>half-day</td><td class='notes'>Roll your own counter via PRAW. 100 req/min after OAuth. More control, higher build cost. Use when ApeWisdom signal saturates.</td></tr><tr class='alt'><td>WSB mentions momentum</td><td><b>swaggystocks.com</b></td><td class='neutral'>FREE-ish</td><td>$0</td><td><code>https://swaggystocks.com/ (HTML)</code></td><td>half-day</td><td class='notes'>Scrape-only — no public API. Use as triangulation, not primary.</td></tr><tr class='alt divider'><td>Off-exchange short volume</td><td><b>FINRA daily CNMS short volume</b></td><td class='pos'>FREE</td><td>$0</td><td><code>https://cdn.finra.org/equity/regsho/daily/CNMSshvol{YYYYMMDD}.txt</code></td><td>&lt;2h</td><td class='notes'>Plain text, pipe-delim: Date|Symbol|ShortVolume|ShortExemptVolume|TotalVolume|Market. Updated daily T+1. This IS the dataset Quiver resells — use directly.</td></tr><tr class='alt'><td>Off-exchange short volume</td><td><b>CBOE daily short volume</b></td><td class='pos'>FREE</td><td>$0</td><td><code>https://www.cboe.com/us/equities/market_statistics/short_sale_volume/ (CSV per-day)</code></td><td>half-day</td><td class='notes'>CBOE-exchange-only view; complements FINRA off-exchange. Combine for fuller short pressure picture.</td></tr><tr class='alt divider'><td>Patents momentum</td><td><b>USPTO PatentsView v1</b></td><td class='pos'>FREE</td><td>$0 (free API key)</td><td><code>POST https://search.patentsview.org/api/v1/patent</code></td><td>1-2d</td><td class='notes'>v1 is the current live endpoint (older v0 redirects). Free key at patentsview.org. Need to map assignee-org -&gt; ticker (own mapping table) since USPTO uses corporate names, not tickers. ~150 LOC to build patent-momentum signal.</td></tr><tr class='alt'><td>Patents momentum</td><td><b>Google Patents Public Datasets (BigQuery)</b></td><td class='neutral'>FREE quota</td><td>$0–$10/mo if heavy</td><td><code>https://console.cloud.google.com/marketplace/details/google_patents_public_datasets</code></td><td>1-2d</td><td class='notes'>Public BigQuery dataset. SQL access — best for batch backfills. 1 TB free/month query budget covers light use.</td></tr><tr class='alt divider'><td>App downloads / ratings</td><td><b>Apptopia</b></td><td class='neg'>PAID</td><td>$1k–5k/mo</td><td><code>Apptopia REST API</code></td><td>1-2d</td><td class='notes'>Industry standard. Used by every fund. Costly. Talk to sales for tier.</td></tr><tr class='alt'><td>App downloads / ratings</td><td><b>Sensor Tower</b></td><td class='neg'>PAID</td><td>Comparable to Apptopia</td><td><code>Sensor Tower Enterprise API</code></td><td>1-2d</td><td class='notes'>Same playbook as Apptopia. Different methodology. Pick one.</td></tr><tr class='alt'><td>App downloads / ratings</td><td><b>data.ai (App Annie)</b></td><td class='neg'>PAID</td><td>Enterprise pricing</td><td><code>data.ai Intelligence API</code></td><td>1-2d</td><td class='notes'>Strongest for in-app revenue. Same cost ballpark.</td></tr><tr class='alt'><td>App downloads / ratings</td><td><b>App Store / Play scraping</b></td><td class='neutral'>FREE-risky</td><td>$0</td><td><code>google-play-scraper, app-store-scraper npm/pip libs</code></td><td>half-day</td><td class='notes'>Only public ratings + review counts, NOT downloads. ToS gray area. Not a real Quiver replacement — just a sentiment proxy.</td></tr><tr class='alt divider'><td>Google Trends</td><td><b>pytrends</b></td><td class='pos'>FREE</td><td>$0</td><td><code>pip install pytrends</code></td><td>&lt;2h</td><td class='notes'>Unofficial Python wrapper around Google Trends. Rate-limited (~1 req/sec) and prone to 429s during peak hours. Adequate for daily polling of 50–100 tickers.</td></tr><tr class='alt'><td>Google Trends</td><td><b>SerpAPI Google Trends</b></td><td class='neg'>PAID</td><td>$50/mo entry</td><td><code>https://serpapi.com/google-trends-api</code></td><td>&lt;2h</td><td class='notes'>Pay-to-skip the pytrends rate-limit pain. Stable, supported, no captcha hell.</td></tr><tr class='alt divider'><td>StockTwits sentiment</td><td><b>StockTwits public API</b></td><td class='neutral'>FREE-ish</td><td>$0 (OAuth)</td><td><code>https://api.stocktwits.com/api/2/streams/symbol/{TICKER}.json</code></td><td>half-day</td><td class='notes'>Free + OAuth. Hard cap ~200 req/hr. Use for daily sentiment snapshot, not real-time.</td></tr><tr class='alt'><td>StockTwits sentiment</td><td><b>r/stocks via PRAW</b></td><td class='pos'>FREE</td><td>$0 (OAuth)</td><td><code>Reddit JSON / PRAW (different subreddit)</code></td><td>&lt;2h</td><td class='notes'>Same plumbing as WSB. Complementary signal (less meme, more retail-investor opinion).</td></tr><tr class='alt divider'><td>Twitter / X mentions</td><td><b>X API v2 (Basic)</b></td><td class='neg'>PAID</td><td>$200/mo</td><td><code>https://api.twitter.com/2/tweets/search/recent</code></td><td>1-2d</td><td class='notes'>Free tier dropped in 2023. Basic = 10k tweets/mo, Pro = 1M tweets/mo ($5k). Hard to justify vs Reddit.</td></tr><tr class='alt'><td>Twitter / X mentions</td><td><b>Mastodon + Bluesky public feeds</b></td><td class='pos'>FREE</td><td>$0</td><td><code>Mastodon Streaming API; Bluesky AT Protocol</code></td><td>1-2d</td><td class='notes'>Smaller fintwit audience, growing. Free if you self-host instance / use public relays.</td></tr><tr class='alt divider'><td>Insider transactions (Form 4)</td><td><b>SEC EDGAR submissions API</b></td><td class='pos'>FREE</td><td>$0</td><td><code>https://data.sec.gov/submissions/CIK{cik10}.json + Form 4 XML</code></td><td>1-2d</td><td class='notes'>Already partly wired (sec_edgar.py). Add Form 4 fetcher + transaction-code parser (P/S codes) + cluster aggregator. Single source of truth — Quiver resells this.</td></tr><tr class='alt'><td>Insider transactions (Form 4)</td><td><b>OpenInsider</b></td><td class='neutral'>FREE-scrape</td><td>$0</td><td><code>http://openinsider.com/search?... (HTML)</code></td><td>half-day</td><td class='notes'>Pre-aggregated cluster-buy view (&quot;insider purchases&quot;, &quot;insider sales&quot;, &quot;cluster purchases&quot;). Cheaper to scrape than re-implementing the EDGAR pipeline. Tradeoff: ToS gray, single point of failure.</td></tr><tr class='alt'><td>Insider transactions (Form 4)</td><td><b>Finnhub insider API</b></td><td class='neutral'>PAID-free-tier</td><td>$0 free / $99/mo standard</td><td><code>https://finnhub.io/api/v1/stock/insider-transactions</code></td><td>&lt;2h</td><td class='notes'>Free tier = 60 req/min, basic insider-transaction data. Easiest 30-minute integration.</td></tr></tbody>
+  </table>
+  <div class='note'>
+    <b>Recommended build order if you want to actually ship these</b> (each delivers a new live signal in under a day of work):
+    <ol style='margin:8px 0 0 18px;line-height:1.7'>
+      <li><b>ApeWisdom → WSB momentum strategy</b> — drop-in free, &lt;2h. Highest expected info gain per hour.</li>
+      <li><b>FINRA short volume → off-exchange short squeeze strategy</b> — free CSV, &lt;2h to wire, signal is identical to what Quiver sells.</li>
+      <li><b>Finnhub free tier OR scrape OpenInsider → insider cluster buys</b> — free or near-free, ~half-day. Cheaper-to-ship variant of the deferred Tier 3 SEC EDGAR build.</li>
+      <li><b>pytrends → Google Trends momentum</b> — free, &lt;2h, watch for rate-limit flakiness in production.</li>
+      <li><b>USPTO PatentsView → patent grants momentum</b> — free but 1–2 days (need assignee→ticker mapping table).</li>
+      <li><b>Apptopia or Sensor Tower → app downloads strategy</b> — only justified after items 1–5 are paying off; ~$1k+/mo minimum.</li>
+    </ol>
+  </div>
+
+  <h2>Tier 3 — SEC EDGAR + external strategies (deferred)</h2>
+  <p class='sub'>These don't need Quiver but DO need net-new plumbing not in this session's scope:</p>
+  <table>
+    <thead><tr><th>Strategy</th><th>Reason deferred</th></tr></thead>
+    <tbody><tr><td>Form 4 cluster buys</td><td>Needs new SEC EDGAR Form 4 parser + cluster aggregator (~150 LOC)</td></tr><tr><td>8-K event drift</td><td>Needs 8-K item-code classifier + drift tracker (~100 LOC)</td></tr><tr><td>Buyback announcement drift</td><td>Subset of 8-K item 8.01 work above</td></tr><tr><td>FDA PDUFA calendar</td><td>Needs external vendor (biopharmcatalyst / fdacalendar) — no plumbing</td></tr></tbody>
+  </table>
+
+  
+  <h2>Cost-sensitivity sweep — what survives realistic execution costs</h2>
+  <p class='sub'>Engine applies costs as: <code>(transaction_cost_bps + 2 × slippage_bps_per_side) × turnover</code> per rebalance.
+  Comparing the FINRA strategy (high churn, 5018 trades) to three low-churn 13F mirrors so you can see how cost burns hit turnover-heavy strategies disproportionately.</p>
+  <table>
+    <thead><tr>
+      <th>Cost regime</th><th>Total bps</th><th>CAGR</th><th>Sharpe</th><th>MaxDD</th><th>Trades</th>
+    </tr></thead>
+    <tbody><tr class='cost-strat'><td colspan='6'><b>Off-Exchange Short Squeeze</b></td></tr><tr><td class='cost-label'>gross (no costs)</td><td>0.0</td><td class='pos'>18.88%</td><td>1.06</td><td class='neg'>-16.60%</td><td>5018</td></tr><tr><td class='cost-label'>default 10bps</td><td>10.0</td><td class='pos'>9.40% <span class='delta'>(-9.48 pp)</span></td><td>1.06</td><td class='neg'>-23.07%</td><td>5018</td></tr><tr><td class='cost-label'>conservative 20bps</td><td>20.0</td><td class='pos'>0.66% <span class='delta'>(-18.21 pp)</span></td><td>1.06</td><td class='neg'>-33.45%</td><td>5018</td></tr><tr><td class='cost-label'>pessimistic 35bps</td><td>35.0</td><td class='neg'>-11.17% <span class='delta'>(-30.05 pp)</span></td><td>1.06</td><td class='neg'>-48.92%</td><td>5018</td></tr><tr class='cost-strat'><td colspan='6'><b>Howard Marks</b></td></tr><tr><td class='cost-label'>gross (no costs)</td><td>0.0</td><td class='pos'>27.10%</td><td>1.36</td><td class='neg'>-18.66%</td><td>938</td></tr><tr><td class='cost-label'>default 10bps</td><td>10.0</td><td class='pos'>26.91% <span class='delta'>(-0.19 pp)</span></td><td>1.36</td><td class='neg'>-18.66%</td><td>938</td></tr><tr><td class='cost-label'>conservative 20bps</td><td>20.0</td><td class='pos'>26.72% <span class='delta'>(-0.38 pp)</span></td><td>1.36</td><td class='neg'>-18.66%</td><td>938</td></tr><tr><td class='cost-label'>pessimistic 35bps</td><td>35.0</td><td class='pos'>26.44% <span class='delta'>(-0.66 pp)</span></td><td>1.36</td><td class='neg'>-18.66%</td><td>938</td></tr><tr class='cost-strat'><td colspan='6'><b>Seth Klarman</b></td></tr><tr><td class='cost-label'>gross (no costs)</td><td>0.0</td><td class='pos'>50.71%</td><td>1.45</td><td class='neg'>-23.73%</td><td>353</td></tr><tr><td class='cost-label'>default 10bps</td><td>10.0</td><td class='pos'>50.41% <span class='delta'>(-0.30 pp)</span></td><td>1.45</td><td class='neg'>-23.76%</td><td>353</td></tr><tr><td class='cost-label'>conservative 20bps</td><td>20.0</td><td class='pos'>50.12% <span class='delta'>(-0.60 pp)</span></td><td>1.45</td><td class='neg'>-23.79%</td><td>353</td></tr><tr><td class='cost-label'>pessimistic 35bps</td><td>35.0</td><td class='pos'>49.67% <span class='delta'>(-1.04 pp)</span></td><td>1.45</td><td class='neg'>-23.83%</td><td>353</td></tr><tr class='cost-strat'><td colspan='6'><b>Michael Burry</b></td></tr><tr><td class='cost-label'>gross (no costs)</td><td>0.0</td><td class='pos'>20.90%</td><td>0.78</td><td class='neg'>-27.46%</td><td>68</td></tr><tr><td class='cost-label'>default 10bps</td><td>10.0</td><td class='pos'>20.41% <span class='delta'>(-0.49 pp)</span></td><td>0.78</td><td class='neg'>-27.46%</td><td>68</td></tr><tr><td class='cost-label'>conservative 20bps</td><td>20.0</td><td class='pos'>19.92% <span class='delta'>(-0.98 pp)</span></td><td>0.78</td><td class='neg'>-27.46%</td><td>68</td></tr><tr><td class='cost-label'>pessimistic 35bps</td><td>35.0</td><td class='pos'>19.19% <span class='delta'>(-1.71 pp)</span></td><td>0.78</td><td class='neg'>-27.46%</td><td>68</td></tr></tbody>
+  </table>
+  <div class='note'>
+    <b>Interpretation:</b> 10bps is the engine default (≈ IBKR tiered commission + 2.5bps slippage per side on liquid mid-caps).
+    20bps is conservative — typical mid-cap spread + small-account $1 min commission.
+    35bps is pessimistic — sub-$1B market-cap, wide spread, microcap drag.
+    For the FINRA short-squeeze strategy at 80%+ weekly turnover, the gross-vs-net spread is large and meaningful — that's the strategy's main risk before execution discipline.
+  </div>
+
+
+  <h2>Turnover per rebalance — how much of the basket churns each cycle</h2>
+  <p class='sub'>Higher turnover means cost assumptions matter more. The 13F mirrors are mostly low-turnover (1-15% per quarter); FINRA churns 80% of its basket every week.</p>
+  <table>
+    <thead><tr>
+      <th>Strategy</th><th>Total trades (3yr)</th><th>Trades / rebal</th><th>Turnover / rebal</th><th>Basket size</th><th>Rebal events (3yr)</th>
+    </tr></thead>
+    <tbody><tr><td>Howard Marks</td><td>938</td><td>78.2</td><td class='neg'>130%</td><td>30</td><td>12</td></tr><tr><td>Off-Exchange Short Squeeze</td><td>5018</td><td>32.2</td><td class='neg'>80%</td><td>20</td><td>156</td></tr><tr><td>Stanley Druckenmiller</td><td>177</td><td>14.8</td><td class='neutral'>25%</td><td>30</td><td>12</td></tr><tr><td>Bill Ackman</td><td>127</td><td>10.6</td><td class='neutral'>18%</td><td>30</td><td>12</td></tr><tr><td>Warren Buffett</td><td>66</td><td>5.5</td><td class='neutral'>14%</td><td>20</td><td>12</td></tr><tr><td>Seth Klarman</td><td>98</td><td>8.2</td><td class='neutral'>14%</td><td>30</td><td>12</td></tr><tr><td>Michael Burry</td><td>68</td><td>5.7</td><td class='neutral'>9%</td><td>30</td><td>12</td></tr><tr><td>David Tepper</td><td>67</td><td>5.6</td><td class='neutral'>9%</td><td>30</td><td>12</td></tr><tr><td>Coatue</td><td>54</td><td>4.5</td><td class='neutral'>9%</td><td>25</td><td>12</td></tr><tr><td>Tiger Global</td><td>52</td><td>4.3</td><td class='neutral'>9%</td><td>25</td><td>12</td></tr><tr><td>Dan Loeb</td><td>45</td><td>3.8</td><td class='neutral'>6%</td><td>30</td><td>12</td></tr><tr><td>David Einhorn</td><td>42</td><td>3.5</td><td class='neutral'>6%</td><td>30</td><td>12</td></tr><tr><td>Li Lu</td><td>33</td><td>2.8</td><td class='neutral'>5%</td><td>30</td><td>12</td></tr><tr><td>Chuck Akre</td><td>25</td><td>2.1</td><td class='neutral'>4%</td><td>30</td><td>12</td></tr><tr><td>Sequoia Fund</td><td>19</td><td>1.6</td><td class='neutral'>3%</td><td>30</td><td>12</td></tr><tr><td>Mohnish Pabrai</td><td>17</td><td>1.4</td><td class='neutral'>2%</td><td>30</td><td>12</td></tr></tbody>
+  </table>
+
+  <h2>Live-only signals (no backtest possible)</h2>
+  <div class='note'>
+    <b>WSB Mentions Momentum</b> — ApeWisdom doesn't expose historical mention data, so a 3yr backtest isn't possible from this source. Signal is wired end-to-end and producing a sane top-10 today (NVDA, MSFT, AMD, META, GOOG, plus mid-cap risers like MRAM, MRVL, YOU, DTE, HD). Engine returns empty for any historical date, so backtests on the existing pipeline produce no signal — that's intentional. Recommended path: enable for paper-trading + log signal vs forward-realized returns for 4–8 weeks before sizing up. Reddit pushshift archive backfill is a separate workstream (~half-day) if you want a real backtest later.
+  </div>
+
+  <h2>What changed in the code</h2>
+  <ul style='color:#b5bbcb;font-size:13.5px;line-height:1.7'>
+    <li><code>sec_edgar.py</code> — 11 new CIKs in <code>FUND_CIK_MAP</code>; lowered 13F info-table size filter 5000→1500 bytes (was missing Himalaya at 4980); new <code>_openfigi_batch_lookup</code> (single POST for up to 100 CUSIPs, fixes the 25-CUSIP rate-limit storm)</li>
+    <li><code>quiver_strategy_rules.py</code> — 12 new <code>13f_mirror</code> entries; 2 new <code>alternative_data</code> entries (FINRA short, WSB)</li>
+    <li><code>quiver_engine.py</code> — 12 new <code>sec13F</code> entries; 2 new alt-data entries; new branches in <code>_get_raw_data_with_metadata_at_date</code> for <code>finra_short</code> and <code>apewisdom</code></li>
+    <li><code>strategy_replicator.py</code> — generalized 13F dispatch (was hard-coded list of 3); per-strategy <code>top_n</code> support; new <code>get_strategy_config</code> branches for the two alt-data strategies</li>
+    <li><code>finra_short.py</code> — <b>new module</b>. FINRA daily CNMS short-volume fetcher with disk cache + NASDAQ Trader ETF-flag universe filter</li>
+    <li><code>apewisdom.py</code> — <b>new module</b>. ApeWisdom WSB mentions fetcher with per-UTC-day cache and growth signal</li>
+    <li><code>strategies_config.json</code> — 14 new entries (all category=experimental, enabled=false)</li>
+  </ul>
+
+  <h2>Suggested next steps</h2>
+  <ul style='color:#b5bbcb;font-size:13.5px;line-height:1.7'>
+    <li>Promote the top-Sharpe new mirrors (Coatue, Klarman, Tiger Global, Tepper) to a paper-traded ensemble at small weight, then evaluate after 1 filing cycle</li>
+    <li>If Quiver alt-data tier upgrade is on the table, run a separate cost/benefit — WSB momentum and patents are the most-cited edges in the literature</li>
+    <li>Build the Form 4 cluster-buy strategy as a separate workstream — it's the highest-evidence ungated edge and ~150 LOC of SEC EDGAR parsing</li>
+    <li>Investigate why Druckenmiller and Pabrai have weak metrics — likely SEC EDGAR Value parsing failed for some quarters; check holdings parse</li>
+  </ul>
+</div>
+</body></html>

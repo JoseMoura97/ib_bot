@@ -29,3 +29,7 @@ class PortfolioAllocation(Base):
     amount: Mapped[float] = mapped_column(Float, nullable=False)
     notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
+    # User-chosen rebalance cadence: "follow" (portfolio native), "manual",
+    # or a concrete "daily"/"weekly"/"monthly"/"quarterly". NULL == "follow".
+    rebalance_frequency: Mapped[str | None] = mapped_column(String(16), nullable=True)
+

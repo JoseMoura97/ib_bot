@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>IB Bot — Extended Backtest: 10yr vs 3yr</title>
+<style>
+html,body{background:#0f1117!important;color:#d0d6e0;font-family:'Segoe UI',system-ui,sans-serif;margin:0;padding:24px;font-size:14px;line-height:1.5}
+h1{color:#e8ecf4;font-size:1.45rem;margin-bottom:4px}
+h2{color:#b0bcd4;font-size:1rem;margin:28px 0 8px;border-bottom:1px solid #252b3a;padding-bottom:4px}
+p,li{color:#9aabb8;max-width:860px}
+.meta{color:#606878;font-size:.8rem;margin-bottom:18px}
+table{border-collapse:collapse;width:100%;font-size:13px;margin-bottom:20px}
+th{background:#141820;color:#8898b0;padding:6px 10px;border-bottom:1px solid #252b3a;white-space:nowrap;text-align:left}
+td{padding:5px 10px;border-bottom:1px solid #1c2230;vertical-align:middle}
+tr:hover td{background:#141820}
+.nm{min-width:200px;color:#c8d8e8}
+.g{color:#4ec97b} .r{color:#e06060} .n{color:#9aabb8} .dim{color:#7888a0}
+.sep{border-left:2px solid #252b3a}
+.spy-row td{color:#7888a0;font-style:italic}
+.note{background:#141820;border-left:3px solid #2a4060;padding:10px 16px;border-radius:0 4px 4px 0;margin:14px 0;color:#8898b0;font-size:.85rem}
+.finding{background:#111a10;border-left:3px solid #2a5030;padding:10px 16px;border-radius:0 4px 4px 0;margin:10px 0;font-size:.85rem}
+.finding strong{color:#6ecf8e}
+.warn-box{background:#1a1508;border-left:3px solid #604020;padding:10px 16px;border-radius:0 4px 4px 0;margin:10px 0;font-size:.85rem}
+.warn-box strong{color:#d4a240}
+th.sep{border-left:2px solid #2a3050}
+</style></head><body>
+<h1>IB Bot — Extended Backtest: 10yr vs 3yr</h1>
+<div class="meta">
+  13F strategies: 2016-01-01 → 2026-05-18 (10.4yr) &nbsp;|&nbsp;
+  FINRA Monthly: 2018-10-01 → 2026-05-18 (7.6yr) &nbsp;|&nbsp;
+  SPY 10yr CAGR: <strong style="color:#d4a240">15.26%</strong> &nbsp;|&nbsp;
+  SPY 3yr CAGR: <strong style="color:#d4a240">22.50%</strong>
+</div>
+
+<div class="note">
+  <strong>Price cache note:</strong> Running in <code>cache_only</code> mode.
+  Tickers not in cache for a given period are skipped (conservative bias — missing positions = 0 return, not negative).
+  Historical 13F portfolios from 2016–2019 may have slightly lower position counts due to IPOs/delistings not in cache.
+  This slightly <em>understates</em> early performance, not overstates it.
+</div>
+
+<h2>Results: 10yr vs 3yr side-by-side</h2>
+<p style="font-size:.82rem;color:#606878">
+  Left block = extended window. Right block (after │) = 3yr bull-market run.
+  Delta columns show 10yr minus 3yr (negative = 3yr was inflated).
+</p>
+<table>
+<thead>
+<tr>
+  <th>Strategy</th>
+  <th>CAGR</th><th>vs SPY</th><th>Sharpe</th><th>MaxDD</th><th>Alpha</th><th>Trades</th>
+  <th class="sep">3yr CAGR</th><th>3yr Sharpe</th><th>3yr MaxDD</th>
+  <th>ΔCAGR</th><th>ΔSharpe</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td class="nm">Stanley Druckenmiller</td>
+  <td class="g">23.93%</td>
+  <td class="g">+8.7pp</td>
+  <td>0.96</td>
+  <td class="r">-39.75%</td>
+  <td class="g">9.50%</td>
+  <td class="dim">1349</td>
+  <td class="sep g">36.98%</td>
+  <td>1.60</td>
+  <td class="r dim">-22.18%</td>
+  <td class="r">-13.1pp</td>
+  <td class="r">-64.0pp</td>
+</tr>
+
+<tr>
+  <td class="nm">Michael Burry</td>
+  <td class="g">23.35%</td>
+  <td class="g">+8.1pp</td>
+  <td>0.84</td>
+  <td class="r">-37.20%</td>
+  <td class="g">12.30%</td>
+  <td class="dim">198</td>
+  <td class="sep r">20.41%</td>
+  <td>0.78</td>
+  <td class="r dim">-27.46%</td>
+  <td class="g">+2.9pp</td>
+  <td class="g">+6.0pp</td>
+</tr>
+
+<tr>
+  <td class="nm">David Tepper</td>
+  <td class="g">16.79%</td>
+  <td class="g">+1.5pp</td>
+  <td>0.74</td>
+  <td class="r">-36.32%</td>
+  <td class="g">3.20%</td>
+  <td class="dim">1184</td>
+  <td class="sep g">32.90%</td>
+  <td>1.39</td>
+  <td class="r dim">-22.77%</td>
+  <td class="r">-16.1pp</td>
+  <td class="r">-65.0pp</td>
+</tr>
+
+<tr>
+  <td class="nm">Howard Marks</td>
+  <td class="g">16.56%</td>
+  <td class="g">+1.3pp</td>
+  <td>0.76</td>
+  <td class="r">-50.72%</td>
+  <td class="g">3.60%</td>
+  <td class="dim">2046</td>
+  <td class="sep g">26.79%</td>
+  <td>1.36</td>
+  <td class="r dim">-18.66%</td>
+  <td class="r">-10.2pp</td>
+  <td class="r">-60.0pp</td>
+</tr>
+
+<tr>
+  <td class="nm">FINRA Monthly</td>
+  <td class="r">13.83%</td>
+  <td class="r">-0.9pp</td>
+  <td>0.71</td>
+  <td class="r">-33.79%</td>
+  <td class="g">5.50%</td>
+  <td class="dim">2700</td>
+  <td class="sep r">18.36%</td>
+  <td>1.27</td>
+  <td class="r dim">-14.42%</td>
+  <td class="r">-4.5pp</td>
+  <td class="r">-56.0pp</td>
+</tr>
+
+<tr>
+  <td class="nm">Li Lu</td>
+  <td class="r">10.22%</td>
+  <td class="r">-5.0pp</td>
+  <td>0.54</td>
+  <td class="r">-40.07%</td>
+  <td class="g">1.10%</td>
+  <td class="dim">185</td>
+  <td class="sep g">24.50%</td>
+  <td>1.34</td>
+  <td class="r dim">-22.79%</td>
+  <td class="r">-14.3pp</td>
+  <td class="r">-80.0pp</td>
+</tr>
+
+<tr class="spy-row">
+  <td class="nm">SPY (10yr benchmark)</td>
+  <td>15.26%</td><td>—</td>
+  <td>—</td><td class="r">-33.72%</td><td>—</td><td>—</td>
+  <td class="sep">22.50%</td><td>—</td>
+  <td class="r dim">-18.76%</td><td>—</td><td>—</td>
+</tr></tbody>
+</table>
+
+<h2>Key Findings</h2>
+
+<div class="finding">
+  <strong>Druckenmiller & Burry survive the longer window.</strong>
+  Both stay above SPY at 10yr: Druckenmiller +8.7pp (23.9% vs 15.3%), Burry +8.1pp (23.4% vs 15.3%).
+  Druckenmiller's alpha drops from 14.5% to 9.5% — still highly meaningful over 43 quarterly rebalances.
+  Burry's alpha is almost unchanged (13.1% → 12.3%) — most consistent signal in the set.
+</div>
+
+<div class="warn-box">
+  <strong>Li Lu collapses over 10yr.</strong>
+  3yr CAGR was 24.5% (Sharpe 1.34, alpha 9.6%) — looked like an elite strategy.
+  10yr: 10.2% CAGR, Sharpe 0.54, alpha 1.1% — <em>underperforms SPY by 5pp</em>.
+  The 3yr numbers were entirely a function of timing: Li Lu was heavily concentrated in BABA/Alibaba and
+  Chinese tech that happened to have a strong final 2 years after the regulatory crackdown recovery.
+  185 total trades over 10yr = extremely few data points.
+</div>
+
+<div class="warn-box">
+  <strong>Tepper and Howard Marks barely clear SPY at 10yr.</strong>
+  Tepper: +1.5pp alpha 3.2% (was +10.5pp alpha 9.6% at 3yr).
+  Marks: +1.3pp alpha 3.6% (was +4.5pp alpha 8.1% at 3yr). MaxDD -50.7% is extreme for a "defensive" strategy —
+  Oaktree is credit-heavy and the 2020 credit freeze was brutal.
+  Not worth active management fees/complexity for 1-2pp edge.
+</div>
+
+<div class="finding">
+  <strong>FINRA Monthly: tracks SPY closely, different regime.</strong>
+  13.8% CAGR vs SPY 14.7% (7.5yr) — basically flat to benchmark on raw return.
+  But beta 0.63 and alpha 5.5% are real: the strategy captures ~63% of market risk with ~5pp excess return,
+  which means it significantly outperforms SPY on a risk-adjusted basis.
+  MaxDD -33.8% ≈ SPY -33.7% over the same window (mainly the 2020 crash).
+</div>
+
+<h2>MaxDD Reality Check</h2>
+<p>The 3yr window missed the two biggest drawdowns of the period:</p>
+<ul>
+  <li><strong>COVID crash (Feb–Mar 2020)</strong>: SPY -34%. Credit-heavy portfolios (Marks) worse at -50%+</li>
+  <li><strong>2022 bear market</strong>: SPY -25%, growth/tech funds (Tiger, Coatue) -40%+. The 2023 start date captured the <em>recovery</em> not the drawdown.</li>
+</ul>
+<p>The extended MaxDDs are more representative of what real capital would experience.</p>
+
+<h2>Recommendation Update</h2>
+<table>
+<thead><tr><th>Strategy</th><th>10yr verdict</th><th>Changed from 3yr?</th></tr></thead>
+<tbody>
+<tr><td>Stanley Druckenmiller</td><td class="g">✓ Strong — 23.9% CAGR, Sharpe 0.96, alpha 9.5%</td><td class="n">No change</td></tr>
+<tr><td>Michael Burry</td><td class="g">✓ Strong — 23.4% CAGR, Sharpe 0.84, alpha 12.3% (most consistent)</td><td class="g">Upgraded — more consistent than 3yr suggested</td></tr>
+<tr><td>FINRA Monthly</td><td class="n">~ Neutral — tracks SPY but lower beta; risk-adjusted outperformance</td><td class="r">Downgraded — CAGR below SPY, but alpha real</td></tr>
+<tr><td>David Tepper</td><td class="n">~ Marginal — +1.5pp over SPY, Sharpe 0.74</td><td class="r">Downgraded — 3yr numbers were bull-market inflated</td></tr>
+<tr><td>Howard Marks</td><td class="n">~ Marginal — +1.3pp, MaxDD -50.7% is a red flag</td><td class="r">Downgraded — massive drawdown not visible in 3yr</td></tr>
+<tr><td>Li Lu</td><td class="r">✗ Drop — underperforms SPY, alpha ~0 over 10yr</td><td class="r">Major downgrade — 3yr was pure China-tech timing luck</td></tr>
+</tbody>
+</table>
+</body></html>

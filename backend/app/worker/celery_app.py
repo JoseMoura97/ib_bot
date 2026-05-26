@@ -42,9 +42,20 @@ celery_app.conf.update(
             "task": "paper_rebalance_daily_task",
             "schedule": crontab(hour=15, minute=0),  # 15:00 UTC = ~10:00 AM ET
         },
+        # Unattended LIVE auto-rebalance — self-skips unless LIVE_AUTO_REBALANCE
+        # is armed, the market is open, and an allocation's cadence is due.
+        "live_rebalance_hourly": {
+            "task": "live_rebalance_scheduled_task",
+            "schedule": crontab(minute=0, hour="14-21"),  # hourly during US market hours
+        },
         "paper_snapshot_daily": {
             "task": "paper_snapshot_daily_task",
             "schedule": crontab(hour=21, minute=30),  # 21:30 UTC = ~4:30 PM ET
+        },
+        # Daily point-in-time vintage of every free alt-data source (the compounding archive).
+        "altdata_snapshot_daily": {
+            "task": "altdata_snapshot_daily_task",
+            "schedule": crontab(hour=5, minute=0),  # 05:00 UTC, before market open
         },
         # Phase 2: Reconcile stuck IN_PROGRESS execution rows every 5 minutes
         "reconcile_stuck_executions": {

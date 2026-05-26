@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Track 2 — Factor Regime ML</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<style>
+html,body{background:#0f1117!important;color:#e2e8f0;font-family:'Inter',system-ui,sans-serif;margin:0;padding:0}
+.container{max-width:1100px;margin:0 auto;padding:32px 20px 64px}
+h1{font-size:1.5rem;font-weight:700;color:#f1f5f9;margin:0 0 4px}
+.subtitle{color:#64748b;font-size:.83rem;margin-bottom:28px}
+.subtitle b{color:#94a3b8}
+
+.target-section{margin-bottom:48px;padding:24px;background:#111827;border:1px solid #1e2535;border-radius:10px}
+.target-title{font-size:1.1rem;font-weight:700;color:#f1f5f9;margin-bottom:12px}
+.target-sub{font-size:.78rem;font-weight:400;color:#64748b}
+.meta-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+.meta-chip{background:#1e2535;border-radius:6px;padding:4px 10px;font-size:.75rem;color:#94a3b8}
+.meta-chip b{color:#cbd5e1}
+
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+@media(max-width:700px){.two-col{grid-template-columns:1fr}}
+.col{}
+
+.sec-label{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+  color:#475569;margin-bottom:6px;border-bottom:1px solid #1e2535;padding-bottom:4px}
+
+.sm-table{width:100%;border-collapse:collapse;font-size:.8rem;margin-bottom:8px}
+.sm-table thead th{background:#0f1117;color:#475569;font-size:.67rem;text-transform:uppercase;
+  padding:6px 8px;border-bottom:1px solid #1e2535;text-align:right}
+.sm-table thead th.left{text-align:left}
+.sm-table tbody tr{border-bottom:1px solid #161b27}
+.sm-table tbody tr:hover{background:#1a1f2e}
+.sm-table td{padding:6px 8px;text-align:right;font-variant-numeric:tabular-nums}
+.sm-table td.left{text-align:left}
+.sm-table td.mono{font-family:monospace;color:#cbd5e1;font-size:.75rem}
+
+.fi-table .fi-name{font-size:.72rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fi-bar{height:8px;background:#3b82f6;border-radius:3px;min-width:2px}
+
+.hold-box{background:#1a1f2e;border:1px solid #2d3748;border-radius:6px;padding:8px 12px;
+  margin-top:10px;font-size:.78rem;color:#94a3b8}
+.hold-title{font-weight:600;color:#cbd5e1}
+
+.caveat{background:#1a1f2e;border:1px solid #2d3748;border-radius:8px;padding:14px 18px;
+  margin-bottom:28px;font-size:.79rem;color:#94a3b8;line-height:1.65}
+.caveat strong{color:#cbd5e1}
+.caveat ul{margin:6px 0 0 16px;padding:0}
+.caveat li{margin-bottom:4px}
+
+.green{color:#4ade80} .yellow{color:#facc15} .red{color:#f87171} .dim{color:#64748b}
+.footer{margin-top:32px;color:#334155;font-size:.72rem;text-align:center}
+
+canvas{background:#0f1117;border-radius:6px;padding:8px}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Track 2 — Factor Regime ML</h1>
+  <div class="subtitle">
+    Predicting 12-month HML &amp; SMB regime direction ·
+    Ken French monthly data 12m forward ·
+    Holdout frozen: 2010-01→2026
+  </div>
+
+  <div class="caveat">
+    <strong>Methodology:</strong>
+    <ul>
+      <li>Expanding walk-forward CV · 240m min train · 6m embargo · 24m test steps</li>
+      <li>LightGBM: 5-seed ensemble (mean prob) to reduce stochastic noise (Fractus M8/M9 lesson)</li>
+      <li>Meta-labeling: LR direction model → LightGBM confidence filter (LdP Chapter 3)</li>
+      <li>Shuffle-label null test: expected AUC ≈ 0.50; actual null confirms no data leakage</li>
+      <li>Decade AUC: checks for distribution shift across time</li>
+      <li>Success bar: WF AUC ≥ 0.60, consistent across decades, above null</li>
+    </ul>
+  </div>
+
+  
+        <div class="target-section">
+          <div class="target-title">HML regime prediction
+            <span class="target-sub"> — 12-month forward direction</span>
+          </div>
+          <div class="meta-row">
+            <div class="meta-chip">Dev obs: <b>1002</b></div>
+            <div class="meta-chip">Folds: <b>27</b></div>
+            <div class="meta-chip">Base rate: <b>63.9%</b></div>
+            <div class="meta-chip">Features: <b>32</b></div>
+          </div>
+
+          <div class="two-col">
+            <div class="col">
+              <div class="sec-label">Walk-forward AUC summary</div>
+              <table class="sm-table">
+                <thead><tr><th class="left">Model</th><th>Mean AUC</th><th>Std</th><th>vs Null</th></tr></thead>
+                <tbody>
+                  <tr>
+                    <td class="left mono">Logistic Reg</td>
+                    <td class="yellow">0.591</td>
+                    <td class="dim">±0.284</td>
+                    <td class="dim">0.530 null</td>
+                  </tr>
+                  <tr>
+                    <td class="left mono">LightGBM</td>
+                    <td class="red">0.507</td>
+                    <td class="dim">±0.292</td>
+                    <td class="dim">0.524 null</td>
+                  </tr>
+                  <tr>
+                    <td class="left mono">Meta-label</td>
+                    <td class="yellow">0.575</td>
+                    <td class="dim">—</td>
+                    <td class="dim">cov 93%</td>
+                  </tr>
+                </tbody>
+              </table>
+              
+            <div class="hold-box">
+              <span class="hold-title">Holdout 2010→2026 (n=195)</span>
+              &nbsp; LR: <span class="yellow">0.564</span>
+              &nbsp; LGBM: <span class="green">0.668</span>
+              &nbsp; Base rate: 42.1%
+            </div>
+              <div class="sec-label" style="margin-top:16px">AUC by decade (LGBM, OOF)</div>
+              <table class="sm-table"><thead><tr><th class="left">Decade</th><th>AUC</th></tr></thead>
+              <tbody><tr><td class='left'>1940s</td><td class='yellow'>0.578</td></tr><tr><td class='left'>1950s</td><td class='green'>0.649</td></tr><tr><td class='left'>1960s</td><td class='red'>0.365</td></tr><tr><td class='left'>1970s</td><td class='red'>0.479</td></tr><tr><td class='left'>1980s</td><td class='red'>0.410</td></tr><tr><td class='left'>1990s</td><td class='red'>0.438</td></tr><tr><td class='left'>2000s</td><td class='red'>0.438</td></tr></tbody></table>
+            </div>
+            <div class="col">
+              <div class="sec-label">Feature importance (LGBM gain, avg across folds)</div>
+              <table class="sm-table fi-table">
+                <thead><tr><th class="left">Feature</th><th></th><th>Gain</th></tr></thead>
+                <tbody><tr>
+              <td class='left mono fi-name'>smb_mkt_corr12</td>
+              <td><div class='fi-bar' style='width:120px'></div></td>
+              <td class='dim'>872.3</td>
+            </tr><tr>
+              <td class='left mono fi-name'>hml_vol_ratio</td>
+              <td><div class='fi-bar' style='width:101px'></div></td>
+              <td class='dim'>737.4</td>
+            </tr><tr>
+              <td class='left mono fi-name'>SMB_vol12</td>
+              <td><div class='fi-bar' style='width:94px'></div></td>
+              <td class='dim'>684.4</td>
+            </tr><tr>
+              <td class='left mono fi-name'>HML_dd</td>
+              <td><div class='fi-bar' style='width:93px'></div></td>
+              <td class='dim'>677.7</td>
+            </tr><tr>
+              <td class='left mono fi-name'>hml_smb_corr12</td>
+              <td><div class='fi-bar' style='width:92px'></div></td>
+              <td class='dim'>669.6</td>
+            </tr><tr>
+              <td class='left mono fi-name'>Mkt_RF_vol24</td>
+              <td><div class='fi-bar' style='width:71px'></div></td>
+              <td class='dim'>518.5</td>
+            </tr><tr>
+              <td class='left mono fi-name'>HML_vol24</td>
+              <td><div class='fi-bar' style='width:64px'></div></td>
+              <td class='dim'>466.4</td>
+            </tr><tr>
+              <td class='left mono fi-name'>Mkt_RF_vol12</td>
+              <td><div class='fi-bar' style='width:60px'></div></td>
+              <td class='dim'>443.1</td>
+            </tr><tr>
+              <td class='left mono fi-name'>SMB_vol24</td>
+              <td><div class='fi-bar' style='width:51px'></div></td>
+              <td class='dim'>374.2</td>
+            </tr><tr>
+              <td class='left mono fi-name'>smb_vol_ratio</td>
+              <td><div class='fi-bar' style='width:38px'></div></td>
+              <td class='dim'>279.2</td>
+            </tr><tr>
+              <td class='left mono fi-name'>SMB_dd</td>
+              <td><div class='fi-bar' style='width:37px'></div></td>
+              <td class='dim'>272.6</td>
+            </tr><tr>
+              <td class='left mono fi-name'>beme_spread_z12</td>
+              <td><div class='fi-bar' style='width:28px'></div></td>
+              <td class='dim'>204.6</td>
+            </tr></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="sec-label" style="margin-top:20px">AUC per fold over time</div>
+          <canvas id="chart_hml" height="90"></canvas>
+          <script>
+          (function(){
+            var ctx = document.getElementById('chart_hml').getContext('2d');
+            var dates = ["1947-01", "1949-01", "1951-01", "1953-01", "1955-01", "1957-01", "1959-01", "1963-01", "1965-01", "1967-01", "1969-01", "1971-01", "1973-01", "1977-01", "1979-01", "1981-01", "1983-01", "1985-01", "1987-01", "1991-01", "1993-01", "1995-01", "1997-01", "1999-01", "2001-01", "2005-01", "2007-01"];
+            var lr    = [0.0, 0.7394957983193278, 0.6222222222222222, 0.907563025210084, 1.0, 0.9814814814814815, 0.9928571428571429, 0.5, 0.3846153846153846, 0.44210526315789467, 0.5384615384615384, 1.0, 0.6363636363636364, 0.6923076923076923, 0.7999999999999999, 0.7368421052631579, 0.0, 0.6074074074074074, 0.35, 0.21739130434782608, 0.5857142857142857, 0.8947368421052632, 0.7642857142857143, 0.17037037037037037, 0.5378151260504201, 0.39495798319327735, 0.44999999999999996];
+            var lgbm  = [0.362962962962963, 0.9831932773109244, 0.1703703703703704, 0.11764705882352941, 0.022727272727272707, 0.9537037037037037, 0.8642857142857143, 0.38636363636363635, 0.23076923076923075, 0.3263157894736842, 0.5314685314685315, 1.0, 0.6363636363636364, 0.6153846153846154, 0.45263157894736844, 0.07368421052631577, 0.2608695652173913, 0.6666666666666666, 0.2125, 0.17391304347826086, 0.7142857142857143, 0.7789473684210526, 0.5785714285714285, 0.6370370370370371, 0.8739495798319327, 0.7310924369747899, 0.325];
+            var meta  = [0.0, 0.411764705882353, 0.626984126984127, 0.907563025210084, 1.0, 0.9814814814814815, 0.9916666666666666, 0.45, 0.3846153846153846, 0.44210526315789467, 0.5384615384615384, 1.0, 0.4666666666666667, 0.6923076923076923, 0.8333333333333334, 0.7368421052631579, 0.0, 0.6696428571428572, 0.3157894736842105, 0.22727272727272727, 0.6583333333333333, 0.8181818181818182, 0.8230769230769232, 0.17037037037037037, 0.5378151260504201, 0.38392857142857145, 0.44999999999999996];
+            new Chart(ctx, {
+              type: 'line',
+              data: {
+                labels: dates,
+                datasets: [
+                  {label:'LR', data:lr, borderColor:'#60a5fa', borderWidth:1.5, pointRadius:2, fill:false, tension:0.3},
+                  {label:'LGBM', data:lgbm, borderColor:'#4ade80', borderWidth:2, pointRadius:2, fill:false, tension:0.3},
+                  {label:'Meta', data:meta, borderColor:'#f59e0b', borderWidth:1.5, pointRadius:1, fill:false, tension:0.3, borderDash:[4,3]},
+                  {label:'Null (0.5)', data:dates.map(()=>0.5), borderColor:'#475569', borderWidth:1, pointRadius:0, fill:false, borderDash:[2,4]},
+                ]
+              },
+              options: {
+                animation:false, responsive:true,
+                plugins:{legend:{labels:{color:'#94a3b8',font:{size:11}}},
+                          tooltip:{mode:'index',intersect:false}},
+                scales:{
+                  x:{ticks:{color:'#475569',maxTicksLimit:12},grid:{color:'#1e2535'}},
+                  y:{min:0.35,max:0.85,ticks:{color:'#475569'},grid:{color:'#1e2535'}}
+                }
+              }
+            });
+          })();
+          </script>
+        </div>
+        <div class="target-section">
+          <div class="target-title">SMB regime prediction
+            <span class="target-sub"> — 12-month forward direction</span>
+          </div>
+          <div class="meta-row">
+            <div class="meta-chip">Dev obs: <b>1002</b></div>
+            <div class="meta-chip">Folds: <b>28</b></div>
+            <div class="meta-chip">Base rate: <b>55.7%</b></div>
+            <div class="meta-chip">Features: <b>32</b></div>
+          </div>
+
+          <div class="two-col">
+            <div class="col">
+              <div class="sec-label">Walk-forward AUC summary</div>
+              <table class="sm-table">
+                <thead><tr><th class="left">Model</th><th>Mean AUC</th><th>Std</th><th>vs Null</th></tr></thead>
+                <tbody>
+                  <tr>
+                    <td class="left mono">Logistic Reg</td>
+                    <td class="yellow">0.568</td>
+                    <td class="dim">±0.262</td>
+                    <td class="dim">0.493 null</td>
+                  </tr>
+                  <tr>
+                    <td class="left mono">LightGBM</td>
+                    <td class="yellow">0.548</td>
+                    <td class="dim">±0.258</td>
+                    <td class="dim">0.510 null</td>
+                  </tr>
+                  <tr>
+                    <td class="left mono">Meta-label</td>
+                    <td class="yellow">0.558</td>
+                    <td class="dim">—</td>
+                    <td class="dim">cov 89%</td>
+                  </tr>
+                </tbody>
+              </table>
+              
+            <div class="hold-box">
+              <span class="hold-title">Holdout 2010→2026 (n=195)</span>
+              &nbsp; LR: <span class="yellow">0.553</span>
+              &nbsp; LGBM: <span class="red">0.498</span>
+              &nbsp; Base rate: 34.4%
+            </div>
+              <div class="sec-label" style="margin-top:16px">AUC by decade (LGBM, OOF)</div>
+              <table class="sm-table"><thead><tr><th class="left">Decade</th><th>AUC</th></tr></thead>
+              <tbody><tr><td class='left'>1940s</td><td class='red'>0.164</td></tr><tr><td class='left'>1950s</td><td class='red'>0.252</td></tr><tr><td class='left'>1960s</td><td class='yellow'>0.536</td></tr><tr><td class='left'>1970s</td><td class='red'>0.519</td></tr><tr><td class='left'>1980s</td><td class='green'>0.606</td></tr><tr><td class='left'>1990s</td><td class='red'>0.529</td></tr><tr><td class='left'>2000s</td><td class='green'>0.795</td></tr></tbody></table>
+            </div>
+            <div class="col">
+              <div class="sec-label">Feature importance (LGBM gain, avg across folds)</div>
+              <table class="sm-table fi-table">
+                <thead><tr><th class="left">Feature</th><th></th><th>Gain</th></tr></thead>
+                <tbody><tr>
+              <td class='left mono fi-name'>hml_smb_corr12</td>
+              <td><div class='fi-bar' style='width:120px'></div></td>
+              <td class='dim'>1066.3</td>
+            </tr><tr>
+              <td class='left mono fi-name'>Mkt_RF_dd</td>
+              <td><div class='fi-bar' style='width:111px'></div></td>
+              <td class='dim'>987.2</td>
+            </tr><tr>
+              <td class='left mono fi-name'>HML_vol24</td>
+              <td><div class='fi-bar' style='width:62px'></div></td>
+              <td class='dim'>551.9</td>
+            </tr><tr>
+              <td class='left mono fi-name'>SMB_t12</td>
+              <td><div class='fi-bar' style='width:57px'></div></td>
+              <td class='dim'>515.3</td>
+            </tr><tr>
+              <td class='left mono fi-name'>hml_vol_ratio</td>
+              <td><div class='fi-bar' style='width:55px'></div></td>
+              <td class='dim'>492.8</td>
+            </tr><tr>
+              <td class='left mono fi-name'>Mkt_RF_vol12</td>
+              <td><div class='fi-bar' style='width:50px'></div></td>
+              <td class='dim'>451.7</td>
+            </tr><tr>
+              <td class='left mono fi-name'>SMB_cum12</td>
+              <td><div class='fi-bar' style='width:47px'></div></td>
+              <td class='dim'>424.6</td>
+            </tr><tr>
+              <td class='left mono fi-name'>SMB_vol24</td>
+              <td><div class='fi-bar' style='width:37px'></div></td>
+              <td class='dim'>329.9</td>
+            </tr><tr>
+              <td class='left mono fi-name'>SMB_vol12</td>
+              <td><div class='fi-bar' style='width:33px'></div></td>
+              <td class='dim'>295.8</td>
+            </tr><tr>
+              <td class='left mono fi-name'>hml_mkt_corr12</td>
+              <td><div class='fi-bar' style='width:32px'></div></td>
+              <td class='dim'>292.9</td>
+            </tr><tr>
+              <td class='left mono fi-name'>smb_vol_ratio</td>
+              <td><div class='fi-bar' style='width:31px'></div></td>
+              <td class='dim'>284.1</td>
+            </tr><tr>
+              <td class='left mono fi-name'>HML_dd</td>
+              <td><div class='fi-bar' style='width:29px'></div></td>
+              <td class='dim'>261.7</td>
+            </tr></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="sec-label" style="margin-top:20px">AUC per fold over time</div>
+          <canvas id="chart_smb" height="90"></canvas>
+          <script>
+          (function(){
+            var ctx = document.getElementById('chart_smb').getContext('2d');
+            var dates = ["1947-01", "1949-01", "1951-01", "1953-01", "1955-01", "1957-01", "1959-01", "1961-01", "1963-01", "1967-01", "1969-01", "1971-01", "1973-01", "1975-01", "1981-01", "1983-01", "1985-01", "1987-01", "1989-01", "1991-01", "1993-01", "1995-01", "1997-01", "1999-01", "2001-01", "2003-01", "2005-01", "2007-01"];
+            var lr    = [0.6086956521739131, 0.7132867132867133, 0.16666666666666666, 0.4772727272727273, 0.12142857142857144, 0.7142857142857143, 0.6888888888888889, 0.8695652173913043, 1.0, 0.4957983193277311, 0.5214285714285715, 0.12962962962962965, 0.9375, 0.7301587301587302, 0.5833333333333334, 0.787037037037037, 0.6086956521739131, 0.1703703703703704, 0.3473684210526316, 0.546218487394958, 0.22916666666666666, 0.6349206349206349, 0.368421052631579, 0.21052631578947367, 0.782608695652174, 0.8487394957983193, 0.6222222222222222, 1.0];
+            var lgbm  = [1.0, 0.1258741258741259, 0.3148148148148148, 0.8181818181818181, 0.2785714285714286, 0.7619047619047619, 0.2518518518518518, 0.4347826086956522, 1.0, 0.5966386554621849, 0.22142857142857142, 0.26851851851851855, 0.5486111111111112, 0.3968253968253968, 0.7870370370370371, 0.4537037037037037, 0.6521739130434783, 0.5185185185185185, 0.6631578947368422, 0.26050420168067234, 0.34722222222222227, 0.3968253968253968, 0.7999999999999999, 0.631578947368421, 0.8695652173913043, 0.6974789915966386, 0.2592592592592593, 1.0];
+            var meta  = ["null", 0.7132867132867133, 0.16666666666666666, 0.33333333333333337, 0.1111111111111111, 0.7142857142857143, 0.6888888888888889, 0.8636363636363636, 1.0, 0.5, 0.5214285714285715, 0.1142857142857143, 0.9318181818181819, 0.7301587301587302, 0.5147058823529411, 0.8958333333333334, 0.6842105263157895, 0.1703703703703704, 0.0, 0.75, 0.1590909090909091, 0.6349206349206349, 0.368421052631579, 0.28205128205128205, 0.782608695652174, 0.8588235294117647, 0.575, 1.0];
+            new Chart(ctx, {
+              type: 'line',
+              data: {
+                labels: dates,
+                datasets: [
+                  {label:'LR', data:lr, borderColor:'#60a5fa', borderWidth:1.5, pointRadius:2, fill:false, tension:0.3},
+                  {label:'LGBM', data:lgbm, borderColor:'#4ade80', borderWidth:2, pointRadius:2, fill:false, tension:0.3},
+                  {label:'Meta', data:meta, borderColor:'#f59e0b', borderWidth:1.5, pointRadius:1, fill:false, tension:0.3, borderDash:[4,3]},
+                  {label:'Null (0.5)', data:dates.map(()=>0.5), borderColor:'#475569', borderWidth:1, pointRadius:0, fill:false, borderDash:[2,4]},
+                ]
+              },
+              options: {
+                animation:false, responsive:true,
+                plugins:{legend:{labels:{color:'#94a3b8',font:{size:11}}},
+                          tooltip:{mode:'index',intersect:false}},
+                scales:{
+                  x:{ticks:{color:'#475569',maxTicksLimit:12},grid:{color:'#1e2535'}},
+                  y:{min:0.35,max:0.85,ticks:{color:'#475569'},grid:{color:'#1e2535'}}
+                }
+              }
+            });
+          })();
+          </script>
+        </div>
+
+  <div class="footer">
+    Data: Ken French Data Library · Features: lagged returns, rolling vol, correlations, value spread ·
+    Models: Logistic Regression + LightGBM (depth=3) + meta-labeling ·
+    Not investment advice
+  </div>
+</div>
+</body>
+</html>

@@ -300,21 +300,50 @@ class StrategyReplicator:
                 'lookback_days': 90
             }
         
-        # Hedge Fund Managers (13F)
-        if strategy_name in ["Michael Burry", "Bill Ackman", "Howard Marks"]:
-            # Optional: Quiver often presents "top N holdings" style portfolios.
-            # If set, we will select only the top N holdings by (absolute) 13F Value.
-            top_n_env = os.getenv("SEC_13F_TOP_N", "").strip()
-            try:
-                top_n = int(top_n_env) if top_n_env else 0
-            except Exception:
-                top_n = 0
+        # Tier-A alt-data: FINRA off-exchange short squeeze.
+        # Engine returns DataFrame(Ticker, ShortRatio, AvgVolume, ...).
+        # _equal_weight sorts on `sort_by` and picks top-N.
+        if strategy_name in ("Off-Exchange Short Squeeze", "Off-Exchange Short Squeeze (Monthly)"):
+            return {
+                'type': 'equal_weighted',
+                'top_n': int(rules.get('num_holdings', 20)),
+                'rebalance': 'weekly',
+                'sort_by': 'ShortRatio',
+                'require_sort_column': True,
+                'lookback_days': int(rules.get('lookback_days', 5)),
+            }
+
+        # Tier-A alt-data: ApeWisdom WSB mentions momentum (LIVE-ONLY).
+        # Engine returns DataFrame(Ticker, growth_24h, mentions, ...) or empty for historical dates.
+        if strategy_name == "WSB Mentions Momentum":
+            return {
+                'type': 'equal_weighted',
+                'top_n': int(rules.get('num_holdings', 10)),
+                'rebalance': 'weekly',
+                'sort_by': 'growth_24h',
+                'require_sort_column': True,
+                'lookback_days': int(rules.get('lookback_days', 1)),
+                'live_only': True,
+            }
+
+        # Hedge Fund Managers (13F) — any strategy declared as 13f_mirror in STRATEGY_RULES.
+        # Per-strategy top_n in STRATEGY_RULES wins; otherwise SEC_13F_TOP_N env override; else 0 (all holdings).
+        if rules.get("type") == "13f_mirror":
+            rules_top_n = int(rules.get("top_n") or 0)
+            if rules_top_n > 0:
+                top_n = rules_top_n
+            else:
+                top_n_env = os.getenv("SEC_13F_TOP_N", "").strip()
+                try:
+                    top_n = int(top_n_env) if top_n_env else 0
+                except Exception:
+                    top_n = 0
             return {
                 'type': 'portfolio_mirror',
                 'rebalance': 'quarterly',
                 'use_13f_weights': True,
                 'top_n': top_n,
-                'lookback_days': 120
+                'lookback_days': 120,
             }
         
         # Default: equal weighted monthly

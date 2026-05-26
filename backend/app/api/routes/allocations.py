@@ -23,6 +23,7 @@ def create_allocation(body: AllocationCreate, db: Session = Depends(get_db)):
         portfolio_id=body.portfolio_id,
         amount=float(body.amount),
         notes=body.notes,
+        rebalance_frequency=body.rebalance_frequency,
     )
     db.add(row)
     db.commit()
@@ -35,6 +36,7 @@ def create_allocation(body: AllocationCreate, db: Session = Depends(get_db)):
         portfolio_id=row.portfolio_id,
         amount=float(row.amount),
         notes=row.notes,
+        rebalance_frequency=row.rebalance_frequency,
     )
 
 
@@ -56,6 +58,7 @@ def list_allocations(
             portfolio_id=r.portfolio_id,
             amount=float(r.amount),
             notes=r.notes,
+            rebalance_frequency=r.rebalance_frequency,
         )
         for r in rows
     ]

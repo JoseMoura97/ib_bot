@@ -1,0 +1,114 @@
+{
+  "Stanley Druckenmiller": {
+    "n_trades": 177,
+    "n_events_est": 12,
+    "basket_size_est": 30,
+    "avg_trades_per_rebalance": 14.8,
+    "turnover_pct_per_rebal": 24.6
+  },
+  "David Tepper": {
+    "n_trades": 67,
+    "n_events_est": 12,
+    "basket_size_est": 30,
+    "avg_trades_per_rebalance": 5.6,
+    "turnover_pct_per_rebal": 9.3
+  },
+  "Seth Klarman": {
+    "n_trades": 98,
+    "n_events_est": 12,
+    "basket_size_est": 30,
+    "avg_trades_per_rebalance": 8.2,
+    "turnover_pct_per_rebal": 13.6
+  },
+  "Mohnish Pabrai": {
+    "n_trades": 17,
+    "n_events_est": 12,
+    "basket_size_est": 30,
+    "avg_trades_per_rebalance": 1.4,
+    "turnover_pct_per_rebal": 2.4
+  },
+  "Li Lu": {
+    "n_trades": 33,
+    "n_events_est": 12,
+    "basket_size_est": 30,
+    "avg_trades_per_rebalance": 2.8,
+    "turnover_pct_per_rebal": 4.6
+  },
+  "Chuck Akre": {
+    "n_trades": 25,
+    "n_events_est": 12,
+    "basket_size_est": 30,
+    "avg_trades_per_rebalance": 2.1,
+    "turnover_pct_per_rebal": 3.5
+  },
+  "Warren Buffett": {
+    "n_trades": 66,
+    "n_events_est": 12,
+    "basket_size_est": 20,
+    "avg_trades_per_rebalance": 5.5,
+    "turnover_pct_per_rebal": 13.8
+  },
+  "David Einhorn": {
+    "n_trades": 42,
+    "n_events_est": 12,
+    "basket_size_est": 30,
+    "avg_trades_per_rebalance": 3.5,
+    "turnover_pct_per_rebal": 5.8
+  },
+  "Dan Loeb": {
+    "n_trades": 45,
+    "n_events_est": 12,
+    "basket_size_est": 30,
+    "avg_trades_per_rebalance": 3.8,
+    "turnover_pct_per_rebal": 6.2
+  },
+  "Tiger Global": {
+    "n_trades": 52,
+    "n_events_est": 12,
+    "basket_size_est": 25,
+    "avg_trades_per_rebalance": 4.3,
+    "turnover_pct_per_rebal": 8.7
+  },
+  "Coatue": {
+    "n_trades": 54,
+    "n_events_est": 12,
+    "basket_size_est": 25,
+    "avg_trades_per_rebalance": 4.5,
+    "turnover_pct_per_rebal": 9.0
+  },
+  "Sequoia Fund": {
+    "n_trades": 19,
+    "n_events_est": 12,
+    "basket_size_est": 30,
+    "avg_trades_per_rebalance": 1.6,
+    "turnover_pct_per_rebal": 2.6
+  },
+  "Michael Burry": {
+    "n_trades": 68,
+    "n_events_est": 12,
+    "basket_size_est": 30,
+    "avg_trades_per_rebalance": 5.7,
+    "turnover_pct_per_rebal": 9.4
+  },
+  "Bill Ackman": {
+    "n_trades": 127,
+    "n_events_est": 12,
+    "basket_size_est": 30,
+    "avg_trades_per_rebalance": 10.6,
+    "turnover_pct_per_rebal": 17.6
+  },
+  "Howard Marks": {
+    "n_trades": 938,
+    "n_events_est": 12,
+    "basket_size_est": 30,
+    "avg_trades_per_rebalance": 78.2,
+    "turnover_pct_per_rebal": 130.3
+  },
+  "Off-Exchange Short Squeeze": {
+    "n_trades": 5018,
+    "n_events_est": 156,
+    "basket_size_est": 20,
+    "avg_trades_per_rebalance": 32.2,
+    "turnover_pct_per_rebal": 80.4
+  }
+}

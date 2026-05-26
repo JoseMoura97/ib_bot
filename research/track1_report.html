@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Track 1 — Factor Backtests</title>
+<style>
+html,body{background:#0f1117!important;color:#e2e8f0;font-family:'Inter',system-ui,sans-serif;margin:0;padding:0}
+.container{max-width:1100px;margin:0 auto;padding:32px 20px 64px}
+h1{font-size:1.5rem;font-weight:700;color:#f1f5f9;margin:0 0 4px}
+.subtitle{color:#64748b;font-size:.83rem;margin-bottom:28px}
+.subtitle b{color:#94a3b8}
+
+/* cards */
+.cards{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:32px}
+.card{background:#141824;border:1px solid #1e2535;border-radius:10px;padding:16px 20px;flex:1;min-width:190px}
+.card-title{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-bottom:6px}
+.card-factor{font-size:.85rem;font-weight:600;color:#cbd5e1;margin-bottom:4px;font-family:monospace}
+.card-cagr{font-size:1.5rem;font-weight:700;margin-bottom:4px}
+.card-sub{font-size:.73rem;color:#64748b}
+
+/* tables */
+.window-section{margin-bottom:32px}
+.window-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
+  color:#475569;margin-bottom:8px;padding:4px 0;border-bottom:1px solid #1e2535}
+.table-wrap{overflow-x:auto;border:1px solid #1e2535;border-radius:8px}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+thead th{background:#141824;color:#64748b;font-size:.68rem;text-transform:uppercase;
+  letter-spacing:.06em;padding:9px 12px;white-space:nowrap;border-bottom:1px solid #1e2535;text-align:right}
+th.left{text-align:left}
+tbody tr{border-bottom:1px solid #161b27;transition:background .12s}
+tbody tr:hover{background:#1a1f2e}
+tbody tr:last-child{border-bottom:none}
+td{padding:9px 12px;text-align:right;font-variant-numeric:tabular-nums}
+td.left{text-align:left}
+td.mono{font-family:monospace;font-size:.8rem;color:#cbd5e1;font-weight:600;white-space:nowrap}
+tr.bench-row td{color:#475569;font-style:italic}
+tr.anom-row td{opacity:.6}
+
+.bias-tag{font-size:.62rem;background:#2d1f00;color:#f59e0b;border-radius:3px;
+  padding:1px 5px;margin-left:4px;font-style:normal;font-family:sans-serif}
+.anom-tag{font-size:.62rem;background:#2d1010;color:#f87171;border-radius:3px;
+  padding:1px 5px;margin-left:4px;font-style:normal;font-family:sans-serif}
+
+.green{color:#4ade80} .yellow{color:#facc15} .red{color:#f87171} .dim{color:#64748b}
+
+/* legend */
+.legend{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:24px;font-size:.75rem}
+.leg{display:flex;align-items:center;gap:6px;color:#64748b}
+.dot{width:8px;height:8px;border-radius:50%}
+.dot.green{background:#4ade80}.dot.yellow{background:#facc15}.dot.red{background:#f87171}
+
+/* caveat */
+.caveat{background:#1a1f2e;border:1px solid #2d3748;border-radius:8px;padding:14px 18px;
+  margin-bottom:24px;font-size:.79rem;color:#94a3b8;line-height:1.65}
+.caveat strong{color:#cbd5e1}
+.caveat ul{margin:6px 0 0 16px;padding:0}
+.caveat li{margin-bottom:4px}
+
+.footer{margin-top:32px;color:#334155;font-size:.72rem;text-align:center}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Track 1 — Factor Strategy Backtests</h1>
+  <div class="subtitle">
+    Strategies: <b>Momentum · Low Volatility · Mom+LowVol · Quality</b> &nbsp;·&nbsp;
+    Universe: ~2600 US equities &nbsp;·&nbsp; Top-20 equal weight · Monthly rebalance · 10bps cost
+    &nbsp;·&nbsp; Benchmark: SPY
+  </div>
+
+  <div class="caveat">
+    <strong>Caveats:</strong>
+    <ul>
+      <li><strong>Quality (*):</strong> Uses a static fundamentals snapshot. 15yr/10yr results have look-ahead bias — the model knows which companies survived with high ROE/margins. Run <code>factor_fundamentals_historical_fetch.py</code> to fix.</li>
+      <li><strong>Low Volatility:</strong> Very low CAGR (2–5%) but near-zero beta and drawdown — functions as a defensive sleeve, not a return driver.</li>
+      <li>Alpha/Beta vs SPY (US large-cap), which understates alpha for a small-cap focused universe.</li>
+    </ul>
+  </div>
+
+  <div class="legend">
+    <div class="leg"><div class="dot green"></div> Strong (CAGR≥15%, Sh≥1.0, DD≥-25%)</div>
+    <div class="leg"><div class="dot yellow"></div> Moderate</div>
+    <div class="leg"><div class="dot red"></div> Weak</div>
+  </div>
+
+  <div class="cards">
+        <div class="card">
+          <div class="card-title">Best CAGR (10yr)</div>
+          <div class="card-factor">Momentum</div>
+          <div class="card-cagr green">32.7% CAGR</div>
+          <div class="card-sub">Sh 0.99 · DD -45.4% · α 15.9%</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Best Sharpe (3yr)</div>
+          <div class="card-factor">Low Volatility</div>
+          <div class="card-cagr red">5.2% CAGR</div>
+          <div class="card-sub">Sh 5.44 · DD -0.8% · α 5.1%</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Best Alpha (10yr)</div>
+          <div class="card-factor">Momentum</div>
+          <div class="card-cagr green">32.7% CAGR</div>
+          <div class="card-sub">Sh 0.99 · DD -45.4% · α 15.9%</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Lowest DD (15yr)</div>
+          <div class="card-factor">Momentum</div>
+          <div class="card-cagr green">17.6% CAGR</div>
+          <div class="card-sub">Sh 0.67 · DD -57.4% · α 4.6%</div>
+        </div></div>
+
+  
+    <div class="window-section">
+      <div class="window-label">CAGR across windows</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th class="left">Strategy</th>
+            <th>15yr</th><th>10yr</th><th>5yr</th><th>3yr</th>
+          </tr></thead>
+          <tbody><tr><td class="left mono">Momentum</td><td class="green">17.6%</td><td class="green">32.7%</td><td class="green">21.0%</td><td class="green">68.4%</td></tr><tr><td class="left mono">Low Volatility</td><td class="red">2.5%</td><td class="red">2.9%</td><td class="red">3.1%</td><td class="red">5.2%</td></tr><tr><td class="left mono">Mom+LowVol</td><td class="green">15.7%</td><td class="green">25.4%</td><td class="green">25.2%</td><td class="green">63.0%</td></tr><tr><td class="left mono">Quality *</td><td class="green">20.0%</td><td class="green">20.3%</td><td class="green">15.2%</td><td class="green">31.8%</td></tr><tr class="bench-row"><td class="left mono">◄ SPY (ref)</td><td class="dim">14.8%</td><td class="dim">15.5%</td><td class="dim">13.8%</td><td class="dim">22.6%</td></tr></tbody></table></div></div>
+
+  
+        <div class="window-section">
+          <div class="window-label">15yr window</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th class="left">Strategy</th>
+                <th>CAGR</th><th>Sharpe</th><th>Sortino</th>
+                <th>MaxDD</th><th>Alpha</th><th>Beta</th>
+                <th>Vol</th><th>Total</th><th>Yrs</th>
+              </tr></thead>
+              <tbody>
+                <tr class="">
+                  <td class="left mono">Momentum</td>
+                  <td class="green">17.6%</td>
+                  <td class="yellow">0.67</td>
+                  <td class="dim">0.98</td>
+                  <td class="red">-57.4%</td>
+                  <td class="green">4.6%</td>
+                  <td class="dim">1.24</td>
+                  <td class="dim">37.0%</td>
+                  <td class="dim">1034%</td>
+                  <td class="dim">15.0</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">Low Volatility</td>
+                  <td class="red">2.5%</td>
+                  <td class="yellow">0.74</td>
+                  <td class="dim">0.81</td>
+                  <td class="green">-14.3%</td>
+                  <td class="yellow">1.4%</td>
+                  <td class="dim">0.09</td>
+                  <td class="dim">3.9%</td>
+                  <td class="dim">45%</td>
+                  <td class="dim">15.0</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">Mom+LowVol</td>
+                  <td class="green">15.7%</td>
+                  <td class="yellow">0.70</td>
+                  <td class="dim">0.94</td>
+                  <td class="yellow">-42.1%</td>
+                  <td class="yellow">1.5%</td>
+                  <td class="dim">1.16</td>
+                  <td class="dim">29.0%</td>
+                  <td class="dim">781%</td>
+                  <td class="dim">15.0</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">Quality <span class='bias-tag'>LOOK-AHEAD</span></td>
+                  <td class="green">20.0%</td>
+                  <td class="green">1.21</td>
+                  <td class="dim">1.61</td>
+                  <td class="yellow">-33.3%</td>
+                  <td class="green">6.8%</td>
+                  <td class="dim">0.93</td>
+                  <td class="dim">18.1%</td>
+                  <td class="dim">1424%</td>
+                  <td class="dim">15.0</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">◄ SPY (ref)</td>
+                  <td class="dim">14.8%</td>
+                  <td class="dim">0.82</td>
+                  <td class="dim">—</td>
+                  <td class="dim">-33.9%</td>
+                  <td class="dim">—</td><td class="dim">1.00</td>
+                  <td class="dim">—</td><td class="dim">—</td><td class="dim">—</td>
+                </tr></tbody></table></div></div>
+        <div class="window-section">
+          <div class="window-label">10yr window</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th class="left">Strategy</th>
+                <th>CAGR</th><th>Sharpe</th><th>Sortino</th>
+                <th>MaxDD</th><th>Alpha</th><th>Beta</th>
+                <th>Vol</th><th>Total</th><th>Yrs</th>
+              </tr></thead>
+              <tbody>
+                <tr class="">
+                  <td class="left mono">Momentum</td>
+                  <td class="green">32.7%</td>
+                  <td class="yellow">0.99</td>
+                  <td class="dim">1.46</td>
+                  <td class="red">-45.4%</td>
+                  <td class="green">15.9%</td>
+                  <td class="dim">1.27</td>
+                  <td class="dim">38.0%</td>
+                  <td class="dim">1593%</td>
+                  <td class="dim">10.0</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">Low Volatility</td>
+                  <td class="red">2.9%</td>
+                  <td class="green">1.59</td>
+                  <td class="dim">1.46</td>
+                  <td class="green">-8.1%</td>
+                  <td class="green">2.4%</td>
+                  <td class="dim">0.04</td>
+                  <td class="dim">1.9%</td>
+                  <td class="dim">32%</td>
+                  <td class="dim">10.0</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">Mom+LowVol</td>
+                  <td class="green">25.4%</td>
+                  <td class="yellow">0.94</td>
+                  <td class="dim">1.26</td>
+                  <td class="yellow">-40.8%</td>
+                  <td class="green">10.1%</td>
+                  <td class="dim">1.12</td>
+                  <td class="dim">31.2%</td>
+                  <td class="dim">864%</td>
+                  <td class="dim">10.0</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">Quality <span class='bias-tag'>LOOK-AHEAD</span></td>
+                  <td class="green">20.3%</td>
+                  <td class="green">1.15</td>
+                  <td class="dim">1.52</td>
+                  <td class="yellow">-36.3%</td>
+                  <td class="green">6.0%</td>
+                  <td class="dim">0.91</td>
+                  <td class="dim">18.6%</td>
+                  <td class="dim">535%</td>
+                  <td class="dim">10.0</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">◄ SPY (ref)</td>
+                  <td class="dim">15.5%</td>
+                  <td class="dim">0.87</td>
+                  <td class="dim">—</td>
+                  <td class="dim">-33.8%</td>
+                  <td class="dim">—</td><td class="dim">1.00</td>
+                  <td class="dim">—</td><td class="dim">—</td><td class="dim">—</td>
+                </tr></tbody></table></div></div>
+        <div class="window-section">
+          <div class="window-label">5yr window</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th class="left">Strategy</th>
+                <th>CAGR</th><th>Sharpe</th><th>Sortino</th>
+                <th>MaxDD</th><th>Alpha</th><th>Beta</th>
+                <th>Vol</th><th>Total</th><th>Yrs</th>
+              </tr></thead>
+              <tbody>
+                <tr class="">
+                  <td class="left mono">Momentum</td>
+                  <td class="green">21.0%</td>
+                  <td class="yellow">0.69</td>
+                  <td class="dim">1.05</td>
+                  <td class="yellow">-41.5%</td>
+                  <td class="green">8.2%</td>
+                  <td class="dim">1.41</td>
+                  <td class="dim">42.5%</td>
+                  <td class="dim">161%</td>
+                  <td class="dim">5.0</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">Low Volatility</td>
+                  <td class="red">3.1%</td>
+                  <td class="green">2.42</td>
+                  <td class="dim">3.28</td>
+                  <td class="green">-5.5%</td>
+                  <td class="green">2.8%</td>
+                  <td class="dim">0.03</td>
+                  <td class="dim">1.4%</td>
+                  <td class="dim">17%</td>
+                  <td class="dim">5.0</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">Mom+LowVol</td>
+                  <td class="green">25.2%</td>
+                  <td class="yellow">0.90</td>
+                  <td class="dim">1.25</td>
+                  <td class="yellow">-39.5%</td>
+                  <td class="green">11.8%</td>
+                  <td class="dim">1.17</td>
+                  <td class="dim">32.6%</td>
+                  <td class="dim">211%</td>
+                  <td class="dim">5.0</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">Quality <span class='bias-tag'>LOOK-AHEAD</span></td>
+                  <td class="green">15.2%</td>
+                  <td class="yellow">0.82</td>
+                  <td class="dim">1.23</td>
+                  <td class="yellow">-32.2%</td>
+                  <td class="green">2.6%</td>
+                  <td class="dim">0.97</td>
+                  <td class="dim">21.2%</td>
+                  <td class="dim">104%</td>
+                  <td class="dim">5.0</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">◄ SPY (ref)</td>
+                  <td class="dim">13.8%</td>
+                  <td class="dim">0.72</td>
+                  <td class="dim">—</td>
+                  <td class="dim">-33.8%</td>
+                  <td class="dim">—</td><td class="dim">1.00</td>
+                  <td class="dim">—</td><td class="dim">—</td><td class="dim">—</td>
+                </tr></tbody></table></div></div>
+        <div class="window-section">
+          <div class="window-label">3yr window</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th class="left">Strategy</th>
+                <th>CAGR</th><th>Sharpe</th><th>Sortino</th>
+                <th>MaxDD</th><th>Alpha</th><th>Beta</th>
+                <th>Vol</th><th>Total</th><th>Yrs</th>
+              </tr></thead>
+              <tbody>
+                <tr class="">
+                  <td class="left mono">Momentum</td>
+                  <td class="green">68.4%</td>
+                  <td class="green">1.42</td>
+                  <td class="dim">2.22</td>
+                  <td class="yellow">-40.0%</td>
+                  <td class="green">24.9%</td>
+                  <td class="dim">1.85</td>
+                  <td class="dim">47.7%</td>
+                  <td class="dim">377%</td>
+                  <td class="dim">3.0</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">Low Volatility</td>
+                  <td class="red">5.2%</td>
+                  <td class="green">5.44</td>
+                  <td class="dim">8.22</td>
+                  <td class="green">-0.8%</td>
+                  <td class="green">5.1%</td>
+                  <td class="dim">0.02</td>
+                  <td class="dim">1.0%</td>
+                  <td class="dim">16%</td>
+                  <td class="dim">3.0</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">Mom+LowVol</td>
+                  <td class="green">63.0%</td>
+                  <td class="green">1.60</td>
+                  <td class="dim">2.22</td>
+                  <td class="yellow">-28.9%</td>
+                  <td class="green">22.4%</td>
+                  <td class="dim">1.63</td>
+                  <td class="dim">37.5%</td>
+                  <td class="dim">333%</td>
+                  <td class="dim">3.0</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">Quality <span class='bias-tag'>LOOK-AHEAD</span></td>
+                  <td class="green">31.8%</td>
+                  <td class="green">1.67</td>
+                  <td class="dim">2.49</td>
+                  <td class="green">-21.6%</td>
+                  <td class="green">9.3%</td>
+                  <td class="dim">0.97</td>
+                  <td class="dim">19.0%</td>
+                  <td class="dim">129%</td>
+                  <td class="dim">3.0</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">◄ SPY (ref)</td>
+                  <td class="dim">22.6%</td>
+                  <td class="dim">1.05</td>
+                  <td class="dim">—</td>
+                  <td class="dim">-18.8%</td>
+                  <td class="dim">—</td><td class="dim">1.00</td>
+                  <td class="dim">—</td><td class="dim">—</td><td class="dim">—</td>
+                </tr></tbody></table></div></div>
+
+  <div class="footer">
+    Data: yfinance price cache · Fundamentals: static yfinance snapshot ·
+    Alpha/Beta vs SPY · Monthly rebalance on 15th · 10bps one-way cost ·
+    Not investment advice
+  </div>
+</div>
+</body>
+</html>

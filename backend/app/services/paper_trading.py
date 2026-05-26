@@ -31,12 +31,36 @@ def ensure_paper_account(db: Session, account_id: int = 1) -> PaperAccount:
     return acct
 
 
+def _normalize_ticker(ticker: str) -> str:
+    return str(ticker).strip().upper().replace(".", "-")
+
+
+def _last_close_from_df(df) -> float | None:
+    """Extract the most recent valid close from a historical-data DataFrame, or None."""
+    if df is None or getattr(df, "empty", True):
+        return None
+    for col in ["Close", "Adj Close", "close", "adjclose"]:
+        if col in df.columns:
+            s = df[col].dropna()
+            if not s.empty:
+                val = s.iloc[-1]
+                if hasattr(val, "iloc"):
+                    val = val.iloc[0]
+                try:
+                    price = float(val)
+                except (TypeError, ValueError):
+                    continue
+                if price > 0:
+                    return price
+    return None
+
+
 def fetch_last_close_price(ticker: str, *, lookback_days: int = 10) -> PriceQuote:
     """
     Best-effort price lookup using the existing BacktestEngine (yfinance/ib + local cache).
     Raises ValueError if a price cannot be determined.
     """
-    t = str(ticker).strip().upper().replace(".", "-")
+    t = _normalize_ticker(ticker)
     if not t:
         raise ValueError("ticker is required")
 
@@ -47,22 +71,9 @@ def fetch_last_close_price(ticker: str, *, lookback_days: int = 10) -> PriceQuot
     start = end - timedelta(days=int(lookback_days))
     be = BacktestEngine(initial_capital=100000.0, price_source="auto")
     data = be.fetch_historical_data([t], start_date=start.strftime("%Y-%m-%d"), end_date=end.strftime("%Y-%m-%d"))
-    df = (data or {}).get(t)
-    if df is None or df.empty:
+    price = _last_close_from_df((data or {}).get(t))
+    if price is None:
         raise ValueError(f"no price data for {t}")
-    # Prefer Close; fall back to Adj Close if needed.
-    price = None
-    for col in ["Close", "Adj Close", "close", "adjclose"]:
-        if col in df.columns:
-            s = df[col].dropna()
-            if not s.empty:
-                val = s.iloc[-1]
-                if hasattr(val, "iloc"):
-                    val = val.iloc[0]
-                price = float(val)
-                break
-    if price is None or price <= 0:
-        raise ValueError(f"invalid price for {t}")
 
     return PriceQuote(ticker=t, price=float(price), as_of=end, source="auto")
 
@@ -187,12 +198,55 @@ def place_market_order(
 
 
 def fetch_prices(tickers: Iterable[str]) -> dict[str, PriceQuote]:
+    """
+    Batched best-effort price lookup. Fetches all tickers in a single
+    BacktestEngine.fetch_historical_data call (avoids the per-ticker request
+    burst that intermittently rate-limited the source and silently dropped
+    names), then falls back to an individual lookup only for genuine misses.
+
+    The result is keyed by BOTH the original ticker string and its normalized
+    form so callers can look up by whichever they hold.
+    """
+    raw = [str(t) for t in tickers if str(t).strip()]
+    norm_of = {t: _normalize_ticker(t) for t in raw}
+    uniq = sorted({n for n in norm_of.values() if n})
     out: dict[str, PriceQuote] = {}
-    for t in tickers:
+    if not uniq:
+        return out
+
+    from backtest_engine import BacktestEngine  # repo root import
+
+    end = _now_utc()
+    start = end - timedelta(days=10)
+
+    prices: dict[str, float] = {}
+    try:
+        be = BacktestEngine(initial_capital=100000.0, price_source="auto")
+        data = be.fetch_historical_data(
+            uniq, start_date=start.strftime("%Y-%m-%d"), end_date=end.strftime("%Y-%m-%d")
+        ) or {}
+        for n in uniq:
+            p = _last_close_from_df(data.get(n))
+            if p is not None:
+                prices[n] = p
+    except Exception:
+        # batch failed entirely — fall through to per-ticker fallback below
+        pass
+
+    # Fallback only for tickers the batch did not resolve.
+    for n in uniq:
+        if n in prices:
+            continue
         try:
-            q = fetch_last_close_price(str(t))
-            out[q.ticker] = q
+            prices[n] = fetch_last_close_price(n).price
         except Exception:
             pass
+
+    for t in raw:
+        n = norm_of.get(t)
+        if not n or n not in prices:
+            continue
+        out[t] = PriceQuote(ticker=t, price=prices[n], as_of=end, source="auto")
+        out[n] = PriceQuote(ticker=n, price=prices[n], as_of=end, source="auto")
     return out
 

@@ -37,6 +37,16 @@ class Settings(BaseSettings):
     shadow_preview_allocation: float = Field(default=10000.0, validation_alias="SHADOW_PREVIEW_ALLOCATION")
 
     live_dry_run: bool = Field(default=False, validation_alias="LIVE_DRY_RUN")
+    # Master switch for unattended LIVE auto-rebalancing on each allocation's chosen
+    # cadence. Default OFF: even with live trading armed, scheduled live rebalances do
+    # nothing until this is explicitly set true. Still subject to all live gates.
+    live_auto_rebalance: bool = Field(default=False, validation_alias="LIVE_AUTO_REBALANCE")
+    # Fractional shares: when enabled, order quantities keep fractional precision instead
+    # of being floored to whole shares (lets small accounts deploy fully and track weights).
+    # Requires the IB account to have fractional-shares trading permission. RTH-only fills.
+    live_fractional_shares: bool = Field(default=False, validation_alias="LIVE_FRACTIONAL_SHARES")
+    live_fractional_decimals: int = Field(default=4, validation_alias="LIVE_FRACTIONAL_DECIMALS")
+    live_min_leg_usd: float = Field(default=1.0, validation_alias="LIVE_MIN_LEG_USD")
     live_max_order_pct_nlv: float = Field(default=0.50, validation_alias="LIVE_MAX_ORDER_PCT_NLV")
     live_per_leg_timeout_seconds: int = Field(default=60, validation_alias="LIVE_PER_LEG_TIMEOUT_SECONDS")
     live_allowed_accounts: str | None = Field(default=None, validation_alias="LIVE_ALLOWED_ACCOUNTS")
@@ -46,6 +56,13 @@ class Settings(BaseSettings):
 
     api_key: str | None = Field(default=None, validation_alias="API_KEY")
     cors_origins: str = Field(default="", validation_alias="CORS_ORIGINS")
+
+    # ibeam session manager — manages per-user IB gateway containers
+    # On Linux Docker the host is the bridge gateway (172.17.0.1); override via env var if needed.
+    ibeam_session_manager_url: str = Field(
+        default="http://172.17.0.1:5056",
+        validation_alias="IBEAM_SESSION_MANAGER_URL",
+    )
 
 
 settings = Settings()  # singleton

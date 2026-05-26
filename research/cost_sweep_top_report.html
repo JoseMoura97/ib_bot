@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>IB Bot — Cost Sensitivity: Top Strategies</title>
+<style>
+html,body{background:#0f1117!important;color:#d0d6e0;font-family:'Segoe UI',system-ui,sans-serif;
+  margin:0;padding:24px;font-size:14px;line-height:1.55}
+h1{color:#e8ecf4;font-size:1.5rem;margin-bottom:4px}
+h2{color:#b0bcd4;font-size:1.1rem;margin:32px 0 8px;border-bottom:1px solid #252b3a;padding-bottom:4px}
+h3{color:#7ecfc8;font-size:1rem;margin:0 0 4px}
+p,li{color:#9aabb8;max-width:900px}
+code{background:#1a2030;color:#7ec8e3;padding:1px 5px;border-radius:3px;font-size:.85em}
+.meta{color:#606878;font-size:.8rem;margin-bottom:20px}
+
+table{border-collapse:collapse;width:100%;margin-bottom:8px;font-size:13px}
+th{background:#141820;color:#8898b0;text-align:left;padding:6px 10px;
+   border-bottom:1px solid #252b3a;white-space:nowrap}
+td{padding:5px 10px;border-bottom:1px solid #1c2230}
+tr:hover td{background:#141820}
+
+.pos{color:#4ec97b} .neg{color:#e06060} .warn{color:#d4a240} .neutral{color:#9aabb8}
+
+.strat-block{background:#111622;border:1px solid #1e2840;border-radius:6px;
+             padding:16px 20px;margin:20px 0}
+.strat-meta{color:#8898b0;font-size:.82rem;margin-bottom:10px}
+.strat-meta strong{color:#b0c8e0}
+.spread-badge{background:#1a2030;border:1px solid #252b3a;border-radius:10px;
+              padding:2px 8px;font-size:.8rem;color:#9ab8d4}
+.spread-badge strong{color:#e8ecf4}
+
+.note-box{background:#141820;border-left:3px solid #2a4060;padding:10px 16px;
+          border-radius:0 4px 4px 0;margin:16px 0;color:#8898b0;font-size:.85rem}
+.verdict-table td,th{padding:6px 12px}
+.verdict-good{color:#4ec97b;font-weight:600}
+.verdict-ok{color:#d4a240;font-weight:600}
+.verdict-skip{color:#e06060;font-weight:600}
+</style>
+</head>
+<body>
+<h1>IB Bot — Cost Sensitivity: Top Strategies by Alpha</h1>
+<div class="meta">
+  Window: 2023-05-18 → 2026-05-18 (3yr) &nbsp;|&nbsp;
+  Benchmark (SPY 3yr CAGR): <strong style="color:#d4a240">22.28%</strong> &nbsp;|&nbsp;
+  Selection: positive CAPM alpha + defensible interpretation (high-beta tech funds excluded)
+</div>
+
+<div class="note-box">
+  <strong>Key finding:</strong> All 13F quarterly strategies are <em>nearly cost-insensitive</em> — the spread between 0 bps gross and 35 bps pessimistic is &lt;2pp CAGR for every manager.
+  This is because they trade infrequently (~40–80 trades per quarterly rebalance across a diversified portfolio).
+  The FINRA Monthly strategy is partially cost-sensitive (20.7% → 12.7%) because it has 10× more trades (1164 over 3yr).
+</div>
+
+<h2>Strategy-by-Strategy Cost Breakdown</h2>
+<p style="color:#606878;font-size:.82rem">
+  Green CAGR = beats SPY (22.28%). Yellow = above 10% but below SPY. Red = below 10%.
+</p>
+
+
+<div class="strat-block">
+  <h3>Howard Marks</h3>
+  <div class="strat-meta">
+    Alpha (CAPM): <strong>8.10%</strong> &nbsp;|&nbsp;
+    Beta: <strong>0.84</strong> &nbsp;|&nbsp;
+    Oaktree — credit-heavy, defensive
+    &nbsp;&nbsp;<span class="spread-badge">Cost drag 0→35 bps: <strong>0.66pp</strong> &nbsp;|&nbsp; At 35 bps: <strong>26.44%</strong></span>
+  </div>
+  <table>
+  <thead>
+    <tr><th>Cost regime</th><th>Total cost</th><th>CAGR</th><th>Sharpe</th><th>Max DD</th><th>1yr Return</th><th>Vol</th><th>Trades</th></tr>
+  </thead>
+  <tbody><tr><td>gross (0 bps)</td><td>0 bps</td><td class='pos'>27.10%</td><td>1.36</td><td class='neg'>-18.66%</td><td>31.45%</td><td>17.76%</td><td>938</td></tr><tr><td>default (10 bps)</td><td>10 bps</td><td class='pos'>26.91%</td><td>1.36</td><td class='neg'>-18.66%</td><td>31.30%</td><td>17.76%</td><td>938</td></tr><tr><td>conservative (20 bps)</td><td>20 bps</td><td class='pos'>26.72%</td><td>1.36</td><td class='neg'>-18.66%</td><td>31.15%</td><td>17.76%</td><td>938</td></tr><tr><td>pessimistic (35 bps)</td><td>35 bps</td><td class='pos'>26.44%</td><td>1.36</td><td class='neg'>-18.66%</td><td>30.93%</td><td>17.76%</td><td>938</td></tr></tbody>
+  </table>
+</div>
+
+<div class="strat-block">
+  <h3>Michael Burry</h3>
+  <div class="strat-meta">
+    Alpha (CAPM): <strong>13.10%</strong> &nbsp;|&nbsp;
+    Beta: <strong>0.73</strong> &nbsp;|&nbsp;
+    Scion — concentrated contrarian value
+    &nbsp;&nbsp;<span class="spread-badge">Cost drag 0→35 bps: <strong>1.71pp</strong> &nbsp;|&nbsp; At 35 bps: <strong>19.19%</strong></span>
+  </div>
+  <table>
+  <thead>
+    <tr><th>Cost regime</th><th>Total cost</th><th>CAGR</th><th>Sharpe</th><th>Max DD</th><th>1yr Return</th><th>Vol</th><th>Trades</th></tr>
+  </thead>
+  <tbody><tr><td>gross (0 bps)</td><td>0 bps</td><td class='warn'>20.90%</td><td>0.78</td><td class='neg'>-27.46%</td><td>4.92%</td><td>27.03%</td><td>68</td></tr><tr><td>default (10 bps)</td><td>10 bps</td><td class='warn'>20.41%</td><td>0.78</td><td class='neg'>-27.46%</td><td>4.59%</td><td>27.03%</td><td>68</td></tr><tr><td>conservative (20 bps)</td><td>20 bps</td><td class='warn'>19.92%</td><td>0.78</td><td class='neg'>-27.46%</td><td>4.27%</td><td>27.03%</td><td>68</td></tr><tr><td>pessimistic (35 bps)</td><td>35 bps</td><td class='warn'>19.19%</td><td>0.78</td><td class='neg'>-27.46%</td><td>3.79%</td><td>27.03%</td><td>68</td></tr></tbody>
+  </table>
+</div>
+
+<div class="strat-block">
+  <h3>Stanley Druckenmiller</h3>
+  <div class="strat-meta">
+    Alpha (CAPM): <strong>14.50%</strong> &nbsp;|&nbsp;
+    Beta: <strong>1.12</strong> &nbsp;|&nbsp;
+    Duquesne — macro, CINS-fixed
+    &nbsp;&nbsp;<span class="spread-badge">Cost drag 0→35 bps: <strong>1.23pp</strong> &nbsp;|&nbsp; At 35 bps: <strong>36.11%</strong></span>
+  </div>
+  <table>
+  <thead>
+    <tr><th>Cost regime</th><th>Total cost</th><th>CAGR</th><th>Sharpe</th><th>Max DD</th><th>1yr Return</th><th>Vol</th><th>Trades</th></tr>
+  </thead>
+  <tbody><tr><td>gross (0 bps)</td><td>0 bps</td><td class='pos'>37.34%</td><td>1.60</td><td class='neg'>-22.18%</td><td>19.47%</td><td>20.41%</td><td>547</td></tr><tr><td>default (10 bps)</td><td>10 bps</td><td class='pos'>36.98%</td><td>1.60</td><td class='neg'>-22.18%</td><td>19.17%</td><td>20.41%</td><td>547</td></tr><tr><td>conservative (20 bps)</td><td>20 bps</td><td class='pos'>36.63%</td><td>1.60</td><td class='neg'>-22.18%</td><td>18.87%</td><td>20.41%</td><td>547</td></tr><tr><td>pessimistic (35 bps)</td><td>35 bps</td><td class='pos'>36.11%</td><td>1.60</td><td class='neg'>-22.18%</td><td>18.42%</td><td>20.41%</td><td>547</td></tr></tbody>
+  </table>
+</div>
+
+<div class="strat-block">
+  <h3>Li Lu</h3>
+  <div class="strat-meta">
+    Alpha (CAPM): <strong>9.60%</strong> &nbsp;|&nbsp;
+    Beta: <strong>0.98</strong> &nbsp;|&nbsp;
+    Himalaya — concentrated long-term value
+    &nbsp;&nbsp;<span class="spread-badge">Cost drag 0→35 bps: <strong>0.37pp</strong> &nbsp;|&nbsp; At 35 bps: <strong>24.24%</strong></span>
+  </div>
+  <table>
+  <thead>
+    <tr><th>Cost regime</th><th>Total cost</th><th>CAGR</th><th>Sharpe</th><th>Max DD</th><th>1yr Return</th><th>Vol</th><th>Trades</th></tr>
+  </thead>
+  <tbody><tr><td>gross (0 bps)</td><td>0 bps</td><td class='pos'>24.61%</td><td>1.34</td><td class='neg'>-22.78%</td><td>24.64%</td><td>18.42%</td><td>105</td></tr><tr><td>default (10 bps)</td><td>10 bps</td><td class='pos'>24.50%</td><td>1.34</td><td class='neg'>-22.79%</td><td>24.55%</td><td>18.42%</td><td>105</td></tr><tr><td>conservative (20 bps)</td><td>20 bps</td><td class='pos'>24.40%</td><td>1.34</td><td class='neg'>-22.79%</td><td>24.46%</td><td>18.42%</td><td>105</td></tr><tr><td>pessimistic (35 bps)</td><td>35 bps</td><td class='pos'>24.24%</td><td>1.34</td><td class='neg'>-22.80%</td><td>24.33%</td><td>18.42%</td><td>105</td></tr></tbody>
+  </table>
+</div>
+
+<div class="strat-block">
+  <h3>David Tepper</h3>
+  <div class="strat-meta">
+    Alpha (CAPM): <strong>9.60%</strong> &nbsp;|&nbsp;
+    Beta: <strong>1.15</strong> &nbsp;|&nbsp;
+    Appaloosa — macro + diversified
+    &nbsp;&nbsp;<span class="spread-badge">Cost drag 0→35 bps: <strong>0.91pp</strong> &nbsp;|&nbsp; At 35 bps: <strong>32.25%</strong></span>
+  </div>
+  <table>
+  <thead>
+    <tr><th>Cost regime</th><th>Total cost</th><th>CAGR</th><th>Sharpe</th><th>Max DD</th><th>1yr Return</th><th>Vol</th><th>Trades</th></tr>
+  </thead>
+  <tbody><tr><td>gross (0 bps)</td><td>0 bps</td><td class='pos'>33.16%</td><td>1.39</td><td class='neg'>-22.77%</td><td>41.17%</td><td>21.33%</td><td>459</td></tr><tr><td>default (10 bps)</td><td>10 bps</td><td class='pos'>32.90%</td><td>1.39</td><td class='neg'>-22.77%</td><td>40.87%</td><td>21.33%</td><td>459</td></tr><tr><td>conservative (20 bps)</td><td>20 bps</td><td class='pos'>32.64%</td><td>1.39</td><td class='neg'>-22.77%</td><td>40.57%</td><td>21.33%</td><td>459</td></tr><tr><td>pessimistic (35 bps)</td><td>35 bps</td><td class='pos'>32.25%</td><td>1.39</td><td class='neg'>-22.77%</td><td>40.12%</td><td>21.33%</td><td>459</td></tr></tbody>
+  </table>
+</div>
+
+<div class="strat-block">
+  <h3>Off-Exchange Short Squeeze (Monthly)</h3>
+  <div class="strat-meta">
+    Alpha (CAPM): <strong>6.70%</strong> &nbsp;|&nbsp;
+    Beta: <strong>0.63</strong> &nbsp;|&nbsp;
+    FINRA signal — low beta, uncorrelated
+    &nbsp;&nbsp;<span class="spread-badge">Cost drag 0→35 bps: <strong>7.94pp</strong> &nbsp;|&nbsp; At 35 bps: <strong>12.74%</strong></span>
+  </div>
+  <table>
+  <thead>
+    <tr><th>Cost regime</th><th>Total cost</th><th>CAGR</th><th>Sharpe</th><th>Max DD</th><th>1yr Return</th><th>Vol</th><th>Trades</th></tr>
+  </thead>
+  <tbody><tr><td>gross (0 bps)</td><td>0 bps</td><td class='warn'>20.68%</td><td>1.27</td><td class='neg'>-13.99%</td><td>28.92%</td><td>14.77%</td><td>1164</td></tr><tr><td>default (10 bps)</td><td>10 bps</td><td class='warn'>18.36%</td><td>1.27</td><td class='neg'>-14.42%</td><td>26.53%</td><td>14.77%</td><td>1164</td></tr><tr><td>conservative (20 bps)</td><td>20 bps</td><td class='warn'>16.08%</td><td>1.27</td><td class='neg'>-14.95%</td><td>24.18%</td><td>14.77%</td><td>1164</td></tr><tr><td>pessimistic (35 bps)</td><td>35 bps</td><td class='warn'>12.74%</td><td>1.27</td><td class='neg'>-15.72%</td><td>20.73%</td><td>14.77%</td><td>1164</td></tr></tbody>
+  </table>
+</div>
+
+<h2>Summary Verdict</h2>
+<table>
+<thead>
+<tr><th>Strategy</th><th>Default CAGR (10bps)</th><th>Pessimistic (35bps)</th><th>Cost drag</th><th>Verdict</th></tr>
+</thead>
+<tbody>
+<tr><td>Stanley Druckenmiller</td><td class="pos">36.98%</td><td class="pos">36.11%</td><td>0.87pp</td><td class="verdict-good">✓ Enable — cost-robust, positive alpha, CINS fixed</td></tr>
+<tr><td>David Tepper</td><td class="pos">32.90%</td><td class="pos">32.25%</td><td>0.65pp</td><td class="verdict-good">✓ Enable — cost-robust, diversified macro</td></tr>
+<tr><td>Howard Marks</td><td class="pos">26.91%</td><td class="pos">26.44%</td><td>0.47pp</td><td class="verdict-good">✓ Enable — defensive beta 0.84, best Sharpe</td></tr>
+<tr><td>Li Lu</td><td class="pos">24.50%</td><td class="pos">24.24%</td><td>0.26pp</td><td class="verdict-good">✓ Enable — near-zero cost drag, concentrated value</td></tr>
+<tr><td>Michael Burry</td><td class="warn">20.41%</td><td class="warn">19.19%</td><td>1.22pp</td><td class="verdict-ok">~ Consider — near SPY, very concentrated (68 trades)</td></tr>
+<tr><td>FINRA Monthly</td><td class="warn">18.36%</td><td class="warn">12.74%</td><td>7.94pp</td><td class="verdict-ok">~ Consider — good Sharpe/DD, but cost drag is real; use only at ≤10bps</td></tr>
+</tbody>
+</table>
+
+<div class="note-box">
+  <strong>Caveats (unchanged):</strong> 3yr window = 12 quarterly rebalances — statistically thin.
+  2023–2026 was a strong bull market (SPY +83% total). The numbers are directional signals,
+  not vetted alpha. Druckenmiller/Tepper at beta&gt;1.1 in a bull market = partially beta-driven CAGR.
+  Howard Marks (beta 0.84) and Li Lu (beta 0.98) are the most conservative reads.
+</div>
+</body>
+</html>

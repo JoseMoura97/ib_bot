@@ -13,11 +13,13 @@ export const navItems: NavItem[] = [
   { href: "/runs", label: "Runs" },
   { href: "/paper", label: "Paper" },
   { href: "/live", label: "Live" },
+  { href: "/connect", label: "Connect IB" },
 ];
 
 export function routeTitle(pathname: string): string {
   if (pathname === "/") return "Home";
   if (pathname === "/runs" || pathname.startsWith("/runs/")) return "Runs";
+  if (pathname === "/connect") return "Connect IB";
   const hit = navItems.find((i) => pathname === i.href || pathname.startsWith(`${i.href}/`));
   return hit?.label ?? "IB Bot";
 }

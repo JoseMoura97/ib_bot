@@ -87,7 +87,9 @@ class PaperSnapshot(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     account_id: Mapped[int] = mapped_column(Integer, ForeignKey("paper_cash.id", ondelete="CASCADE"), nullable=False)
-    portfolio_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    # DB column is uuid (migration 0008 ALTERs it). Must use GUID, not String(36),
+    # or every INSERT fails with "column portfolio_id is of type uuid but expression is character varying".
+    portfolio_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     cash: Mapped[float] = mapped_column(Float, nullable=False)
     equity: Mapped[float] = mapped_column(Float, nullable=False)
@@ -99,7 +101,8 @@ class PaperRebalanceLog(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     account_id: Mapped[int] = mapped_column(Integer, ForeignKey("paper_cash.id", ondelete="CASCADE"), nullable=False)
-    portfolio_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    # DB column is uuid (migration 0008). Use GUID to avoid varchar/uuid INSERT mismatch.
+    portfolio_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="SUCCESS")
     n_orders: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

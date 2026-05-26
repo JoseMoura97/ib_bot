@@ -38,7 +38,19 @@ class SECEdgarClient:
         "Bill & Melinda Gates Foundation Trust": "0001166559",
         "Bridgewater Associates": "0001350694",
         "Renaissance Technologies": "0001037389",
-        "Berkshire Hathaway": "0001067983"
+        "Berkshire Hathaway": "0001067983",
+        # Tier 2 additions — all verified to have recent 13F filings as of 2026-05.
+        "Duquesne Family Office": "0001536411",          # Stanley Druckenmiller
+        "Appaloosa LP": "0001656456",                    # David Tepper
+        "Baupost Group": "0001061165",                   # Seth Klarman
+        "Pabrai Investment Funds": "0001517137",         # Mohnish Pabrai
+        "Himalaya Capital Management": "0001709323",     # Li Lu
+        "Akre Capital Management": "0001112520",         # Chuck Akre
+        "Greenlight Capital": "0001079114",              # David Einhorn (filings sparse post-2024)
+        "Third Point": "0001040273",                     # Dan Loeb
+        "Tiger Global Management": "0001167483",
+        "Coatue Management": "0001135730",
+        "Ruane Cunniff": "0000814375",                   # Sequoia Fund manager
     }
     
     def __init__(self):
@@ -135,6 +147,126 @@ class SECEdgarClient:
             logging.debug(f"OpenFIGI lookup failed for CUSIP {cusip}: {e}")
             return None
         return None
+
+    def _openfigi_batch_lookup(self, cusips: List[str]) -> Dict[str, str]:
+        """Resolve many CUSIPs in a single OpenFIGI POST.
+
+        OpenFIGI v3 accepts up to 100 ids per call (anonymous limit is per-call,
+        not per-id), which turns the 25-CUSIP rate-limit storm into a single 200ms request.
+        """
+        if not cusips:
+            return {}
+        api_key = os.environ.get("OPENFIGI_API_KEY", "").strip()
+        headers = {"Content-Type": "application/json"}
+        if api_key:
+            headers["X-OPENFIGI-APIKEY"] = api_key
+
+        # Dedupe + clean (use 9-char base CUSIP for equity lookup).
+        seen = []
+        seen_set = set()
+        for c in cusips:
+            s = str(c).strip()[:9] if c else ""
+            if s and s not in seen_set:
+                seen_set.add(s)
+                seen.append(s)
+
+        out: Dict[str, str] = {}
+        chunk_size = 100
+
+        def _is_cins(c: str) -> bool:
+            """CINS codes start with a letter (A-Z) — foreign-domiciled issuers."""
+            return bool(c) and c[0].isalpha()
+
+        def _post_batch(chunk: List[str], include_exch_code: bool) -> None:
+            """POST one chunk to OpenFIGI and populate `out`."""
+            if include_exch_code:
+                payload = [{"idType": "ID_CUSIP", "idValue": c, "exchCode": "US"} for c in chunk]
+            else:
+                payload = [{"idType": "ID_CUSIP", "idValue": c} for c in chunk]
+            for attempt in range(3):
+                try:
+                    resp = requests.post(
+                        "https://api.openfigi.com/v3/mapping",
+                        headers=headers,
+                        json=payload,
+                        timeout=20,
+                    )
+                except Exception as e:
+                    logging.debug(f"OpenFIGI batch network error: {e}")
+                    return
+                if resp.status_code == 429:
+                    # 5–8s backoff is enough for the anonymous tier (25 req/min).
+                    time.sleep(6 + attempt * 2)
+                    continue
+                if resp.status_code != 200:
+                    logging.debug(f"OpenFIGI batch status {resp.status_code}")
+                    return
+                try:
+                    data = resp.json()
+                except Exception:
+                    return
+                if not isinstance(data, list):
+                    return
+                for cusip, item in zip(chunk, data):
+                    rows = item.get("data") if isinstance(item, dict) else None
+                    if not isinstance(rows, list) or not rows:
+                        continue
+                    picked = None
+                    for row in rows:
+                        if row.get("securityType") in (
+                            "Common Stock", "COMMON STOCK", "Depositary Receipt"
+                        ):
+                            tk = row.get("ticker")
+                            if self._is_valid_ticker(tk):
+                                picked = str(tk).upper()
+                                break
+                    if picked is None:
+                        tk = rows[0].get("ticker")
+                        if self._is_valid_ticker(tk):
+                            picked = str(tk).upper()
+                    if picked:
+                        out[cusip] = picked
+                return
+
+        # Split into domestic (digit-prefixed) and CINS (letter-prefixed) batches.
+        # CINS codes represent foreign-domiciled issuers listed on US exchanges (CRH, JBS,
+        # Linde, etc.); OpenFIGI returns no match when exchCode=US is specified for them
+        # because their primary listing is on a foreign exchange.
+        domestic = [c for c in seen if not _is_cins(c)]
+        cins_list = [c for c in seen if _is_cins(c)]
+
+        for i in range(0, len(domestic), chunk_size):
+            _post_batch(domestic[i : i + chunk_size], include_exch_code=True)
+
+        # CINS retry without exchCode — accept any exchange so cross-listed ADRs / foreign
+        # primaries are matched; filter happens downstream via _is_valid_ticker.
+        for i in range(0, len(cins_list), chunk_size):
+            _post_batch(cins_list[i : i + chunk_size], include_exch_code=False)
+
+        return out
+
+    def _cusip_lookup_no_openfigi(self, cusip: Optional[str]) -> Optional[str]:
+        """Fast first-pass: persistent cache + static map only, no network calls.
+
+        Used by parse_13f_holdings so the slow OpenFIGI fallback runs once-as-a-batch
+        for whatever is left over, instead of one POST per row.
+        """
+        if not cusip:
+            return None
+        cusip = str(cusip).strip()
+        cached = self._cusip_ticker_cache.get(cusip)
+        if cached and self._is_valid_ticker(cached):
+            return str(cached).upper()
+        # Try the full path but suppress its OpenFIGI fallback by temporarily setting the env.
+        prev = os.environ.get("SEC_SKIP_OPENFIGI")
+        os.environ["SEC_SKIP_OPENFIGI"] = "1"
+        try:
+            return self._cusip_to_ticker(cusip)
+        finally:
+            if prev is None:
+                os.environ.pop("SEC_SKIP_OPENFIGI", None)
+            else:
+                os.environ["SEC_SKIP_OPENFIGI"] = prev
 
     def _cache_path_filings(self, cik: str) -> str:
         safe = str(cik).strip().zfill(10)
@@ -284,9 +416,12 @@ class SECEdgarClient:
                         # Look for large XML files (likely the info table)
                         # Skip primary_doc.xml (cover page) and index files
                         if name.endswith(".xml") and name != "primary_doc.xml":
+                            # 2026-05: lowered threshold from 5000 to 1500 — Li Lu's Himalaya
+                            # info table is 4980 bytes (14 holdings) and was being filtered out.
+                            # primary_doc.xml (2047 bytes) is already excluded above.
                             try:
-                                if int(size) > 5000:  # Info tables are usually > 5KB
-                                    possible_files.insert(0, name)  # Prioritize large files
+                                if int(size) > 1500:
+                                    possible_files.insert(0, name)
                             except (ValueError, TypeError):
                                 possible_files.append(name)
             except Exception:
@@ -510,21 +645,32 @@ class SECEdgarClient:
                         )
                     df = df[admissible_mask].copy()
                 
-                # Try to add tickers using CUSIP lookup
+                # Try to add tickers using CUSIP lookup (cache + small static map first; cheap).
                 if 'CUSIP' in df.columns:
-                    df['Ticker'] = df['CUSIP'].apply(self._cusip_to_ticker)
-                
-                # Also try to extract tickers from names
+                    df['Ticker'] = df['CUSIP'].apply(self._cusip_lookup_no_openfigi)
+
+                # Batch-resolve any remaining unknowns via OpenFIGI in a single POST.
+                # Pabrai-style funds (lots of mid/small-caps + special tickers) were getting
+                # rate-limited (429) when we did 1 POST per CUSIP — most rows came back NaN.
+                if 'CUSIP' in df.columns and df['Ticker'].isna().any():
+                    missing = df.loc[df['Ticker'].isna(), 'CUSIP'].dropna().unique().tolist()
+                    if missing:
+                        resolved = self._openfigi_batch_lookup(missing)
+                        if resolved:
+                            for cu, tk in resolved.items():
+                                self._cusip_ticker_cache[cu] = tk
+                            self._save_cusip_ticker_cache()
+                            df['Ticker'] = df['Ticker'].fillna(df['CUSIP'].map(resolved))
+
+                # Also try to extract tickers from names as a final fallback.
                 if 'Name' in df.columns:
                     extracted_tickers = self._extract_tickers_from_names(df['Name'].tolist())
                     df['TickerFromName'] = extracted_tickers
-                    
-                    # Fill in missing tickers
                     if 'Ticker' in df.columns:
                         df['Ticker'] = df['Ticker'].fillna(df['TickerFromName'])
                     else:
                         df['Ticker'] = df['TickerFromName']
-                
+
                 return df
         
         except Exception as e:

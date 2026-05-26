@@ -10,12 +10,42 @@ import { cn } from "../_components/cn";
 import type { StrategyCatalogRow } from "./types";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
+type SortKey = "name" | "cagr" | "sharpe" | "alpha";
+
+function apiStatusLabel(s: string | undefined | null): string {
+  const v = (s || "").toLowerCase().replace(/-/g, "_");
+  if (v.includes("sec_edgar") || v.includes("works_via")) return "SEC EDGAR";
+  if (v.includes("finra")) return "FINRA";
+  if (v.includes("apewisdom")) return "ApeWisdom";
+  if (v.includes("factor_data") || v.includes("factor")) return "Factor Data";
+  if (v.includes("quiver")) return "Quiver API";
+  return s || "API n/a";
+}
 
 function apiStatusVariant(s: string | undefined | null): "success" | "secondary" | "danger" | "outline" {
   const v = (s || "").toLowerCase();
-  if (v.includes("ok") || v.includes("live") || v.includes("active")) return "success";
+  if (v.includes("sec_edgar") || v.includes("works_via") || v.includes("finra") || v.includes("apewisdom") || v.includes("factor_data") || v.includes("factor")) return "success";
   if (v.includes("error") || v.includes("fail") || v.includes("down")) return "danger";
-  return "secondary";
+  if (v.includes("quiver")) return "secondary";
+  return "outline";
+}
+
+function toNum(v: number | string | null | undefined): number | null {
+  if (v == null) return null;
+  const n = typeof v === "string" ? parseFloat(v.replace("%", "")) / (v.includes("%") ? 100 : 1) : v;
+  return Number.isFinite(n) ? n : null;
+}
+
+function fmtPct(v: number | string | null | undefined, places = 1): string {
+  const n = toNum(v);
+  if (n == null) return "—";
+  return `${(n * 100).toFixed(places)}%`;
+}
+
+function fmtNum(v: number | string | null | undefined, places = 2): string {
+  const n = toNum(v);
+  if (n == null) return "—";
+  return n.toFixed(places);
 }
 
 /** Recursive editor for strategy config object (no raw JSON). */
@@ -166,6 +196,7 @@ function setDeep(obj: Record<string, unknown>, path: string, next: unknown): Rec
 export function StrategiesClient(props: { initialStrategies: StrategyCatalogRow[] }) {
   const [strategies, setStrategies] = useState<StrategyCatalogRow[]>(props.initialStrategies || []);
   const [filter, setFilter] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("name");
   const [drawerName, setDrawerName] = useState<string | null>(null);
   const [draftConfig, setDraftConfig] = useState<Record<string, unknown>>({});
   const [saveState, setSaveState] = useState<SaveState>("idle");
@@ -192,24 +223,42 @@ export function StrategiesClient(props: { initialStrategies: StrategyCatalogRow[
 
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    if (!q) return strategies;
     return strategies.filter(
       (s) =>
+        !q ||
         s.name.toLowerCase().includes(q) ||
         (s.description || "").toLowerCase().includes(q) ||
         (s.category || "").toLowerCase().includes(q),
     );
   }, [strategies, filter]);
 
+  const sorted = useMemo(() => {
+    const copy = filtered.slice();
+    if (sortKey === "cagr") {
+      copy.sort((a, b) => (toNum(b.cagr) ?? -Infinity) - (toNum(a.cagr) ?? -Infinity));
+    } else if (sortKey === "sharpe") {
+      copy.sort((a, b) => (toNum(b.sharpe) ?? -Infinity) - (toNum(a.sharpe) ?? -Infinity));
+    } else if (sortKey === "alpha") {
+      copy.sort((a, b) => (toNum(b.alpha) ?? -Infinity) - (toNum(a.alpha) ?? -Infinity));
+    } else {
+      copy.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    return copy;
+  }, [filtered, sortKey]);
+
+  // Flat when sorted by metric, grouped by category when sorted by name
   const grouped = useMemo(() => {
+    if (sortKey !== "name") {
+      return [["All strategies", sorted]] as [string, StrategyCatalogRow[]][];
+    }
     const m = new Map<string, StrategyCatalogRow[]>();
-    for (const s of filtered) {
+    for (const s of sorted) {
       const cat = (s.category || "").trim() || "Other";
       if (!m.has(cat)) m.set(cat, []);
       m.get(cat)!.push(s);
     }
     return Array.from(m.entries()).sort(([a], [b]) => a.localeCompare(b));
-  }, [filtered]);
+  }, [sorted, sortKey]);
 
   async function refresh() {
     const res = await fetch("/api/strategies/catalog", { cache: "no-store" });
@@ -289,6 +338,16 @@ export function StrategiesClient(props: { initialStrategies: StrategyCatalogRow[
         <div className="w-full max-w-md">
           <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Search by name, description, category…" />
         </div>
+        <select
+          value={sortKey}
+          onChange={(e) => setSortKey(e.target.value as SortKey)}
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="name">Sort: A–Z</option>
+          <option value="cagr">Sort: CAGR ↓</option>
+          <option value="sharpe">Sort: Sharpe ↓</option>
+          <option value="alpha">Sort: Alpha ↓</option>
+        </select>
         <Button onClick={() => refresh().catch((e) => setErrorMsg(String((e as Error)?.message || e)))} variant="outline">
           Refresh
         </Button>
@@ -340,26 +399,60 @@ export function StrategiesClient(props: { initialStrategies: StrategyCatalogRow[
                       </label>
                     </div>
                     {s.description ? (
-                      <p className="line-clamp-3 text-xs leading-relaxed text-muted-foreground">{s.description}</p>
+                      <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">{s.description}</p>
                     ) : (
                       <p className="text-xs italic text-muted-foreground">No description</p>
                     )}
+                    {(toNum(s.cagr) != null || toNum(s.sharpe) != null) ? (
+                      <div className="flex items-center gap-3 rounded-md bg-muted/30 px-2.5 py-1.5 text-xs">
+                        {toNum(s.cagr) != null ? (
+                          <span>
+                            <span className="text-muted-foreground">CAGR </span>
+                            <span className={cn("font-semibold tabular-nums", (toNum(s.cagr) ?? 0) >= 0.15 ? "text-green-400" : "text-yellow-400")}>
+                              {fmtPct(s.cagr)}
+                            </span>
+                          </span>
+                        ) : null}
+                        {toNum(s.sharpe) != null ? (
+                          <span>
+                            <span className="text-muted-foreground">Sharpe </span>
+                            <span className={cn("font-semibold tabular-nums", (toNum(s.sharpe) ?? 0) >= 1.0 ? "text-green-400" : "text-yellow-400")}>
+                              {fmtNum(s.sharpe)}
+                            </span>
+                          </span>
+                        ) : null}
+                        {toNum(s.alpha) != null ? (
+                          <span>
+                            <span className="text-muted-foreground">α </span>
+                            <span className={cn("font-semibold tabular-nums", (toNum(s.alpha) ?? 0) > 0 ? "text-green-400" : "text-red-400")}>
+                              {fmtPct(s.alpha)}
+                            </span>
+                          </span>
+                        ) : null}
+                        {toNum(s.beta) != null ? (
+                          <span>
+                            <span className="text-muted-foreground">β </span>
+                            <span className="font-semibold tabular-nums text-muted-foreground">
+                              {fmtNum(s.beta)}
+                            </span>
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
                     <div className="mt-auto flex flex-wrap items-center gap-2">
-                      {s.api_status ? (
-                        <Badge variant={apiStatusVariant(s.api_status)}>{s.api_status}</Badge>
-                      ) : (
-                        <Badge variant="outline">API n/a</Badge>
-                      )}
+                      <Badge variant={apiStatusVariant(s.api_status)}>{apiStatusLabel(s.api_status)}</Badge>
                       {s.has_plot ? (
-                        <Badge variant="success">Plot data</Badge>
-                      ) : (
-                        <Badge variant="outline">No plot</Badge>
-                      )}
+                        <Badge variant="success">Curve</Badge>
+                      ) : null}
+                      {s.research_url ? (
+                        <a href={s.research_url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
+                          <Badge variant="outline" className="cursor-pointer hover:bg-accent">Research ↗</Badge>
+                        </a>
+                      ) : null}
                       {s.start_date ? (
-                        <span className="text-[10px] text-muted-foreground">from {s.start_date}</span>
+                        <span className="ml-auto text-[10px] text-muted-foreground">from {s.start_date}</span>
                       ) : null}
                     </div>
-                    <div className="text-[11px] text-muted-foreground">Click card to edit settings</div>
                   </CardContent>
                 </Card>
               ))}
@@ -400,6 +493,22 @@ export function StrategiesClient(props: { initialStrategies: StrategyCatalogRow[
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
               {drawerStrategy.description ? (
                 <p className="mb-4 text-sm text-muted-foreground">{drawerStrategy.description}</p>
+              ) : null}
+              {(toNum(drawerStrategy.cagr) != null || toNum(drawerStrategy.sharpe) != null) ? (
+                <div className="mb-4 grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/20 p-3 text-sm sm:grid-cols-4">
+                  {[
+                    { label: "CAGR", val: fmtPct(drawerStrategy.cagr) },
+                    { label: "Sharpe", val: fmtNum(drawerStrategy.sharpe) },
+                    { label: "Alpha", val: fmtPct(drawerStrategy.alpha) },
+                    { label: "Beta", val: fmtNum(drawerStrategy.beta) },
+                    { label: "Max DD", val: fmtPct(drawerStrategy.max_drawdown) },
+                  ].map(({ label, val }) => (
+                    <div key={label} className="text-center">
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+                      <div className="mt-0.5 font-semibold tabular-nums">{val}</div>
+                    </div>
+                  ))}
+                </div>
               ) : null}
               <div className="mb-4 flex items-center justify-between gap-2">
                 <span className="text-sm font-medium">Enabled</span>

@@ -101,6 +101,14 @@ STRATEGY_REGISTRY: List[StrategySpec] = [
     StrategySpec("Bill Ackman",    "sec_edgar",  "experimental", "2015-02-18"),
     StrategySpec("Howard Marks",   "sec_edgar",  "experimental", "2015-02-17"),
 
+    # ── Factor Regime ──────────────────────────────────────────────────────
+    StrategySpec("SMB Factor Regime",    "factor_data", "experimental", "2000-08-01",
+                 notes="IWN/IWD rotation via SMB LR signal. No Quiver API needed."),
+    StrategySpec("Value Large-Cap (IWD)", "factor_data", "experimental", "2000-08-01",
+                 notes="Always 100% IWD. Passive large-cap value benchmark."),
+    StrategySpec("Value Small-Cap (IWN)", "factor_data", "experimental", "2000-08-01",
+                 notes="Always 100% IWN. Passive small-cap value benchmark."),
+
     # ── Premium / Subscription Required ────────────────────────────────────
     StrategySpec("Wall Street Conviction", "quiver_premium", "experimental", "2017-01-01",
                  enabled=False, notes="Requires premium Quiver subscription"),

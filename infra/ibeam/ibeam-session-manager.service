@@ -1,0 +1,18 @@
+[Unit]
+Description=ibeam Session Manager — per-user IB gateway container manager
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=servidor
+WorkingDirectory=/home/servidor/Desktop/cursor-projects/ib_bot/infra/ibeam
+ExecStart=/usr/bin/python3 -m uvicorn session_manager:app --host 0.0.0.0 --port 5056
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ibeam-session-manager
+
+[Install]
+WantedBy=multi-user.target

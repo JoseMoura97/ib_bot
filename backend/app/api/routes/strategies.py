@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.schemas import StrategyOut, StrategyPatch
 from app.db.session import get_db
 from app.models.strategy import Strategy
+from app.services.rebalance_freq import infer_strategy_frequency
 
 
 router = APIRouter()
@@ -72,6 +73,13 @@ def catalog(db: Session = Depends(get_db)):
                 "description": meta.get("description"),
                 "api_status": meta.get("api_status"),
                 "start_date": meta.get("start_date"),
+                "cagr": meta.get("cagr"),
+                "sharpe": meta.get("sharpe"),
+                "alpha": meta.get("alpha"),
+                "beta": meta.get("beta"),
+                "max_drawdown": meta.get("max_drawdown"),
+                "research_url": meta.get("research_url"),
+                "rebalance_frequency": infer_strategy_frequency(meta.get("description")),
             }
         )
 

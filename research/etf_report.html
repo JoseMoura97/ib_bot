@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ETF Portfolio Analysis</title>
+<style>
+html,body{background:#0f1117!important;color:#e2e8f0;font-family:'Inter',system-ui,sans-serif;margin:0;padding:0}
+.container{max-width:1200px;margin:0 auto;padding:32px 20px 64px}
+h1{font-size:1.5rem;font-weight:700;color:#f1f5f9;margin:0 0 4px}
+.subtitle{color:#64748b;font-size:.83rem;margin-bottom:32px}
+.subtitle b{color:#94a3b8}
+
+.window-section{margin-bottom:36px}
+.window-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
+  color:#475569;margin-bottom:8px;padding:4px 0;border-bottom:1px solid #1e2535}
+.table-wrap{overflow-x:auto;border:1px solid #1e2535;border-radius:8px}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+thead th{background:#141824;color:#64748b;font-size:.68rem;text-transform:uppercase;
+  letter-spacing:.06em;padding:9px 12px;white-space:nowrap;border-bottom:1px solid #1e2535}
+th.left{text-align:left}
+tbody tr{border-bottom:1px solid #161b27;transition:background .12s}
+tbody tr:hover{background:#1a1f2e}
+tbody tr:last-child{border-bottom:none}
+td{padding:9px 12px;text-align:right;font-variant-numeric:tabular-nums}
+td.left{text-align:left}
+td.mono{font-family:monospace;font-size:.8rem;color:#cbd5e1;font-weight:600;white-space:nowrap}
+td.desc{color:#94a3b8;white-space:nowrap}
+td.desc .note{font-size:.72rem;color:#475569}
+tr.bench-row td{color:#64748b;font-style:italic}
+tr.bench-row td.mono{color:#64748b}
+tr.group-header td{background:#111827;color:#475569;font-size:.68rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.08em;padding:6px 12px;text-align:left}
+
+.green{color:#4ade80}
+.yellow{color:#facc15}
+.red{color:#f87171}
+.dim{color:#64748b}
+
+.legend{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:24px;font-size:.75rem}
+.leg{display:flex;align-items:center;gap:6px;color:#64748b}
+.dot{width:8px;height:8px;border-radius:50%}
+.dot.green{background:#4ade80}.dot.yellow{background:#facc15}.dot.red{background:#f87171}
+
+.caveat{background:#1a1f2e;border:1px solid #2d3748;border-radius:8px;padding:16px 20px;
+  margin-bottom:28px;font-size:.8rem;color:#94a3b8;line-height:1.6}
+.caveat strong{color:#cbd5e1}
+.footer{margin-top:32px;color:#334155;font-size:.72rem;text-align:center}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>ETF Portfolio Analysis</h1>
+  <div class="subtitle">
+    Holdings: <b>ZPRX · ZPRV · AVWS · JPGL · VWCE</b> &nbsp;·&nbsp;
+    Benchmark: <b>VT</b> (global) &nbsp;·&nbsp;
+    Alpha/Beta vs <b>VT</b>
+  </div>
+
+  <div class="caveat">
+    <strong>Currency note:</strong> Your UCITS ETFs trade in EUR/GBP. US proxies (IWN, VBR, DLS…) trade in USD.
+    Returns are not currency-adjusted — EUR-hedged performance may differ slightly.
+    <br><strong>Proxy note:</strong> IWN/IJS/VBR are US-listed small cap value with the same factor exposure as ZPRX.
+    DLS/AVDV are best available proxies for ZPRV/AVWS.
+    Use these for the long-window picture; your UCITS ETFs for recent accuracy.
+  </div>
+
+  <div class="legend">
+    <div class="leg"><div class="dot green"></div> Strong (CAGR≥12%, Sh≥1.0, DD≥-20%)</div>
+    <div class="leg"><div class="dot yellow"></div> Moderate</div>
+    <div class="leg"><div class="dot red"></div> Weak</div>
+  </div>
+
+  
+        <div class="window-section">
+          <div class="window-label">25yr</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th class="left">ETF</th>
+                <th class="left">Strategy</th>
+                <th>CAGR</th>
+                <th>Sharpe</th>
+                <th>MaxDD</th>
+                <th>Alpha</th>
+                <th>Beta</th>
+                <th>Vol</th>
+                <th>Total</th>
+                <th>Yrs</th>
+              </tr></thead>
+              <tbody><tr class="group-header"><td colspan="10">Your holdings</td></tr>
+                <tr class="">
+                  <td class="left mono">AVWS</td>
+                  <td class="left desc">Intl Small Cap Value <span class="note">your ETF (Avantis)</span></td>
+                  <td class="green">19.1%</td>
+                  <td class="green">1.05</td>
+                  <td class="yellow">-25.2%</td>
+                  <td class="green">12.0%</td>
+                  <td class="dim">0.37</td>
+                  <td class="dim">18.3%</td>
+                  <td class="dim">33%</td>
+                  <td class="dim">1.6</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">JPGL</td>
+                  <td class="left desc">Global Multi-Factor <span class="note">your ETF</span></td>
+                  <td class="yellow">10.7%</td>
+                  <td class="yellow">0.71</td>
+                  <td class="red">-35.9%</td>
+                  <td class="green">4.1%</td>
+                  <td class="dim">0.52</td>
+                  <td class="dim">16.2%</td>
+                  <td class="dim">101%</td>
+                  <td class="dim">6.9</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">ZPRV</td>
+                  <td class="left desc">Europe Small Cap Value <span class="note">your ETF</span></td>
+                  <td class="yellow">8.4%</td>
+                  <td class="red">0.46</td>
+                  <td class="red">-46.0%</td>
+                  <td class="green">3.1%</td>
+                  <td class="dim">0.65</td>
+                  <td class="dim">23.2%</td>
+                  <td class="dim">148%</td>
+                  <td class="dim">11.2</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">ZPRX</td>
+                  <td class="left desc">US Small Cap Value <span class="note">your ETF</span></td>
+                  <td class="yellow">7.2%</td>
+                  <td class="red">0.47</td>
+                  <td class="red">-43.9%</td>
+                  <td class="yellow">0.9%</td>
+                  <td class="dim">0.67</td>
+                  <td class="dim">18.3%</td>
+                  <td class="dim">118%</td>
+                  <td class="dim">11.2</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">VWCE</td>
+                  <td class="left desc">◄ All-World <span class="note">your benchmark</span></td>
+                  <td class="green">12.4%</td>
+                  <td class="yellow">0.80</td>
+                  <td class="yellow">-33.4%</td>
+                  <td class="green">5.4%</td>
+                  <td class="dim">0.54</td>
+                  <td class="dim">16.2%</td>
+                  <td class="dim">122%</td>
+                  <td class="dim">6.8</td>
+                </tr><tr class="group-header"><td colspan="10">Long-history proxies</td></tr>
+                <tr class="">
+                  <td class="left mono">AVDV</td>
+                  <td class="left desc">Intl SC Value (Avantis US) <span class="note">same mgr as AVWS</span></td>
+                  <td class="green">15.7%</td>
+                  <td class="yellow">0.84</td>
+                  <td class="red">-43.0%</td>
+                  <td class="green">3.4%</td>
+                  <td class="dim">0.89</td>
+                  <td class="dim">19.8%</td>
+                  <td class="dim">164%</td>
+                  <td class="dim">6.6</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">IJS</td>
+                  <td class="left desc">US SC Value (S&P 600) <span class="note">25yr proxy for ZPRX</span></td>
+                  <td class="yellow">9.7%</td>
+                  <td class="red">0.51</td>
+                  <td class="red">-60.1%</td>
+                  <td class="green">1.6%</td>
+                  <td class="dim">1.03</td>
+                  <td class="dim">23.8%</td>
+                  <td class="dim">979%</td>
+                  <td class="dim">25.8</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">VBR</td>
+                  <td class="left desc">US SC Value (Vanguard) <span class="note">22yr proxy for ZPRX</span></td>
+                  <td class="yellow">9.4%</td>
+                  <td class="red">0.51</td>
+                  <td class="red">-62.0%</td>
+                  <td class="green">1.7%</td>
+                  <td class="dim">1.04</td>
+                  <td class="dim">22.8%</td>
+                  <td class="dim">644%</td>
+                  <td class="dim">22.3</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">IWN</td>
+                  <td class="left desc">US SC Value (Russell 2k) <span class="note">25yr proxy for ZPRX</span></td>
+                  <td class="yellow">9.2%</td>
+                  <td class="red">0.49</td>
+                  <td class="red">-61.6%</td>
+                  <td class="yellow">0.5%</td>
+                  <td class="dim">1.06</td>
+                  <td class="dim">23.7%</td>
+                  <td class="dim">881%</td>
+                  <td class="dim">25.8</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">DLS</td>
+                  <td class="left desc">Intl SC Dividend <span class="note">20yr proxy for ZPRV/AVWS</span></td>
+                  <td class="red">6.5%</td>
+                  <td class="red">0.42</td>
+                  <td class="red">-63.1%</td>
+                  <td class="red">-1.0%</td>
+                  <td class="dim">0.85</td>
+                  <td class="dim">19.2%</td>
+                  <td class="dim">250%</td>
+                  <td class="dim">19.9</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">EFV</td>
+                  <td class="left desc">EAFE Value <span class="note">21yr intl value proxy</span></td>
+                  <td class="red">5.9%</td>
+                  <td class="red">0.37</td>
+                  <td class="red">-63.9%</td>
+                  <td class="red">-2.9%</td>
+                  <td class="dim">1.01</td>
+                  <td class="dim">22.0%</td>
+                  <td class="dim">231%</td>
+                  <td class="dim">20.8</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">VT</td>
+                  <td class="left desc">◄ Total World <span class="note">global benchmark</span></td>
+                  <td class="yellow">8.8%</td>
+                  <td class="red">0.52</td>
+                  <td class="red">-50.3%</td>
+                  <td class="yellow">0.0%</td>
+                  <td class="dim">1.00</td>
+                  <td class="dim">20.6%</td>
+                  <td class="dim">355%</td>
+                  <td class="dim">17.9</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">SPY</td>
+                  <td class="left desc">S&P 500 <span class="note">US benchmark</span></td>
+                  <td class="yellow">8.5%</td>
+                  <td class="red">0.52</td>
+                  <td class="red">-55.2%</td>
+                  <td class="green">3.9%</td>
+                  <td class="dim">0.92</td>
+                  <td class="dim">19.2%</td>
+                  <td class="dim">716%</td>
+                  <td class="dim">25.8</td>
+                </tr></tbody></table></div></div>
+        <div class="window-section">
+          <div class="window-label">20yr</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th class="left">ETF</th>
+                <th class="left">Strategy</th>
+                <th>CAGR</th>
+                <th>Sharpe</th>
+                <th>MaxDD</th>
+                <th>Alpha</th>
+                <th>Beta</th>
+                <th>Vol</th>
+                <th>Total</th>
+                <th>Yrs</th>
+              </tr></thead>
+              <tbody><tr class="group-header"><td colspan="10">Your holdings</td></tr>
+                <tr class="">
+                  <td class="left mono">AVWS</td>
+                  <td class="left desc">Intl Small Cap Value <span class="note">your ETF (Avantis)</span></td>
+                  <td class="green">19.1%</td>
+                  <td class="green">1.05</td>
+                  <td class="yellow">-25.2%</td>
+                  <td class="green">12.0%</td>
+                  <td class="dim">0.37</td>
+                  <td class="dim">18.3%</td>
+                  <td class="dim">33%</td>
+                  <td class="dim">1.6</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">JPGL</td>
+                  <td class="left desc">Global Multi-Factor <span class="note">your ETF</span></td>
+                  <td class="yellow">10.7%</td>
+                  <td class="yellow">0.71</td>
+                  <td class="red">-35.9%</td>
+                  <td class="green">4.1%</td>
+                  <td class="dim">0.52</td>
+                  <td class="dim">16.2%</td>
+                  <td class="dim">101%</td>
+                  <td class="dim">6.9</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">ZPRV</td>
+                  <td class="left desc">Europe Small Cap Value <span class="note">your ETF</span></td>
+                  <td class="yellow">8.4%</td>
+                  <td class="red">0.46</td>
+                  <td class="red">-46.0%</td>
+                  <td class="green">3.1%</td>
+                  <td class="dim">0.65</td>
+                  <td class="dim">23.2%</td>
+                  <td class="dim">148%</td>
+                  <td class="dim">11.2</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">ZPRX</td>
+                  <td class="left desc">US Small Cap Value <span class="note">your ETF</span></td>
+                  <td class="yellow">7.2%</td>
+                  <td class="red">0.47</td>
+                  <td class="red">-43.9%</td>
+                  <td class="yellow">0.9%</td>
+                  <td class="dim">0.67</td>
+                  <td class="dim">18.3%</td>
+                  <td class="dim">118%</td>
+                  <td class="dim">11.2</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">VWCE</td>
+                  <td class="left desc">◄ All-World <span class="note">your benchmark</span></td>
+                  <td class="green">12.4%</td>
+                  <td class="yellow">0.80</td>
+                  <td class="yellow">-33.4%</td>
+                  <td class="green">5.4%</td>
+                  <td class="dim">0.54</td>
+                  <td class="dim">16.2%</td>
+                  <td class="dim">122%</td>
+                  <td class="dim">6.8</td>
+                </tr><tr class="group-header"><td colspan="10">Long-history proxies</td></tr>
+                <tr class="">
+                  <td class="left mono">AVDV</td>
+                  <td class="left desc">Intl SC Value (Avantis US) <span class="note">same mgr as AVWS</span></td>
+                  <td class="green">15.7%</td>
+                  <td class="yellow">0.84</td>
+                  <td class="red">-43.0%</td>
+                  <td class="green">3.4%</td>
+                  <td class="dim">0.89</td>
+                  <td class="dim">19.8%</td>
+                  <td class="dim">164%</td>
+                  <td class="dim">6.6</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">VBR</td>
+                  <td class="left desc">US SC Value (Vanguard) <span class="note">22yr proxy for ZPRX</span></td>
+                  <td class="yellow">8.8%</td>
+                  <td class="red">0.48</td>
+                  <td class="red">-62.0%</td>
+                  <td class="green">1.7%</td>
+                  <td class="dim">1.04</td>
+                  <td class="dim">23.3%</td>
+                  <td class="dim">473%</td>
+                  <td class="dim">20.8</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">IJS</td>
+                  <td class="left desc">US SC Value (S&P 600) <span class="note">25yr proxy for ZPRX</span></td>
+                  <td class="yellow">8.4%</td>
+                  <td class="red">0.45</td>
+                  <td class="red">-60.1%</td>
+                  <td class="green">1.6%</td>
+                  <td class="dim">1.03</td>
+                  <td class="dim">24.7%</td>
+                  <td class="dim">436%</td>
+                  <td class="dim">20.8</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">IWN</td>
+                  <td class="left desc">US SC Value (Russell 2k) <span class="note">25yr proxy for ZPRX</span></td>
+                  <td class="yellow">7.6%</td>
+                  <td class="red">0.42</td>
+                  <td class="red">-61.6%</td>
+                  <td class="yellow">0.5%</td>
+                  <td class="dim">1.06</td>
+                  <td class="dim">24.8%</td>
+                  <td class="dim">357%</td>
+                  <td class="dim">20.8</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">DLS</td>
+                  <td class="left desc">Intl SC Dividend <span class="note">20yr proxy for ZPRV/AVWS</span></td>
+                  <td class="red">6.5%</td>
+                  <td class="red">0.42</td>
+                  <td class="red">-63.1%</td>
+                  <td class="red">-1.0%</td>
+                  <td class="dim">0.85</td>
+                  <td class="dim">19.2%</td>
+                  <td class="dim">250%</td>
+                  <td class="dim">19.9</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">EFV</td>
+                  <td class="left desc">EAFE Value <span class="note">21yr intl value proxy</span></td>
+                  <td class="red">5.9%</td>
+                  <td class="red">0.37</td>
+                  <td class="red">-63.9%</td>
+                  <td class="red">-2.9%</td>
+                  <td class="dim">1.01</td>
+                  <td class="dim">22.0%</td>
+                  <td class="dim">231%</td>
+                  <td class="dim">20.8</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">SPY</td>
+                  <td class="left desc">S&P 500 <span class="note">US benchmark</span></td>
+                  <td class="yellow">11.0%</td>
+                  <td class="yellow">0.64</td>
+                  <td class="red">-55.2%</td>
+                  <td class="green">3.9%</td>
+                  <td class="dim">0.92</td>
+                  <td class="dim">19.1%</td>
+                  <td class="dim">779%</td>
+                  <td class="dim">20.8</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">VT</td>
+                  <td class="left desc">◄ Total World <span class="note">global benchmark</span></td>
+                  <td class="yellow">8.8%</td>
+                  <td class="red">0.52</td>
+                  <td class="red">-50.3%</td>
+                  <td class="yellow">0.0%</td>
+                  <td class="dim">1.00</td>
+                  <td class="dim">20.6%</td>
+                  <td class="dim">355%</td>
+                  <td class="dim">17.9</td>
+                </tr></tbody></table></div></div>
+        <div class="window-section">
+          <div class="window-label">15yr</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th class="left">ETF</th>
+                <th class="left">Strategy</th>
+                <th>CAGR</th>
+                <th>Sharpe</th>
+                <th>MaxDD</th>
+                <th>Alpha</th>
+                <th>Beta</th>
+                <th>Vol</th>
+                <th>Total</th>
+                <th>Yrs</th>
+              </tr></thead>
+              <tbody><tr class="group-header"><td colspan="10">Your holdings</td></tr>
+                <tr class="">
+                  <td class="left mono">AVWS</td>
+                  <td class="left desc">Intl Small Cap Value <span class="note">your ETF (Avantis)</span></td>
+                  <td class="green">19.1%</td>
+                  <td class="green">1.05</td>
+                  <td class="yellow">-25.2%</td>
+                  <td class="green">12.0%</td>
+                  <td class="dim">0.37</td>
+                  <td class="dim">18.3%</td>
+                  <td class="dim">33%</td>
+                  <td class="dim">1.6</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">JPGL</td>
+                  <td class="left desc">Global Multi-Factor <span class="note">your ETF</span></td>
+                  <td class="yellow">10.7%</td>
+                  <td class="yellow">0.71</td>
+                  <td class="red">-35.9%</td>
+                  <td class="green">4.1%</td>
+                  <td class="dim">0.52</td>
+                  <td class="dim">16.2%</td>
+                  <td class="dim">101%</td>
+                  <td class="dim">6.9</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">ZPRV</td>
+                  <td class="left desc">Europe Small Cap Value <span class="note">your ETF</span></td>
+                  <td class="yellow">8.4%</td>
+                  <td class="red">0.46</td>
+                  <td class="red">-46.0%</td>
+                  <td class="green">3.1%</td>
+                  <td class="dim">0.65</td>
+                  <td class="dim">23.2%</td>
+                  <td class="dim">148%</td>
+                  <td class="dim">11.2</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">ZPRX</td>
+                  <td class="left desc">US Small Cap Value <span class="note">your ETF</span></td>
+                  <td class="yellow">7.2%</td>
+                  <td class="red">0.47</td>
+                  <td class="red">-43.9%</td>
+                  <td class="yellow">0.9%</td>
+                  <td class="dim">0.67</td>
+                  <td class="dim">18.3%</td>
+                  <td class="dim">118%</td>
+                  <td class="dim">11.2</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">VWCE</td>
+                  <td class="left desc">◄ All-World <span class="note">your benchmark</span></td>
+                  <td class="green">12.4%</td>
+                  <td class="yellow">0.80</td>
+                  <td class="yellow">-33.4%</td>
+                  <td class="green">5.4%</td>
+                  <td class="dim">0.54</td>
+                  <td class="dim">16.2%</td>
+                  <td class="dim">122%</td>
+                  <td class="dim">6.8</td>
+                </tr><tr class="group-header"><td colspan="10">Long-history proxies</td></tr>
+                <tr class="">
+                  <td class="left mono">AVDV</td>
+                  <td class="left desc">Intl SC Value (Avantis US) <span class="note">same mgr as AVWS</span></td>
+                  <td class="green">15.7%</td>
+                  <td class="yellow">0.84</td>
+                  <td class="red">-43.0%</td>
+                  <td class="green">3.4%</td>
+                  <td class="dim">0.89</td>
+                  <td class="dim">19.8%</td>
+                  <td class="dim">164%</td>
+                  <td class="dim">6.6</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">VBR</td>
+                  <td class="left desc">US SC Value (Vanguard) <span class="note">22yr proxy for ZPRX</span></td>
+                  <td class="yellow">11.3%</td>
+                  <td class="yellow">0.62</td>
+                  <td class="red">-45.3%</td>
+                  <td class="yellow">0.3%</td>
+                  <td class="dim">1.07</td>
+                  <td class="dim">20.6%</td>
+                  <td class="dim">442%</td>
+                  <td class="dim">15.8</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">IJS</td>
+                  <td class="left desc">US SC Value (S&P 600) <span class="note">25yr proxy for ZPRX</span></td>
+                  <td class="yellow">11.1%</td>
+                  <td class="red">0.58</td>
+                  <td class="red">-47.7%</td>
+                  <td class="yellow">0.4%</td>
+                  <td class="dim">1.07</td>
+                  <td class="dim">22.3%</td>
+                  <td class="dim">424%</td>
+                  <td class="dim">15.8</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">IWN</td>
+                  <td class="left desc">US SC Value (Russell 2k) <span class="note">25yr proxy for ZPRX</span></td>
+                  <td class="yellow">10.1%</td>
+                  <td class="red">0.55</td>
+                  <td class="red">-46.1%</td>
+                  <td class="red">-0.8%</td>
+                  <td class="dim">1.10</td>
+                  <td class="dim">22.1%</td>
+                  <td class="dim">360%</td>
+                  <td class="dim">15.8</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">DLS</td>
+                  <td class="left desc">Intl SC Dividend <span class="note">20yr proxy for ZPRV/AVWS</span></td>
+                  <td class="yellow">8.0%</td>
+                  <td class="red">0.55</td>
+                  <td class="red">-44.8%</td>
+                  <td class="red">-1.3%</td>
+                  <td class="dim">0.89</td>
+                  <td class="dim">16.7%</td>
+                  <td class="dim">239%</td>
+                  <td class="dim">15.8</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">EFV</td>
+                  <td class="left desc">EAFE Value <span class="note">21yr intl value proxy</span></td>
+                  <td class="yellow">7.2%</td>
+                  <td class="red">0.47</td>
+                  <td class="red">-43.2%</td>
+                  <td class="red">-2.9%</td>
+                  <td class="dim">0.99</td>
+                  <td class="dim">18.7%</td>
+                  <td class="dim">201%</td>
+                  <td class="dim">15.8</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">SPY</td>
+                  <td class="left desc">S&P 500 <span class="note">US benchmark</span></td>
+                  <td class="green">14.7%</td>
+                  <td class="yellow">0.89</td>
+                  <td class="yellow">-33.7%</td>
+                  <td class="green">3.9%</td>
+                  <td class="dim">0.96</td>
+                  <td class="dim">17.0%</td>
+                  <td class="dim">771%</td>
+                  <td class="dim">15.8</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">VT</td>
+                  <td class="left desc">◄ Total World <span class="note">global benchmark</span></td>
+                  <td class="yellow">10.8%</td>
+                  <td class="yellow">0.69</td>
+                  <td class="yellow">-34.2%</td>
+                  <td class="yellow">0.0%</td>
+                  <td class="dim">1.00</td>
+                  <td class="dim">17.1%</td>
+                  <td class="dim">407%</td>
+                  <td class="dim">15.8</td>
+                </tr></tbody></table></div></div>
+        <div class="window-section">
+          <div class="window-label">10yr</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th class="left">ETF</th>
+                <th class="left">Strategy</th>
+                <th>CAGR</th>
+                <th>Sharpe</th>
+                <th>MaxDD</th>
+                <th>Alpha</th>
+                <th>Beta</th>
+                <th>Vol</th>
+                <th>Total</th>
+                <th>Yrs</th>
+              </tr></thead>
+              <tbody><tr class="group-header"><td colspan="10">Your holdings</td></tr>
+                <tr class="">
+                  <td class="left mono">AVWS</td>
+                  <td class="left desc">Intl Small Cap Value <span class="note">your ETF (Avantis)</span></td>
+                  <td class="green">19.1%</td>
+                  <td class="green">1.05</td>
+                  <td class="yellow">-25.2%</td>
+                  <td class="green">12.0%</td>
+                  <td class="dim">0.37</td>
+                  <td class="dim">18.3%</td>
+                  <td class="dim">33%</td>
+                  <td class="dim">1.6</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">JPGL</td>
+                  <td class="left desc">Global Multi-Factor <span class="note">your ETF</span></td>
+                  <td class="yellow">10.7%</td>
+                  <td class="yellow">0.71</td>
+                  <td class="red">-35.9%</td>
+                  <td class="green">4.1%</td>
+                  <td class="dim">0.52</td>
+                  <td class="dim">16.2%</td>
+                  <td class="dim">101%</td>
+                  <td class="dim">6.9</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">ZPRV</td>
+                  <td class="left desc">Europe Small Cap Value <span class="note">your ETF</span></td>
+                  <td class="yellow">10.0%</td>
+                  <td class="red">0.53</td>
+                  <td class="red">-46.0%</td>
+                  <td class="green">4.2%</td>
+                  <td class="dim">0.66</td>
+                  <td class="dim">23.2%</td>
+                  <td class="dim">180%</td>
+                  <td class="dim">10.8</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">ZPRX</td>
+                  <td class="left desc">US Small Cap Value <span class="note">your ETF</span></td>
+                  <td class="red">6.7%</td>
+                  <td class="red">0.44</td>
+                  <td class="red">-43.9%</td>
+                  <td class="yellow">0.2%</td>
+                  <td class="dim">0.66</td>
+                  <td class="dim">18.4%</td>
+                  <td class="dim">102%</td>
+                  <td class="dim">10.8</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">VWCE</td>
+                  <td class="left desc">◄ All-World <span class="note">your benchmark</span></td>
+                  <td class="green">12.4%</td>
+                  <td class="yellow">0.80</td>
+                  <td class="yellow">-33.4%</td>
+                  <td class="green">5.4%</td>
+                  <td class="dim">0.54</td>
+                  <td class="dim">16.2%</td>
+                  <td class="dim">122%</td>
+                  <td class="dim">6.8</td>
+                </tr><tr class="group-header"><td colspan="10">Long-history proxies</td></tr>
+                <tr class="">
+                  <td class="left mono">AVDV</td>
+                  <td class="left desc">Intl SC Value (Avantis US) <span class="note">same mgr as AVWS</span></td>
+                  <td class="green">15.7%</td>
+                  <td class="yellow">0.84</td>
+                  <td class="red">-43.0%</td>
+                  <td class="green">3.4%</td>
+                  <td class="dim">0.89</td>
+                  <td class="dim">19.8%</td>
+                  <td class="dim">164%</td>
+                  <td class="dim">6.6</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">VBR</td>
+                  <td class="left desc">US SC Value (Vanguard) <span class="note">22yr proxy for ZPRX</span></td>
+                  <td class="yellow">9.7%</td>
+                  <td class="red">0.54</td>
+                  <td class="red">-45.3%</td>
+                  <td class="red">-1.7%</td>
+                  <td class="dim">1.09</td>
+                  <td class="dim">21.5%</td>
+                  <td class="dim">172%</td>
+                  <td class="dim">10.8</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">IJS</td>
+                  <td class="left desc">US SC Value (S&P 600) <span class="note">25yr proxy for ZPRX</span></td>
+                  <td class="yellow">9.4%</td>
+                  <td class="red">0.51</td>
+                  <td class="red">-47.7%</td>
+                  <td class="red">-1.3%</td>
+                  <td class="dim">1.07</td>
+                  <td class="dim">23.3%</td>
+                  <td class="dim">165%</td>
+                  <td class="dim">10.8</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">IWN</td>
+                  <td class="left desc">US SC Value (Russell 2k) <span class="note">25yr proxy for ZPRX</span></td>
+                  <td class="yellow">9.3%</td>
+                  <td class="red">0.50</td>
+                  <td class="red">-46.1%</td>
+                  <td class="red">-2.1%</td>
+                  <td class="dim">1.12</td>
+                  <td class="dim">23.1%</td>
+                  <td class="dim">161%</td>
+                  <td class="dim">10.8</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">EFV</td>
+                  <td class="left desc">EAFE Value <span class="note">21yr intl value proxy</span></td>
+                  <td class="yellow">7.8%</td>
+                  <td class="red">0.51</td>
+                  <td class="red">-43.2%</td>
+                  <td class="red">-2.2%</td>
+                  <td class="dim">0.93</td>
+                  <td class="dim">18.1%</td>
+                  <td class="dim">124%</td>
+                  <td class="dim">10.8</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">DLS</td>
+                  <td class="left desc">Intl SC Dividend <span class="note">20yr proxy for ZPRV/AVWS</span></td>
+                  <td class="yellow">7.3%</td>
+                  <td class="red">0.51</td>
+                  <td class="red">-44.8%</td>
+                  <td class="red">-2.1%</td>
+                  <td class="dim">0.86</td>
+                  <td class="dim">16.6%</td>
+                  <td class="dim">114%</td>
+                  <td class="dim">10.8</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">SPY</td>
+                  <td class="left desc">S&P 500 <span class="note">US benchmark</span></td>
+                  <td class="green">14.3%</td>
+                  <td class="yellow">0.84</td>
+                  <td class="yellow">-33.7%</td>
+                  <td class="green">2.7%</td>
+                  <td class="dim">1.01</td>
+                  <td class="dim">17.9%</td>
+                  <td class="dim">323%</td>
+                  <td class="dim">10.8</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">VT</td>
+                  <td class="left desc">◄ Total World <span class="note">global benchmark</span></td>
+                  <td class="yellow">11.3%</td>
+                  <td class="yellow">0.70</td>
+                  <td class="yellow">-34.2%</td>
+                  <td class="yellow">0.0%</td>
+                  <td class="dim">1.00</td>
+                  <td class="dim">17.3%</td>
+                  <td class="dim">216%</td>
+                  <td class="dim">10.8</td>
+                </tr></tbody></table></div></div>
+        <div class="window-section">
+          <div class="window-label">5yr</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th class="left">ETF</th>
+                <th class="left">Strategy</th>
+                <th>CAGR</th>
+                <th>Sharpe</th>
+                <th>MaxDD</th>
+                <th>Alpha</th>
+                <th>Beta</th>
+                <th>Vol</th>
+                <th>Total</th>
+                <th>Yrs</th>
+              </tr></thead>
+              <tbody><tr class="group-header"><td colspan="10">Your holdings</td></tr>
+                <tr class="">
+                  <td class="left mono">AVWS</td>
+                  <td class="left desc">Intl Small Cap Value <span class="note">your ETF (Avantis)</span></td>
+                  <td class="green">19.1%</td>
+                  <td class="green">1.05</td>
+                  <td class="yellow">-25.2%</td>
+                  <td class="green">12.0%</td>
+                  <td class="dim">0.37</td>
+                  <td class="dim">18.3%</td>
+                  <td class="dim">33%</td>
+                  <td class="dim">1.6</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">ZPRV</td>
+                  <td class="left desc">Europe Small Cap Value <span class="note">your ETF</span></td>
+                  <td class="yellow">10.3%</td>
+                  <td class="red">0.58</td>
+                  <td class="yellow">-31.1%</td>
+                  <td class="green">5.5%</td>
+                  <td class="dim">0.55</td>
+                  <td class="dim">20.5%</td>
+                  <td class="dim">64%</td>
+                  <td class="dim">5.0</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">JPGL</td>
+                  <td class="left desc">Global Multi-Factor <span class="note">your ETF</span></td>
+                  <td class="yellow">9.6%</td>
+                  <td class="yellow">0.75</td>
+                  <td class="yellow">-21.0%</td>
+                  <td class="green">4.8%</td>
+                  <td class="dim">0.44</td>
+                  <td class="dim">13.5%</td>
+                  <td class="dim">59%</td>
+                  <td class="dim">5.0</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">ZPRX</td>
+                  <td class="left desc">US Small Cap Value <span class="note">your ETF</span></td>
+                  <td class="yellow">8.2%</td>
+                  <td class="red">0.55</td>
+                  <td class="yellow">-27.5%</td>
+                  <td class="green">2.6%</td>
+                  <td class="dim">0.57</td>
+                  <td class="dim">16.7%</td>
+                  <td class="dim">49%</td>
+                  <td class="dim">5.0</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">VWCE</td>
+                  <td class="left desc">◄ All-World <span class="note">your benchmark</span></td>
+                  <td class="yellow">11.8%</td>
+                  <td class="yellow">0.87</td>
+                  <td class="yellow">-21.1%</td>
+                  <td class="green">6.8%</td>
+                  <td class="dim">0.46</td>
+                  <td class="dim">13.8%</td>
+                  <td class="dim">76%</td>
+                  <td class="dim">5.0</td>
+                </tr><tr class="group-header"><td colspan="10">Long-history proxies</td></tr>
+                <tr class="">
+                  <td class="left mono">AVDV</td>
+                  <td class="left desc">Intl SC Value (Avantis US) <span class="note">same mgr as AVWS</span></td>
+                  <td class="green">14.1%</td>
+                  <td class="yellow">0.85</td>
+                  <td class="yellow">-28.1%</td>
+                  <td class="green">4.0%</td>
+                  <td class="dim">0.92</td>
+                  <td class="dim">17.3%</td>
+                  <td class="dim">95%</td>
+                  <td class="dim">5.0</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">EFV</td>
+                  <td class="left desc">EAFE Value <span class="note">21yr intl value proxy</span></td>
+                  <td class="green">13.1%</td>
+                  <td class="yellow">0.85</td>
+                  <td class="yellow">-25.8%</td>
+                  <td class="green">3.9%</td>
+                  <td class="dim">0.83</td>
+                  <td class="dim">16.0%</td>
+                  <td class="dim">86%</td>
+                  <td class="dim">5.0</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">VBR</td>
+                  <td class="left desc">US SC Value (Vanguard) <span class="note">22yr proxy for ZPRX</span></td>
+                  <td class="yellow">7.9%</td>
+                  <td class="red">0.48</td>
+                  <td class="yellow">-24.2%</td>
+                  <td class="red">-2.8%</td>
+                  <td class="dim">1.07</td>
+                  <td class="dim">19.8%</td>
+                  <td class="dim">47%</td>
+                  <td class="dim">5.0</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">DLS</td>
+                  <td class="left desc">Intl SC Dividend <span class="note">20yr proxy for ZPRV/AVWS</span></td>
+                  <td class="yellow">7.4%</td>
+                  <td class="red">0.54</td>
+                  <td class="yellow">-32.2%</td>
+                  <td class="red">-1.4%</td>
+                  <td class="dim">0.84</td>
+                  <td class="dim">15.6%</td>
+                  <td class="dim">43%</td>
+                  <td class="dim">5.0</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">IWN</td>
+                  <td class="left desc">US SC Value (Russell 2k) <span class="note">25yr proxy for ZPRX</span></td>
+                  <td class="red">6.8%</td>
+                  <td class="red">0.41</td>
+                  <td class="yellow">-26.7%</td>
+                  <td class="red">-4.0%</td>
+                  <td class="dim">1.11</td>
+                  <td class="dim">21.5%</td>
+                  <td class="dim">39%</td>
+                  <td class="dim">5.0</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">IJS</td>
+                  <td class="left desc">US SC Value (S&P 600) <span class="note">25yr proxy for ZPRX</span></td>
+                  <td class="red">5.8%</td>
+                  <td class="red">0.36</td>
+                  <td class="yellow">-28.6%</td>
+                  <td class="red">-4.7%</td>
+                  <td class="dim">1.10</td>
+                  <td class="dim">22.0%</td>
+                  <td class="dim">33%</td>
+                  <td class="dim">5.0</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">SPY</td>
+                  <td class="left desc">S&P 500 <span class="note">US benchmark</span></td>
+                  <td class="green">13.5%</td>
+                  <td class="yellow">0.83</td>
+                  <td class="yellow">-24.5%</td>
+                  <td class="green">2.2%</td>
+                  <td class="dim">1.03</td>
+                  <td class="dim">17.1%</td>
+                  <td class="dim">90%</td>
+                  <td class="dim">5.0</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">VT</td>
+                  <td class="left desc">◄ Total World <span class="note">global benchmark</span></td>
+                  <td class="yellow">10.9%</td>
+                  <td class="yellow">0.72</td>
+                  <td class="yellow">-26.4%</td>
+                  <td class="yellow">0.0%</td>
+                  <td class="dim">1.00</td>
+                  <td class="dim">16.0%</td>
+                  <td class="dim">68%</td>
+                  <td class="dim">5.0</td>
+                </tr></tbody></table></div></div>
+        <div class="window-section">
+          <div class="window-label">3yr</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th class="left">ETF</th>
+                <th class="left">Strategy</th>
+                <th>CAGR</th>
+                <th>Sharpe</th>
+                <th>MaxDD</th>
+                <th>Alpha</th>
+                <th>Beta</th>
+                <th>Vol</th>
+                <th>Total</th>
+                <th>Yrs</th>
+              </tr></thead>
+              <tbody><tr class="group-header"><td colspan="10">Your holdings</td></tr>
+                <tr class="">
+                  <td class="left mono">AVWS</td>
+                  <td class="left desc">Intl Small Cap Value <span class="note">your ETF (Avantis)</span></td>
+                  <td class="green">19.1%</td>
+                  <td class="green">1.05</td>
+                  <td class="yellow">-25.2%</td>
+                  <td class="green">12.0%</td>
+                  <td class="dim">0.37</td>
+                  <td class="dim">18.3%</td>
+                  <td class="dim">33%</td>
+                  <td class="dim">1.6</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">ZPRV</td>
+                  <td class="left desc">Europe Small Cap Value <span class="note">your ETF</span></td>
+                  <td class="green">17.7%</td>
+                  <td class="yellow">0.93</td>
+                  <td class="yellow">-31.1%</td>
+                  <td class="green">8.0%</td>
+                  <td class="dim">0.51</td>
+                  <td class="dim">19.6%</td>
+                  <td class="dim">64%</td>
+                  <td class="dim">3.0</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">JPGL</td>
+                  <td class="left desc">Global Multi-Factor <span class="note">your ETF</span></td>
+                  <td class="green">15.4%</td>
+                  <td class="green">1.31</td>
+                  <td class="green">-12.5%</td>
+                  <td class="green">8.0%</td>
+                  <td class="dim">0.35</td>
+                  <td class="dim">11.5%</td>
+                  <td class="dim">55%</td>
+                  <td class="dim">3.0</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">ZPRX</td>
+                  <td class="left desc">US Small Cap Value <span class="note">your ETF</span></td>
+                  <td class="green">14.6%</td>
+                  <td class="yellow">0.98</td>
+                  <td class="green">-16.0%</td>
+                  <td class="green">4.8%</td>
+                  <td class="dim">0.50</td>
+                  <td class="dim">15.0%</td>
+                  <td class="dim">51%</td>
+                  <td class="dim">3.0</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">VWCE</td>
+                  <td class="left desc">◄ All-World <span class="note">your benchmark</span></td>
+                  <td class="green">18.8%</td>
+                  <td class="green">1.40</td>
+                  <td class="yellow">-21.1%</td>
+                  <td class="green">9.9%</td>
+                  <td class="dim">0.41</td>
+                  <td class="dim">12.9%</td>
+                  <td class="dim">69%</td>
+                  <td class="dim">3.0</td>
+                </tr><tr class="group-header"><td colspan="10">Long-history proxies</td></tr>
+                <tr class="">
+                  <td class="left mono">AVDV</td>
+                  <td class="left desc">Intl SC Value (Avantis US) <span class="note">same mgr as AVWS</span></td>
+                  <td class="green">26.2%</td>
+                  <td class="green">1.54</td>
+                  <td class="green">-14.2%</td>
+                  <td class="green">6.4%</td>
+                  <td class="dim">0.93</td>
+                  <td class="dim">16.0%</td>
+                  <td class="dim">103%</td>
+                  <td class="dim">3.1</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">EFV</td>
+                  <td class="left desc">EAFE Value <span class="note">21yr intl value proxy</span></td>
+                  <td class="green">21.2%</td>
+                  <td class="green">1.40</td>
+                  <td class="green">-13.7%</td>
+                  <td class="green">4.0%</td>
+                  <td class="dim">0.84</td>
+                  <td class="dim">14.5%</td>
+                  <td class="dim">80%</td>
+                  <td class="dim">3.1</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">IWN</td>
+                  <td class="left desc">US SC Value (Russell 2k) <span class="note">25yr proxy for ZPRX</span></td>
+                  <td class="green">18.0%</td>
+                  <td class="yellow">0.91</td>
+                  <td class="yellow">-26.7%</td>
+                  <td class="red">-3.8%</td>
+                  <td class="dim">1.15</td>
+                  <td class="dim">20.7%</td>
+                  <td class="dim">66%</td>
+                  <td class="dim">3.1</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">DLS</td>
+                  <td class="left desc">Intl SC Dividend <span class="note">20yr proxy for ZPRV/AVWS</span></td>
+                  <td class="green">16.3%</td>
+                  <td class="green">1.12</td>
+                  <td class="green">-12.7%</td>
+                  <td class="red">-0.3%</td>
+                  <td class="dim">0.84</td>
+                  <td class="dim">14.5%</td>
+                  <td class="dim">59%</td>
+                  <td class="dim">3.1</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">VBR</td>
+                  <td class="left desc">US SC Value (Vanguard) <span class="note">22yr proxy for ZPRX</span></td>
+                  <td class="green">15.7%</td>
+                  <td class="yellow">0.90</td>
+                  <td class="yellow">-24.2%</td>
+                  <td class="red">-4.5%</td>
+                  <td class="dim">1.06</td>
+                  <td class="dim">18.1%</td>
+                  <td class="dim">56%</td>
+                  <td class="dim">3.1</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">IJS</td>
+                  <td class="left desc">US SC Value (S&P 600) <span class="note">25yr proxy for ZPRX</span></td>
+                  <td class="green">13.5%</td>
+                  <td class="yellow">0.70</td>
+                  <td class="yellow">-28.6%</td>
+                  <td class="red">-7.8%</td>
+                  <td class="dim">1.17</td>
+                  <td class="dim">21.5%</td>
+                  <td class="dim">47%</td>
+                  <td class="dim">3.1</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">SPY</td>
+                  <td class="left desc">S&P 500 <span class="note">US benchmark</span></td>
+                  <td class="green">22.4%</td>
+                  <td class="green">1.42</td>
+                  <td class="green">-18.8%</td>
+                  <td class="green">1.4%</td>
+                  <td class="dim">1.02</td>
+                  <td class="dim">15.1%</td>
+                  <td class="dim">85%</td>
+                  <td class="dim">3.1</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">VT</td>
+                  <td class="left desc">◄ Total World <span class="note">global benchmark</span></td>
+                  <td class="green">20.4%</td>
+                  <td class="green">1.38</td>
+                  <td class="green">-16.5%</td>
+                  <td class="yellow">0.0%</td>
+                  <td class="dim">1.00</td>
+                  <td class="dim">14.2%</td>
+                  <td class="dim">76%</td>
+                  <td class="dim">3.1</td>
+                </tr></tbody></table></div></div>
+        <div class="window-section">
+          <div class="window-label">1yr</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th class="left">ETF</th>
+                <th class="left">Strategy</th>
+                <th>CAGR</th>
+                <th>Sharpe</th>
+                <th>MaxDD</th>
+                <th>Alpha</th>
+                <th>Beta</th>
+                <th>Vol</th>
+                <th>Total</th>
+                <th>Yrs</th>
+              </tr></thead>
+              <tbody><tr class="group-header"><td colspan="10">Your holdings</td></tr>
+                <tr class="">
+                  <td class="left mono">AVWS</td>
+                  <td class="left desc">Intl Small Cap Value <span class="note">your ETF (Avantis)</span></td>
+                  <td class="green">37.7%</td>
+                  <td class="green">2.21</td>
+                  <td class="green">-6.4%</td>
+                  <td class="green">18.0%</td>
+                  <td class="dim">0.55</td>
+                  <td class="dim">14.9%</td>
+                  <td class="dim">40%</td>
+                  <td class="dim">1.0</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">ZPRV</td>
+                  <td class="left desc">Europe Small Cap Value <span class="note">your ETF</span></td>
+                  <td class="green">33.4%</td>
+                  <td class="green">1.78</td>
+                  <td class="green">-5.9%</td>
+                  <td class="green">12.8%</td>
+                  <td class="dim">0.64</td>
+                  <td class="dim">17.0%</td>
+                  <td class="dim">35%</td>
+                  <td class="dim">1.0</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">JPGL</td>
+                  <td class="left desc">Global Multi-Factor <span class="note">your ETF</span></td>
+                  <td class="green">22.2%</td>
+                  <td class="green">2.09</td>
+                  <td class="green">-6.3%</td>
+                  <td class="green">8.1%</td>
+                  <td class="dim">0.43</td>
+                  <td class="dim">9.9%</td>
+                  <td class="dim">23%</td>
+                  <td class="dim">1.1</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">ZPRX</td>
+                  <td class="left desc">US Small Cap Value <span class="note">your ETF</span></td>
+                  <td class="green">21.3%</td>
+                  <td class="green">1.48</td>
+                  <td class="green">-11.6%</td>
+                  <td class="green">2.3%</td>
+                  <td class="dim">0.66</td>
+                  <td class="dim">13.8%</td>
+                  <td class="dim">22%</td>
+                  <td class="dim">1.0</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">VWCE</td>
+                  <td class="left desc">◄ All-World <span class="note">your benchmark</span></td>
+                  <td class="green">27.2%</td>
+                  <td class="green">2.09</td>
+                  <td class="green">-6.6%</td>
+                  <td class="green">8.6%</td>
+                  <td class="dim">0.59</td>
+                  <td class="dim">11.9%</td>
+                  <td class="dim">29%</td>
+                  <td class="dim">1.0</td>
+                </tr><tr class="group-header"><td colspan="10">Long-history proxies</td></tr>
+                <tr class="">
+                  <td class="left mono">AVDV</td>
+                  <td class="left desc">Intl SC Value (Avantis US) <span class="note">same mgr as AVWS</span></td>
+                  <td class="green">52.4%</td>
+                  <td class="green">2.84</td>
+                  <td class="green">-13.2%</td>
+                  <td class="green">15.6%</td>
+                  <td class="dim">0.95</td>
+                  <td class="dim">15.3%</td>
+                  <td class="dim">56%</td>
+                  <td class="dim">1.1</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">IWN</td>
+                  <td class="left desc">US SC Value (Russell 2k) <span class="note">25yr proxy for ZPRX</span></td>
+                  <td class="green">43.2%</td>
+                  <td class="green">2.07</td>
+                  <td class="green">-8.5%</td>
+                  <td class="green">4.6%</td>
+                  <td class="dim">1.13</td>
+                  <td class="dim">18.2%</td>
+                  <td class="dim">46%</td>
+                  <td class="dim">1.1</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">IJS</td>
+                  <td class="left desc">US SC Value (S&P 600) <span class="note">25yr proxy for ZPRX</span></td>
+                  <td class="green">38.5%</td>
+                  <td class="green">1.81</td>
+                  <td class="green">-9.3%</td>
+                  <td class="green">2.2%</td>
+                  <td class="dim">1.11</td>
+                  <td class="dim">19.1%</td>
+                  <td class="dim">41%</td>
+                  <td class="dim">1.1</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">EFV</td>
+                  <td class="left desc">EAFE Value <span class="note">21yr intl value proxy</span></td>
+                  <td class="green">33.6%</td>
+                  <td class="green">2.13</td>
+                  <td class="green">-10.9%</td>
+                  <td class="green">4.3%</td>
+                  <td class="dim">0.88</td>
+                  <td class="dim">14.1%</td>
+                  <td class="dim">36%</td>
+                  <td class="dim">1.1</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">DLS</td>
+                  <td class="left desc">Intl SC Dividend <span class="note">20yr proxy for ZPRV/AVWS</span></td>
+                  <td class="green">30.0%</td>
+                  <td class="green">2.04</td>
+                  <td class="green">-11.0%</td>
+                  <td class="green">1.8%</td>
+                  <td class="dim">0.87</td>
+                  <td class="dim">13.3%</td>
+                  <td class="dim">32%</td>
+                  <td class="dim">1.1</td>
+                </tr>
+                <tr class="">
+                  <td class="left mono">VBR</td>
+                  <td class="left desc">US SC Value (Vanguard) <span class="note">22yr proxy for ZPRX</span></td>
+                  <td class="green">28.4%</td>
+                  <td class="green">1.66</td>
+                  <td class="green">-8.8%</td>
+                  <td class="red">-2.4%</td>
+                  <td class="dim">0.98</td>
+                  <td class="dim">15.9%</td>
+                  <td class="dim">30%</td>
+                  <td class="dim">1.1</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">VT</td>
+                  <td class="left desc">◄ Total World <span class="note">global benchmark</span></td>
+                  <td class="green">32.7%</td>
+                  <td class="green">2.27</td>
+                  <td class="green">-9.7%</td>
+                  <td class="yellow">0.0%</td>
+                  <td class="dim">1.00</td>
+                  <td class="dim">12.9%</td>
+                  <td class="dim">35%</td>
+                  <td class="dim">1.1</td>
+                </tr>
+                <tr class="bench-row">
+                  <td class="left mono">SPY</td>
+                  <td class="left desc">S&P 500 <span class="note">US benchmark</span></td>
+                  <td class="green">32.3%</td>
+                  <td class="green">2.32</td>
+                  <td class="green">-8.9%</td>
+                  <td class="green">1.9%</td>
+                  <td class="dim">0.92</td>
+                  <td class="dim">12.4%</td>
+                  <td class="dim">34%</td>
+                  <td class="dim">1.1</td>
+                </tr></tbody></table></div></div>
+
+  <div class="footer">Data: yfinance · Alpha/Beta vs VT (Vanguard Total World) · Not investment advice</div>
+</div>
+</body>
+</html>

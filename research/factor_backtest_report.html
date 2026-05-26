@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Factor Investing Backtest Report</title>
+<style>
+  html, body {
+    background: #0f1117 !important;
+    color: #e2e8f0;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    margin: 0; padding: 0;
+  }
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 24px 64px;
+  }
+  h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin: 0 0 4px;
+  }
+  .subtitle {
+    color: #64748b;
+    font-size: 0.85rem;
+    margin-bottom: 28px;
+  }
+  .subtitle span {
+    color: #94a3b8;
+    font-weight: 500;
+  }
+
+  /* Cards */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 32px;
+  }
+  @media (max-width: 700px) {
+    .cards { grid-template-columns: repeat(2, 1fr); }
+  }
+  .card {
+    background: #1a1f2e;
+    border: 1px solid #2d3748;
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .card-label {
+    font-size: 0.72rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+  }
+  .card-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .card-sub {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Table */
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid #1e2535;
+    border-radius: 10px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  thead th {
+    background: #141824;
+    color: #64748b;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 10px 14px;
+    text-align: right;
+    border-bottom: 1px solid #1e2535;
+    white-space: nowrap;
+  }
+  thead th:first-child, thead th:nth-child(2) {
+    text-align: left;
+  }
+  tbody tr {
+    border-bottom: 1px solid #1a1f2e;
+    transition: background 0.15s;
+  }
+  tbody tr:hover {
+    background: #1a1f2e;
+  }
+  tbody tr:last-child {
+    border-bottom: none;
+  }
+  td {
+    padding: 11px 14px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  td.rank {
+    text-align: center;
+    color: #475569;
+    font-size: 0.75rem;
+    width: 36px;
+  }
+  td.label {
+    text-align: left;
+    font-weight: 600;
+    color: #cbd5e1;
+  }
+  .spy-row td {
+    background: #141824;
+    color: #94a3b8;
+    font-style: italic;
+  }
+  .spy-row td.label {
+    color: #94a3b8;
+  }
+  .err-row td {
+    color: #ef4444;
+    font-size: 0.8rem;
+  }
+  .err-msg {
+    text-align: left;
+  }
+
+  /* Colour classes */
+  .good  { color: #4ade80; }
+  .ok    { color: #facc15; }
+  .bad   { color: #f87171; }
+  .neutral { color: #94a3b8; }
+
+  /* Footer */
+  .footer {
+    margin-top: 32px;
+    color: #334155;
+    font-size: 0.75rem;
+    text-align: center;
+  }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    gap: 18px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: #64748b;
+  }
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+  .legend-dot.good  { background: #4ade80; }
+  .legend-dot.ok    { background: #facc15; }
+  .legend-dot.bad   { background: #f87171; }
+
+  /* Section header */
+  .section-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #475569;
+    margin: 28px 0 12px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Factor Investing Backtest Report</h1>
+  <div class="subtitle">
+    Window <span>2023-05-18 → 2026-05-18</span> &nbsp;·&nbsp;
+    Universe <span>~2,600 tickers (all cached)</span> &nbsp;·&nbsp;
+    Portfolio <span>Top 20, equal weight, monthly rebalance, 10 bps cost</span> &nbsp;·&nbsp;
+    As of <span>2026-05-20</span>
+  </div>
+
+  
+    <div class="cards">
+      <div class="card">
+        <div class="card-label">Best CAGR</div>
+        <div class="card-value good">48.1%</div>
+        <div class="card-sub">Momentum</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Best Sharpe</div>
+        <div class="card-value good">5.48</div>
+        <div class="card-sub">Low Volatility</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Best Alpha</div>
+        <div class="card-value good">+21.8%</div>
+        <div class="card-sub">Momentum</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Beat SPY</div>
+        <div class="card-value good">3 / 9</div>
+        <div class="card-sub">factors by CAGR</div>
+      </div>
+    </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot good"></div> Strong</div>
+    <div class="legend-item"><div class="legend-dot ok"></div> Moderate</div>
+    <div class="legend-item"><div class="legend-dot bad"></div> Weak</div>
+  </div>
+
+  <div class="section-label">Factor Portfolios vs Benchmark</div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Factor / Strategy</th>
+          <th>CAGR</th>
+          <th>Sharpe</th>
+          <th>Sortino</th>
+          <th>Max DD</th>
+          <th>Alpha (ann.)</th>
+          <th>Beta</th>
+          <th>Volatility</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+            <tr class="">
+              <td class="rank">1</td>
+              <td class="label">Momentum</td>
+              <td class="good">48.1%</td>
+              <td class="ok">0.99</td>
+              <td class="good">1.35</td>
+              <td class="bad">-40.8%</td>
+              <td class="good">+21.8%</td>
+              <td class="neutral">1.75</td>
+              <td class="neutral">62.7%</td>
+            </tr>
+            <tr class="">
+              <td class="rank">2</td>
+              <td class="label">Quality</td>
+              <td class="good">31.8%</td>
+              <td class="good">1.67</td>
+              <td class="good">2.50</td>
+              <td class="ok">-21.6%</td>
+              <td class="good">+9.3%</td>
+              <td class="neutral">0.97</td>
+              <td class="neutral">19.0%</td>
+            </tr>
+            <tr class="">
+              <td class="rank">3</td>
+              <td class="label">Mom + LowVol</td>
+              <td class="good">28.2%</td>
+              <td class="ok">0.84</td>
+              <td class="good">1.05</td>
+              <td class="bad">-40.2%</td>
+              <td class="bad">-6.1%</td>
+              <td class="neutral">1.85</td>
+              <td class="neutral">43.8%</td>
+            </tr>
+            <tr class="">
+              <td class="rank">4</td>
+              <td class="label">Low Volatility</td>
+              <td class="bad">5.3%</td>
+              <td class="good">5.48</td>
+              <td class="good">8.34</td>
+              <td class="good">-0.8%</td>
+              <td class="good">+5.1%</td>
+              <td class="neutral">0.02</td>
+              <td class="neutral">1.0%</td>
+            </tr>
+            <tr class="">
+              <td class="rank">5</td>
+              <td class="label">Investment (CMA)</td>
+              <td class="bad">0.0%</td>
+              <td class="bad">0.00</td>
+              <td class="bad">0.00</td>
+              <td class="good">0.0%</td>
+              <td class="ok">+0.0%</td>
+              <td class="neutral">0.00</td>
+              <td class="neutral">—</td>
+            </tr>
+            <tr class="">
+              <td class="rank">6</td>
+              <td class="label">Quality + Value</td>
+              <td class="bad">-25.4%</td>
+              <td class="bad">-0.80</td>
+              <td class="bad">-1.22</td>
+              <td class="bad">-62.5%</td>
+              <td class="bad">-43.4%</td>
+              <td class="neutral">0.74</td>
+              <td class="neutral">32.9%</td>
+            </tr>
+            <tr class="">
+              <td class="rank">7</td>
+              <td class="label">Multi-Factor</td>
+              <td class="bad">-25.5%</td>
+              <td class="bad">-0.76</td>
+              <td class="bad">-1.14</td>
+              <td class="bad">-60.0%</td>
+              <td class="bad">-50.2%</td>
+              <td class="neutral">1.05</td>
+              <td class="neutral">34.2%</td>
+            </tr>
+            <tr class="">
+              <td class="rank">8</td>
+              <td class="label">Value</td>
+              <td class="bad">-51.3%</td>
+              <td class="bad">-1.75</td>
+              <td class="bad">-2.71</td>
+              <td class="bad">-89.4%</td>
+              <td class="bad">-86.3%</td>
+              <td class="neutral">0.71</td>
+              <td class="neutral">40.0%</td>
+            </tr>
+            <tr class="">
+              <td class="rank">9</td>
+              <td class="label">Size (SMB)</td>
+              <td class="bad">-54.6%</td>
+              <td class="bad">-0.35</td>
+              <td class="bad">-0.56</td>
+              <td class="bad">-91.1%</td>
+              <td class="bad">-42.0%</td>
+              <td class="neutral">0.25</td>
+              <td class="neutral">102.6%</td>
+            </tr>
+        
+            <tr class="spy-row">
+              <td class="rank">SPY</td>
+              <td class="label">📊 S&P 500 (SPY)</td>
+              <td class="good">22.3%</td>
+              <td class="good">1.05</td>
+              <td class="neutral">—</td>
+              <td class="ok">-18.8%</td>
+              <td class="ok">+0.0%</td>
+              <td class="neutral">1.00</td>
+              <td class="neutral">—</td>
+            </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    Generated by ib_bot factor engine &nbsp;·&nbsp;
+    Data source: yfinance price cache &nbsp;·&nbsp;
+    Not investment advice
+  </div>
+</div>
+</body>
+</html>

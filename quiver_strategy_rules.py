@@ -266,7 +266,168 @@ class QuiverStrategyRules:
             "rebalance_frequency": "quarterly",
             "rebalance_offset_days": 45,
         },
-        
+
+        # Tier 2 additions — 13F mirrors via SEC EDGAR.
+        # All rebalance on actual filing dates (USE_13F_FILED_DATES defaults True for 13f_mirror).
+        "Stanley Druckenmiller": {
+            "type": "13f_mirror",
+            "fund": "Duquesne Family Office",
+            "weighting": "portfolio_weight",
+            "rebalance_frequency": "quarterly",
+            "rebalance_offset_days": 45,
+        },
+        "David Tepper": {
+            "type": "13f_mirror",
+            "fund": "Appaloosa LP",
+            "weighting": "portfolio_weight",
+            "rebalance_frequency": "quarterly",
+            "rebalance_offset_days": 45,
+        },
+        "Seth Klarman": {
+            "type": "13f_mirror",
+            "fund": "Baupost Group",
+            "weighting": "portfolio_weight",
+            "rebalance_frequency": "quarterly",
+            "rebalance_offset_days": 45,
+        },
+        "Mohnish Pabrai": {
+            "type": "13f_mirror",
+            "fund": "Pabrai Investment Funds",
+            "weighting": "portfolio_weight",
+            "rebalance_frequency": "quarterly",
+            "rebalance_offset_days": 45,
+        },
+        "Li Lu": {
+            "type": "13f_mirror",
+            "fund": "Himalaya Capital Management",
+            "weighting": "portfolio_weight",
+            "rebalance_frequency": "quarterly",
+            "rebalance_offset_days": 45,
+        },
+        "Chuck Akre": {
+            "type": "13f_mirror",
+            "fund": "Akre Capital Management",
+            "weighting": "portfolio_weight",
+            "rebalance_frequency": "quarterly",
+            "rebalance_offset_days": 45,
+        },
+        "Warren Buffett": {
+            "type": "13f_mirror",
+            "fund": "Berkshire Hathaway",
+            "weighting": "portfolio_weight",
+            "rebalance_frequency": "quarterly",
+            "rebalance_offset_days": 45,
+            # Berkshire's tail is mostly bond proxies & immaterial positions; cap to top-20.
+            "top_n": 20,
+        },
+        "David Einhorn": {
+            "type": "13f_mirror",
+            "fund": "Greenlight Capital",
+            "weighting": "portfolio_weight",
+            "rebalance_frequency": "quarterly",
+            "rebalance_offset_days": 45,
+        },
+        "Dan Loeb": {
+            "type": "13f_mirror",
+            "fund": "Third Point",
+            "weighting": "portfolio_weight",
+            "rebalance_frequency": "quarterly",
+            "rebalance_offset_days": 45,
+        },
+        "Tiger Global": {
+            "type": "13f_mirror",
+            "fund": "Tiger Global Management",
+            "weighting": "portfolio_weight",
+            "rebalance_frequency": "quarterly",
+            "rebalance_offset_days": 45,
+            "top_n": 25,
+        },
+        "Coatue": {
+            "type": "13f_mirror",
+            "fund": "Coatue Management",
+            "weighting": "portfolio_weight",
+            "rebalance_frequency": "quarterly",
+            "rebalance_offset_days": 45,
+            "top_n": 25,
+        },
+        "Sequoia Fund": {
+            "type": "13f_mirror",
+            "fund": "Ruane Cunniff",
+            "weighting": "portfolio_weight",
+            "rebalance_frequency": "quarterly",
+            "rebalance_offset_days": 45,
+        },
+
+        # Tier-A alt-data — FINRA-derived (replaces Quiver's gated off-exchange short endpoint).
+        "Off-Exchange Short Squeeze": {
+            "type": "alternative_data",
+            "data_source": "finra_short",
+            "selection": "top_short_ratio",
+            "num_holdings": 20,
+            "weighting": "equal",
+            "rebalance_frequency": "weekly",
+            "rebalance_day": "monday",
+            "lookback_days": 5,
+        },
+        # Monthly variant — same signal, lower turnover + cost drag.
+        # Uses a 21-trading-day lookback to smooth the signal over ~1 month.
+        "Off-Exchange Short Squeeze (Monthly)": {
+            "type": "alternative_data",
+            "data_source": "finra_short",
+            "selection": "top_short_ratio",
+            "num_holdings": 20,
+            "weighting": "equal",
+            "rebalance_frequency": "monthly",
+            "lookback_days": 21,
+        },
+
+        # Tier-A alt-data — ApeWisdom WSB (LIVE-ONLY — no historical backfill).
+        # ApeWisdom does not expose history; backtests will produce empty result.
+        # Use for live paper-trading + forward evaluation only.
+        "WSB Mentions Momentum": {
+            "type": "alternative_data",
+            "data_source": "apewisdom",
+            "selection": "top_growth_24h",
+            "num_holdings": 10,
+            "weighting": "equal",
+            "rebalance_frequency": "weekly",
+            "rebalance_day": "monday",
+            "lookback_days": 1,
+            "live_only": True,  # marker — read by the backtest scaffolding
+        },
+
+        # ── Single-factor passive ETF holdings ────────────────────────────────
+        # Pure factor exposure: always 100% in one ETF. No signal, no model.
+        # Useful as factor benchmarks alongside the SMB regime strategy.
+        "Value Large-Cap (IWD)": {
+            "type": "factor_etf_static",
+            "ticker": "IWD",
+            "data_source": "factor_regime",
+            "weighting": "portfolio_weight",
+            "rebalance_frequency": "monthly",
+        },
+        "Value Small-Cap (IWN)": {
+            "type": "factor_etf_static",
+            "ticker": "IWN",
+            "data_source": "factor_regime",
+            "weighting": "portfolio_weight",
+            "rebalance_frequency": "monthly",
+        },
+
+        # ── Factor Regime — IWN/IWD rotation ──────────────────────────────────
+        # Long-only ETF rotation driven by an SMB regime signal.
+        # SMB ON  → IWN (Russell 2000 Value = market + value + size)
+        # SMB OFF → IWD (Russell 1000 Value = market + value)
+        # Signal: Logistic Regression trained on Fama-French monthly data,
+        #         deployed in real-time using IWM-SPY as SMB proxy (corr=0.91).
+        # Monthly rebalancing. No leverage, no short.
+        "SMB Factor Regime": {
+            "type": "factor_etf",
+            "data_source": "factor_regime",
+            "weighting": "portfolio_weight",
+            "rebalance_frequency": "monthly",
+        },
+
         # Alternative Data - Insider Trading
         "Insider Purchases": {
             "type": "alternative_data",

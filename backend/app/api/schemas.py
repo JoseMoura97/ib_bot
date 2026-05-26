@@ -40,6 +40,9 @@ class PortfolioOut(BaseModel):
     settings: dict[str, Any]
     created_at: datetime
     updated_at: datetime
+    # Native rebalance cadence derived from the portfolio's constituent strategies
+    # (fastest constituent). "follow" on an allocation resolves to this.
+    native_rebalance_frequency: str | None = None
 
 
 class PortfolioWithStrategies(PortfolioOut):
@@ -250,6 +253,9 @@ class AllocationCreate(BaseModel):
     amount: float = Field(gt=0.0)
     mode: Literal["paper", "live"] = "paper"
     notes: str | None = None
+    rebalance_frequency: Literal[
+        "follow", "manual", "daily", "weekly", "monthly", "quarterly"
+    ] = "follow"
 
 
 class AllocationOut(BaseModel):
@@ -260,3 +266,4 @@ class AllocationOut(BaseModel):
     portfolio_id: UUID
     amount: float
     notes: str | None = None
+    rebalance_frequency: str | None = None

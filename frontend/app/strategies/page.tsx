@@ -14,6 +14,12 @@ export default async function StrategiesPage() {
     description: r.description ?? undefined,
     api_status: r.api_status ?? undefined,
     start_date: r.start_date ?? undefined,
+    cagr: r.cagr ?? undefined,
+    sharpe: r.sharpe ?? undefined,
+    alpha: r.alpha ?? undefined,
+    beta: r.beta ?? undefined,
+    max_drawdown: r.max_drawdown ?? undefined,
+    research_url: r.research_url ?? undefined,
   }));
   return <StrategiesClient initialStrategies={rows} />;
 }

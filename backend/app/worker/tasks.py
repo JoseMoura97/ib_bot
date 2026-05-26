@@ -13,7 +13,55 @@ from app.models.result import PortfolioResult
 from app.models.result import StrategyResult
 from app.models.run import Run
 from app.services.portfolio_backtest import portfolio_backtest_holdings_union, portfolio_backtest_nav_blend
+from app.services.rebalance_freq import is_due, portfolio_native_frequency, resolve_frequency
 from app.worker.celery_app import celery_app
+
+
+def _portfolio_native(db: Session, portfolio_id: str) -> str:
+    """Native cadence for a portfolio = fastest enabled constituent strategy."""
+    names = [
+        s.strategy_name
+        for s in db.query(PortfolioStrategy)
+        .filter(PortfolioStrategy.portfolio_id == UUID(portfolio_id))
+        .all()
+        if s.enabled
+    ]
+    return portfolio_native_frequency(names)
+
+
+def _paper_last_rebalance(db: Session, account_id: int, portfolio_id: str):
+    """Timestamp of the last SUCCESSFUL paper rebalance for this allocation, or None."""
+    from app.models.paper import PaperRebalanceLog
+
+    row = (
+        db.query(PaperRebalanceLog)
+        .filter(
+            PaperRebalanceLog.account_id == account_id,
+            PaperRebalanceLog.portfolio_id == portfolio_id,
+            PaperRebalanceLog.status == "SUCCESS",
+        )
+        .order_by(PaperRebalanceLog.timestamp.desc())
+        .first()
+    )
+    return row.timestamp if row else None
+
+
+def _live_last_rebalance(db: Session, account_id: str, portfolio_id: str):
+    """Timestamp of the last OK live execute for this allocation, or None."""
+    from app.models.ib_audit import LiveRebalanceAudit
+
+    row = (
+        db.query(LiveRebalanceAudit)
+        .filter(
+            LiveRebalanceAudit.account_id == account_id,
+            LiveRebalanceAudit.portfolio_id == UUID(portfolio_id),
+            LiveRebalanceAudit.action == "execute",
+            LiveRebalanceAudit.status == "OK",
+        )
+        .order_by(LiveRebalanceAudit.created_at.desc())
+        .first()
+    )
+    return row.created_at if row else None
 
 
 def _parse_dt(s: str):
@@ -432,8 +480,13 @@ def refresh_plot_data_task(self, force: bool = True, max_age_hours: int = 24) ->
 )
 def paper_rebalance_daily_task() -> None:
     """
-    Auto-rebalance all paper accounts that have a linked portfolio.
-    Looks for accounts with at least one allocation record to determine the portfolio + amount.
+    Auto-rebalance paper allocations that are DUE per their chosen cadence.
+
+    Runs daily, but each allocation only rebalances when its frequency says so
+    (a weekly book ~every 7 days, a quarterly one ~every 90), so it tracks the
+    strategy's native cadence instead of trading every single day. The chosen
+    frequency is stored on the allocation ("follow" → the portfolio's native
+    cadence; "manual" → never auto-rebalanced).
     """
     import logging
     from app.models.allocation import PortfolioAllocation
@@ -467,6 +520,17 @@ def paper_rebalance_daily_task() -> None:
             portfolio_id = str(alloc.portfolio_id)
             amount = float(alloc.amount)
 
+            # Skip unless this allocation's cadence is due (or it's manual-only).
+            native = _portfolio_native(db, portfolio_id)
+            resolved = resolve_frequency(alloc.rebalance_frequency, native)
+            last = _paper_last_rebalance(db, account_id, portfolio_id)
+            if not is_due(last, resolved):
+                logger.info(
+                    f"paper_rebalance_daily: account={account_id} portfolio={portfolio_id} "
+                    f"not due (freq={resolved}, last={last}), skipping"
+                )
+                continue
+
             from app.api.schemas import PaperRebalanceRequest as PRReq
             from app.api.routes.paper import paper_rebalance_execute
             from uuid import UUID
@@ -484,11 +548,14 @@ def paper_rebalance_daily_task() -> None:
                     portfolio_id=portfolio_id,
                     status="SUCCESS",
                     n_orders=n_orders,
-                    details={"orders": n_orders, "allocation_amount": amount},
+                    details={"orders": n_orders, "allocation_amount": amount, "frequency": resolved},
                 )
                 db.add(log_entry)
                 db.commit()
-                logger.info(f"paper_rebalance_daily: account={account_id} portfolio={portfolio_id} orders={n_orders}")
+                logger.info(
+                    f"paper_rebalance_daily: account={account_id} portfolio={portfolio_id} "
+                    f"freq={resolved} orders={n_orders}"
+                )
             except Exception as e:
                 db.rollback()
                 log_entry = PaperRebalanceLog(
@@ -501,6 +568,90 @@ def paper_rebalance_daily_task() -> None:
                 db.add(log_entry)
                 db.commit()
                 logger.warning(f"paper_rebalance_daily: account={account_id} portfolio={portfolio_id} error={e}")
+    finally:
+        db.close()
+
+
+@celery_app.task(
+    name="live_rebalance_scheduled_task",
+    autoretry_for=(Exception,),
+    retry_backoff=60,
+    retry_backoff_max=300,
+    max_retries=1,
+)
+def live_rebalance_scheduled_task() -> None:
+    """
+    Unattended LIVE auto-rebalance — OFF unless LIVE_AUTO_REBALANCE=true.
+
+    Only allocations whose cadence is due are executed, each through the SAME
+    hard gates as a manual live rebalance (idempotency, halt, account allowlist,
+    market-open, circuit breaker, NLV cap). "manual" allocations are never
+    auto-rebalanced. A per-day idempotency key prevents same-day double-execution.
+    """
+    import logging
+    from datetime import date
+    from app.models.allocation import PortfolioAllocation
+
+    logger = logging.getLogger(__name__)
+
+    if not settings.live_auto_rebalance:
+        logger.info("live_rebalance_scheduled: LIVE_AUTO_REBALANCE off, skipping")
+        return
+    if not settings.enable_live_trading or settings.live_dry_run:
+        logger.info("live_rebalance_scheduled: live trading not armed (enable/dry_run), skipping")
+        return
+    if settings.trading_halt:
+        logger.info("live_rebalance_scheduled: trading halted, skipping")
+        return
+
+    from app.services.market_calendar import market_is_open
+
+    is_open, reason = market_is_open(settings.market_calendar)
+    if not is_open:
+        logger.info(f"live_rebalance_scheduled: market closed ({reason}), skipping")
+        return
+
+    from app.api.routes.live import LiveRebalanceRequest, execute_live_rebalance_core
+
+    db = _db()
+    try:
+        allocs = (
+            db.query(PortfolioAllocation)
+            .filter(PortfolioAllocation.mode == "live")
+            .order_by(PortfolioAllocation.created_at.desc())
+            .all()
+        )
+        seen: set[tuple] = set()
+        for alloc in allocs:
+            key = (str(alloc.account_id), str(alloc.portfolio_id))
+            if key in seen:
+                continue
+            seen.add(key)
+
+            portfolio_id = str(alloc.portfolio_id)
+            native = _portfolio_native(db, portfolio_id)
+            resolved = resolve_frequency(alloc.rebalance_frequency, native)
+            last = _live_last_rebalance(db, str(alloc.account_id), portfolio_id)
+            if not is_due(last, resolved):
+                logger.info(f"live_rebalance_scheduled: {key} not due (freq={resolved}), skipping")
+                continue
+
+            body = LiveRebalanceRequest(
+                account_id=str(alloc.account_id),
+                portfolio_id=UUID(portfolio_id),
+                allocation_amount=float(alloc.amount),
+                max_orders=200,
+                allow_short=True,
+                confirm=True,
+            )
+            idem = f"auto-{alloc.account_id}-{portfolio_id}-{date.today().isoformat()}"
+            try:
+                execute_live_rebalance_core(db, body, idem)
+                logger.info(f"live_rebalance_scheduled: executed {key} freq={resolved}")
+            except Exception as e:
+                # Benign cases (no due trades, market edge) raise HTTPException too;
+                # log and move on rather than failing the whole sweep.
+                logger.warning(f"live_rebalance_scheduled: {key} not executed: {type(e).__name__}: {e}")
     finally:
         db.close()
 
@@ -638,14 +789,14 @@ def reconcile_stuck_executions_task() -> None:
     retry_backoff_max=120,
     max_retries=2,
 )
-def reconcile_stuck_runs_task(max_age_minutes: int = 60) -> None:
+def reconcile_stuck_runs_task(max_age_minutes: int = 480) -> None:
     """
     Reset `runs` rows that have been RUNNING longer than `max_age_minutes`
     to ERROR. These are orphans from worker crashes / SIGKILL'd containers
     where the task's exception handler never got to run.
 
-    The longest legitimate backtest in this codebase finishes well under
-    an hour, so a 60-minute TTL is conservative.
+    TTL is 8 hours — large backtests (many strategies × long date range) can
+    legitimately run for several hours, so a 60-minute TTL was too aggressive.
     """
     import logging
 
@@ -726,3 +877,125 @@ def refresh_validation_results_task(force: bool = True, max_age_hours: int = 24 
     cmd = [sys.executable, "validate_quiver_replication.py"]
     subprocess.run(cmd, check=False)
 
+
+
+# ---------------------------------------------------------------------------
+# Point-in-time alternative-data snapshots (the compounding archive)
+# ---------------------------------------------------------------------------
+
+
+def _altdata_store(db, source: str, records: list, as_of) -> str:
+    """Store one source's vintage for `as_of`, deduping by content hash.
+
+    If the latest stored snapshot for this source has the same content hash,
+    we store a metadata-only row (payload NULL) to avoid duplicating big blobs.
+    """
+    import hashlib
+    import json as _json
+    from app.models.altdata import AltDataSnapshot
+
+    body = _json.dumps(records, default=str, sort_keys=True)
+    chash = hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+    # already captured today? (idempotent on re-run)
+    existing = (
+        db.query(AltDataSnapshot)
+        .filter(AltDataSnapshot.source == source, AltDataSnapshot.as_of_date == as_of)
+        .one_or_none()
+    )
+    if existing is not None:
+        return "exists"
+
+    prev = (
+        db.query(AltDataSnapshot)
+        .filter(AltDataSnapshot.source == source)
+        .order_by(AltDataSnapshot.as_of_date.desc())
+        .first()
+    )
+    unchanged = prev is not None and prev.content_hash == chash
+    snap = AltDataSnapshot(
+        source=source,
+        as_of_date=as_of,
+        n_rows=len(records),
+        content_hash=chash,
+        payload=None if unchanged else records,  # metadata-only when unchanged
+    )
+    db.add(snap)
+    return "unchanged" if unchanged else "stored"
+
+
+def _df_records(df, cap: int = 20000) -> list:
+    """DataFrame -> JSON-safe records (capped)."""
+    try:
+        import pandas as pd  # noqa: F401
+        if df is None or getattr(df, "empty", True):
+            return []
+        d = df.head(cap).copy()
+        for c in d.columns:
+            if str(d[c].dtype).startswith("datetime"):
+                d[c] = d[c].astype(str)
+        return d.to_dict(orient="records")
+    except Exception:
+        return []
+
+
+@celery_app.task(name="altdata_snapshot_daily_task")
+def altdata_snapshot_daily_task() -> None:
+    """Capture a daily point-in-time vintage of each free alt-data source.
+
+    Failure-safe: every source is wrapped; one source failing never aborts the
+    others or the task. This is the only un-replicable, compounding asset — it
+    must run every day going forward.
+    """
+    import logging
+    from datetime import date as _date
+
+    logger = logging.getLogger(__name__)
+    db = _db()
+    as_of = _date.today()
+    summary: dict[str, str] = {}
+    try:
+        # 1) Congressional trades (bulk full history) — the flagship signal
+        try:
+            import quiver_engine
+            eng = quiver_engine.QuiverStrategyEngine(api_key=settings.quiver_api_key or "")
+            df = eng._get_bulk_congress_data()
+            summary["congress_trades"] = _altdata_store(db, "congress_trades", _df_records(df), as_of)
+        except Exception as e:
+            summary["congress_trades"] = f"err:{type(e).__name__}"
+
+        # 2) FINRA off-exchange short volume (today's file)
+        try:
+            from finra_short import FinraShortVolume
+            fs = FinraShortVolume()
+            df = fs.get_window(end_date=datetime.utcnow(), lookback_days=1)
+            summary["finra_offexch_short"] = _altdata_store(db, "finra_offexch_short", _df_records(df), as_of)
+        except Exception as e:
+            summary["finra_offexch_short"] = f"err:{type(e).__name__}"
+
+        # 3) Latest 13F holdings for tracked funds (free EDGAR)
+        try:
+            import sec_edgar
+            sec = sec_edgar.SECEdgarClient() if hasattr(sec_edgar, "SECEdgarClient") else None
+            for fund in ["Scion Asset Management", "Berkshire Hathaway"]:
+                try:
+                    if sec is None:
+                        break
+                    hdf = sec.get_latest_holdings(fund)
+                    key = "13f_" + fund.lower().replace(" ", "_")
+                    summary[key] = _altdata_store(db, key, _df_records(hdf), as_of)
+                except Exception as e:
+                    summary["13f_" + fund.split()[0].lower()] = f"err:{type(e).__name__}"
+        except Exception as e:
+            summary["13f"] = f"err:{type(e).__name__}"
+
+        db.commit()
+        logger.info("altdata_snapshot_daily: %s", summary)
+    except Exception as e:
+        logger.warning("altdata_snapshot_daily: fatal: %s", e)
+        try:
+            db.rollback()
+        except Exception:
+            pass
+    finally:
+        db.close()

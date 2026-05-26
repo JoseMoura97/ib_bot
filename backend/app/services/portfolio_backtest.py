@@ -355,6 +355,38 @@ def portfolio_backtest_holdings_union(*args, **kwargs) -> dict:
 
     equity_records = [{"date": str(pd.Timestamp(idx).date()), "value": float(val)} for idx, val in blended.items()]
 
+    # Per-strategy breakdown: run each strategy individually so the breakdown
+    # table shows comparable standalone metrics (same as nav_blend mode).
+    _JSON_SAFE_KEYS = {
+        "strategy", "alpha_only", "start_date", "end_date", "initial_capital",
+        "final_value", "total_return", "cagr", "sharpe_ratio", "sortino_ratio",
+        "max_drawdown", "volatility", "n_days", "missing_ticker_policy",
+        "n_missing_ticker_segments", "transaction_cost_bps",
+        "slippage_bps_per_side", "execution_offset_days", "error", "status",
+    }
+
+    def _strip(res: dict) -> dict:
+        out = {}
+        for k in _JSON_SAFE_KEYS:
+            v = res.get(k)
+            if v is None:
+                continue
+            try:
+                if hasattr(v, "item") and not isinstance(v, (str, bytes)):
+                    v = v.item()
+            except (ValueError, TypeError):
+                pass
+            out[k] = v
+        return out
+
+    strategy_results: dict[str, dict] = {}
+    for name in strategy_names:
+        try:
+            res = run_strategy_backtest(name, start_date, end_date, transaction_cost_bps=transaction_cost_bps)
+            strategy_results[name] = _strip(res)
+        except Exception as exc:
+            strategy_results[name] = {"error": str(exc)}
+
     return {
         "mode": "holdings_union",
         "start_date": start_date,
@@ -370,5 +402,5 @@ def portfolio_backtest_holdings_union(*args, **kwargs) -> dict:
             "final_value": float(blended.iloc[-1]),
         },
         "equity_curve": equity_records,
-        "strategy_results": {},
+        "strategy_results": strategy_results,
     }

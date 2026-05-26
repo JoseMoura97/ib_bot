@@ -171,6 +171,144 @@
         "cagr": "18.00%",
         "return_1y": "17.49%"
       }
+    },
+    {
+      "id": "stanley_druckenmiller",
+      "name": "Stanley Druckenmiller",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Mirrors Stanley Druckenmiller's Duquesne Family Office portfolio via SEC 13F filings. Rebalanced on filing dates."
+    },
+    {
+      "id": "david_tepper",
+      "name": "David Tepper",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Mirrors David Tepper's Appaloosa LP portfolio via SEC 13F filings. Concentrated long-only US equity, rebalanced on filing dates."
+    },
+    {
+      "id": "seth_klarman",
+      "name": "Seth Klarman",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Mirrors Seth Klarman's Baupost Group portfolio via SEC 13F filings. Value-oriented + special situations, rebalanced on filing dates."
+    },
+    {
+      "id": "mohnish_pabrai",
+      "name": "Mohnish Pabrai",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Mirrors Mohnish Pabrai's Pabrai Investment Funds via SEC 13F filings. Highly concentrated value, rebalanced on filing dates."
+    },
+    {
+      "id": "li_lu",
+      "name": "Li Lu",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Mirrors Li Lu's Himalaya Capital Management portfolio via SEC 13F filings. Concentrated long-term value, rebalanced on filing dates."
+    },
+    {
+      "id": "chuck_akre",
+      "name": "Chuck Akre",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Mirrors Akre Capital Management's portfolio (Chuck Akre's three-legged-stool compounder framework) via SEC 13F filings. Rebalanced on filing dates."
+    },
+    {
+      "id": "warren_buffett",
+      "name": "Warren Buffett",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Mirrors Berkshire Hathaway's top-20 13F positions. Quarterly rebalance on filing date."
+    },
+    {
+      "id": "david_einhorn",
+      "name": "David Einhorn",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Mirrors David Einhorn's Greenlight Capital portfolio via SEC 13F filings. Value-oriented long-short manager (long leg only)."
+    },
+    {
+      "id": "dan_loeb",
+      "name": "Dan Loeb",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Mirrors Dan Loeb's Third Point portfolio via SEC 13F filings. Event-driven and activist long positions, rebalanced on filing dates."
+    },
+    {
+      "id": "tiger_global",
+      "name": "Tiger Global",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Mirrors Tiger Global Management top-25 13F positions. Concentrated growth/tech long book, rebalanced on filing dates."
+    },
+    {
+      "id": "coatue_management",
+      "name": "Coatue Management",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Mirrors Coatue Management top-25 13F positions. Tech-growth tilt, rebalanced on filing dates."
+    },
+    {
+      "id": "sequoia_fund",
+      "name": "Sequoia Fund",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Mirrors the Sequoia Fund (Ruane, Cunniff & Goldfarb) 13F portfolio. Quality long-term compounders, rebalanced on filing dates."
+    },
+    {
+      "id": "off_exchange_short_squeeze",
+      "name": "Off-Exchange Short Squeeze",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Long top-20 US common stocks by 5-day average off-exchange short volume ratio (FINRA CNMS daily data, the same dataset Quiver resells). Liquidity filter: 500k+ daily share volume, present every day in window. Squeeze-hope thesis. Equal-weighted, weekly Monday rebalance."
+    },
+    {
+      "id": "off_exchange_short_squeeze_monthly",
+      "name": "Off-Exchange Short Squeeze (Monthly)",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Same FINRA off-exchange short-ratio signal as the weekly variant, but with a 21-day lookback and monthly rebalance. ~8× less turnover reduces cost drag; the longer lookback smooths out noise in the short-volume signal."
+    },
+    {
+      "id": "wsb_mentions_momentum",
+      "name": "WSB Mentions Momentum",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "LIVE-ONLY (no historical backtest available — ApeWisdom does not expose history). Long top-10 common stocks by 24h mention-count growth on r/wallstreetbets via the free ApeWisdom API. ETFs filtered out via NASDAQ Trader directory. Equal-weighted, weekly Monday rebalance. Paper-trade forward for 4–8 weeks before enabling for real."
+    },
+    {
+      "id": "smb_factor_regime",
+      "name": "SMB Factor Regime",
+      "category": "experimental",
+      "enabled": false,
+      "weight": 0,
+      "description": "Long-only ETF rotation between IWN (Russell 2000 Value) and IWD (Russell 1000 Value) based on an SMB regime signal. The signal is a Logistic Regression model trained on Fama-French monthly data (1926–2000) and deployed in real-time using IWM-SPY as an SMB proxy (corr=0.91). SMB regime ON → IWN (market + value + size premiums); OFF → IWD (market + value). Monthly rebalancing. Backtest 2000–2026: CAGR 9.8%, Sharpe 0.65, MaxDD -52.1% vs SPY 8.3% / 0.61 / -50.8%.",
+      "research_url": "http://100.67.188.93:8770/artifact/0ea1ff50-ccb4-41fd-ae50-e3129bedd913",
+      "metrics": {
+        "cagr": "9.8%",
+        "sharpe": "0.65",
+        "max_drawdown": "-52.1%",
+        "cagr_15yr": "10.8%",
+        "cagr_10yr": "11.1%",
+        "cagr_5yr": "9.6%",
+        "cagr_3yr": "20.5%"
+      }
     }
   ],
   "accounts": [

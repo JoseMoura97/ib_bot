@@ -33,11 +33,17 @@ services:
       PRICE_SOURCE: ${PRICE_SOURCE-ib}
       # Prefer split-adjusted bars from IB for backtests
       IB_WHAT_TO_SHOW: ${IB_WHAT_TO_SHOW-ADJUSTED_LAST}
+      LIVE_FRACTIONAL_SHARES: ${LIVE_FRACTIONAL_SHARES-false}
+      LIVE_FRACTIONAL_DECIMALS: ${LIVE_FRACTIONAL_DECIMALS-4}
+      LIVE_MIN_LEG_USD: ${LIVE_MIN_LEG_USD-1.0}
     depends_on:
       - db
       - redis
     volumes:
       - ./.cache:/app/.cache
+    # Linux Docker has no built-in host.docker.internal; map it to the host gateway
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8001:8000"
 
@@ -57,11 +63,16 @@ services:
       IB_PORT: ${IB_PORT-4001}
       PRICE_SOURCE: ${PRICE_SOURCE-ib}
       IB_WHAT_TO_SHOW: ${IB_WHAT_TO_SHOW-ADJUSTED_LAST}
+      LIVE_FRACTIONAL_SHARES: ${LIVE_FRACTIONAL_SHARES-false}
+      LIVE_FRACTIONAL_DECIMALS: ${LIVE_FRACTIONAL_DECIMALS-4}
+      LIVE_MIN_LEG_USD: ${LIVE_MIN_LEG_USD-1.0}
     depends_on:
       - db
       - redis
     volumes:
       - ./.cache:/app/.cache
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   beat:
     restart: unless-stopped
@@ -80,11 +91,16 @@ services:
       IB_PORT: ${IB_PORT-4001}
       PRICE_SOURCE: ${PRICE_SOURCE-ib}
       IB_WHAT_TO_SHOW: ${IB_WHAT_TO_SHOW-ADJUSTED_LAST}
+      LIVE_FRACTIONAL_SHARES: ${LIVE_FRACTIONAL_SHARES-false}
+      LIVE_FRACTIONAL_DECIMALS: ${LIVE_FRACTIONAL_DECIMALS-4}
+      LIVE_MIN_LEG_USD: ${LIVE_MIN_LEG_USD-1.0}
     depends_on:
       - db
       - redis
     volumes:
       - ./.cache:/app/.cache
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   web:
     restart: unless-stopped

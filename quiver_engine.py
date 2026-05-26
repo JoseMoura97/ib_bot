@@ -62,6 +62,27 @@ except Exception:
     SECEdgarClient = None  # type: ignore
     SEC_EDGAR_AVAILABLE = False
 
+try:
+    from finra_short import FinraShortVolume
+    FINRA_SHORT_AVAILABLE = True
+except Exception:
+    FinraShortVolume = None  # type: ignore
+    FINRA_SHORT_AVAILABLE = False
+
+try:
+    from apewisdom import ApeWisdom
+    APEWISDOM_AVAILABLE = True
+except Exception:
+    ApeWisdom = None  # type: ignore
+    APEWISDOM_AVAILABLE = False
+
+try:
+    from factor_regime_signal import FactorRegimeSignal
+    FACTOR_REGIME_AVAILABLE = True
+except Exception:
+    FactorRegimeSignal = None  # type: ignore
+    FACTOR_REGIME_AVAILABLE = False
+
 from instrument_classifier import (
     classify as _classify_instrument,
     DEFAULT_ADMISSIBLE as _DEFAULT_ADMISSIBLE_TYPES,
@@ -110,6 +131,12 @@ class QuiverStrategyEngine:
         self.quiver = quiverquant.quiver(api_key)
         # Optional SEC EDGAR fallback for 13F strategies
         self.sec_edgar = SECEdgarClient() if SEC_EDGAR_AVAILABLE else None
+        # Optional FINRA short-volume client for off-exchange-short strategies
+        self.finra = FinraShortVolume() if FINRA_SHORT_AVAILABLE else None
+        # Optional ApeWisdom WSB-mentions client (LIVE-ONLY — no historical backfill)
+        self.apewisdom = ApeWisdom() if APEWISDOM_AVAILABLE else None
+        # Factor regime signal client (IWN/IWD rotation, monthly)
+        self.factor_regime = FactorRegimeSignal() if FACTOR_REGIME_AVAILABLE else None
         self.strategies_meta = {
             # Core Strategies
             "Congress Buys": {
@@ -257,6 +284,113 @@ class QuiverStrategyEngine:
                 "type": "sec13F",
                 "args": ["Pershing Square Capital Management"],
                 "category": "experimental"
+            },
+            # Tier 2 additions — 13F mirrors via SEC EDGAR.
+            "Stanley Druckenmiller": {
+                "type": "sec13F",
+                "args": ["Duquesne Family Office"],
+                "category": "experimental",
+            },
+            "David Tepper": {
+                "type": "sec13F",
+                "args": ["Appaloosa LP"],
+                "category": "experimental",
+            },
+            "Seth Klarman": {
+                "type": "sec13F",
+                "args": ["Baupost Group"],
+                "category": "experimental",
+            },
+            "Mohnish Pabrai": {
+                "type": "sec13F",
+                "args": ["Pabrai Investment Funds"],
+                "category": "experimental",
+            },
+            "Li Lu": {
+                "type": "sec13F",
+                "args": ["Himalaya Capital Management"],
+                "category": "experimental",
+            },
+            "Chuck Akre": {
+                "type": "sec13F",
+                "args": ["Akre Capital Management"],
+                "category": "experimental",
+            },
+            "Warren Buffett": {
+                "type": "sec13F",
+                "args": ["Berkshire Hathaway"],
+                "category": "experimental",
+                "top_n": 20,
+            },
+            "David Einhorn": {
+                "type": "sec13F",
+                "args": ["Greenlight Capital"],
+                "category": "experimental",
+            },
+            "Dan Loeb": {
+                "type": "sec13F",
+                "args": ["Third Point"],
+                "category": "experimental",
+            },
+            "Tiger Global": {
+                "type": "sec13F",
+                "args": ["Tiger Global Management"],
+                "category": "experimental",
+                "top_n": 25,
+            },
+            "Coatue": {
+                "type": "sec13F",
+                "args": ["Coatue Management"],
+                "category": "experimental",
+                "top_n": 25,
+            },
+            "Sequoia Fund": {
+                "type": "sec13F",
+                "args": ["Ruane Cunniff"],
+                "category": "experimental",
+            },
+            # Tier-A alt-data (replacement for Quiver's gated off-exchange short endpoint).
+            # Pulls FINRA's daily CNMS short-volume CSV directly — same dataset Quiver resells.
+            "Off-Exchange Short Squeeze": {
+                "type": "finra_short",
+                "lookback_days": 5,
+                "top_n": 20,
+                "min_avg_volume": 500_000,
+                "category": "experimental",
+            },
+            # Monthly variant — 21-day lookback, monthly rebalance, ~8× less turnover.
+            "Off-Exchange Short Squeeze (Monthly)": {
+                "type": "finra_short",
+                "lookback_days": 21,
+                "top_n": 20,
+                "min_avg_volume": 500_000,
+                "category": "experimental",
+            },
+            # LIVE-ONLY (ApeWisdom has no historical endpoint). Backtests return empty.
+            # Paper-trade forward for 4–8 weeks before sizing up.
+            "WSB Mentions Momentum": {
+                "type": "apewisdom",
+                "subreddit": "wallstreetbets",
+                "top_n": 10,
+                "min_mentions": 20,
+                "category": "experimental",
+            },
+            # Factor regime — SMB-timed IWN/IWD long-only ETF rotation.
+            # No Quiver API required. Data: French 3-Factor + yfinance IWM/SPY.
+            "SMB Factor Regime": {
+                "type": "factor_etf",
+                "category": "experimental",
+            },
+            # Single-factor passive ETF holdings — no signal, fixed ticker.
+            "Value Large-Cap (IWD)": {
+                "type": "factor_etf_static",
+                "ticker": "IWD",
+                "category": "experimental",
+            },
+            "Value Small-Cap (IWN)": {
+                "type": "factor_etf_static",
+                "ticker": "IWN",
+                "category": "experimental",
             },
             "Wall Street Conviction": {
                 "type": "official_api",
@@ -570,6 +704,67 @@ class QuiverStrategyEngine:
                         return df
             except Exception as e:
                 logging.warning(f"SEC EDGAR time-travel fallback failed for {strategy_name}: {e}")
+
+        # FINRA off-exchange short volume (used by "Off-Exchange Short Squeeze").
+        # Pulls daily CNMSshvol.txt files for [as_of - lookback, as_of] and aggregates per ticker.
+        if strat_type == "finra_short" and self.finra is not None:
+            try:
+                lb = int(meta.get("lookback_days", 5))
+                min_vol = int(meta.get("min_avg_volume", 500_000))
+                df = self.finra.get_window(
+                    end_date=as_of_date, lookback_days=lb, min_avg_volume=min_vol
+                )
+                if df is not None and not df.empty:
+                    return df
+            except Exception as e:
+                logging.warning(f"FINRA short fetch failed for {strategy_name}: {e}")
+            return pd.DataFrame()
+
+        # ApeWisdom WSB mentions (LIVE-ONLY).
+        # No historical endpoint — return empty for any backtest date older than yesterday.
+        # The live signal is the snapshot at as_of_date (clamped to "today" by the API).
+        if strat_type == "apewisdom" and self.apewisdom is not None:
+            cutoff = datetime.now() - timedelta(days=2)
+            if as_of_date < cutoff:
+                # Backtest hitting historical date — no data available, skip silently.
+                return pd.DataFrame()
+            try:
+                n = int(meta.get("top_n", 10))
+                min_m = int(meta.get("min_mentions", 20))
+                sub = str(meta.get("subreddit", "wallstreetbets"))
+                df = self.apewisdom.top_by_growth(
+                    n=n * 3,  # over-fetch to leave headroom for ETF filtering
+                    subreddit=sub,
+                    min_mentions=min_m,
+                    as_of_date=as_of_date,
+                )
+                if df is None or df.empty:
+                    return pd.DataFrame()
+                # Filter ETFs using the FINRA-loaded universe (cheap, already cached)
+                if self.finra is not None:
+                    etfs = self.finra.etf_symbols
+                    if etfs:
+                        df = df[~df["Ticker"].astype(str).str.upper().isin(etfs)]
+                return df.head(n).reset_index(drop=True)
+            except Exception as e:
+                logging.warning(f"ApeWisdom fetch failed for {strategy_name}: {e}")
+            return pd.DataFrame()
+
+        # Factor regime — IWN/IWD ETF rotation (SMB regime signal).
+        # Returns a 1-row DataFrame: {"Ticker": "IWN"/"IWD", "Weight": 1.0}
+        if strat_type == "factor_etf" and self.factor_regime is not None:
+            try:
+                df = self.factor_regime.get_dataframe(as_of_date=as_of_date)
+                if df is not None and not df.empty:
+                    return df
+            except Exception as e:
+                logging.warning(f"Factor regime fetch failed for {strategy_name}: {e}")
+            return pd.DataFrame()
+
+        # Static factor ETF — always 100% in one fixed ticker (no signal).
+        if strat_type == "factor_etf_static":
+            ticker = meta.get("ticker", "IWD")
+            return pd.DataFrame({"Ticker": [ticker], "Weight": [1.0]})
 
         # For composite/official strategies where we don't have true underlying history,
         # use Quiver holdings time-series (tickers + weights) if available.

@@ -1,0 +1,76 @@
+{
+  "HML": {
+    "name": "HML",
+    "auc_no_lag": 0.4791587694999271,
+    "auc_lag2": 0.47719055255868204,
+    "lag0": {
+      "always_cagr": 0.03615987530715414,
+      "timed_cagr": 0.026175747343479827,
+      "always_sharpe": 0.3457669429874119,
+      "timed_sharpe": 0.2756105836677439,
+      "pct_invested": 0.7577276524644946,
+      "months_avoided": 290
+    },
+    "lag1": {
+      "always_cagr": 0.03615987530715414,
+      "timed_cagr": 0.022674164291886623,
+      "always_sharpe": 0.3457669429874119,
+      "timed_sharpe": 0.24758930120495248,
+      "pct_invested": 0.7568922305764411,
+      "months_avoided": 291
+    },
+    "lag2": {
+      "always_cagr": 0.03615987530715414,
+      "timed_cagr": 0.024470813876974917,
+      "always_sharpe": 0.3457669429874119,
+      "timed_sharpe": 0.26287557492148966,
+      "pct_invested": 0.7560568086883876,
+      "months_avoided": 292
+    },
+    "lag3": {
+      "always_cagr": 0.03615987530715414,
+      "timed_cagr": 0.021653415629523165,
+      "always_sharpe": 0.3457669429874119,
+      "timed_sharpe": 0.23974386860838962,
+      "pct_invested": 0.7552213868003341,
+      "months_avoided": 293
+    }
+  },
+  "SMB": {
+    "name": "SMB",
+    "auc_no_lag": 0.6650566289140574,
+    "auc_lag2": 0.6477348434377082,
+    "lag0": {
+      "always_cagr": 0.0008146732563107939,
+      "timed_cagr": 0.010035107577125002,
+      "always_sharpe": 0.08363140808998883,
+      "timed_sharpe": 0.17642453514482961,
+      "pct_invested": 0.9038461538461539,
+      "months_avoided": 30
+    },
+    "lag1": {
+      "always_cagr": 0.0008146732563107939,
+      "timed_cagr": 0.0037174249638813883,
+      "always_sharpe": 0.08363140808998883,
+      "timed_sharpe": 0.08645366072476202,
+      "pct_invested": 0.9006410256410257,
+      "months_avoided": 31
+    },
+    "lag2": {
+      "always_cagr": 0.0008146732563107939,
+      "timed_cagr": 0.010958837218556061,
+      "always_sharpe": 0.08363140808998883,
+      "timed_sharpe": 0.16059539062669825,
+      "pct_invested": 0.8974358974358975,
+      "months_avoided": 32
+    },
+    "lag3": {
+      "always_cagr": 0.0008146732563107939,
+      "timed_cagr": 0.004664100538244398,
+      "always_sharpe": 0.08363140808998883,
+      "timed_sharpe": 0.09602317879813488,
+      "pct_invested": 0.8942307692307693,
+      "months_avoided": 33
+    }
+  }
+}

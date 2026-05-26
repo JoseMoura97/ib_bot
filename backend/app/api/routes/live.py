@@ -160,6 +160,24 @@ def _to_float(v: Any) -> float | None:
         return None
 
 
+def _quantize_qty(qty: float) -> float:
+    """Round a share quantity per the fractional-shares setting.
+
+    Fractional ON  -> round to LIVE_FRACTIONAL_DECIMALS places (keeps fractions).
+    Fractional OFF -> truncate toward zero to a whole share (legacy behaviour).
+    """
+    q = float(qty)
+    if settings.live_fractional_shares:
+        return round(q, int(settings.live_fractional_decimals))
+    # preserve sign while truncating magnitude (legacy used int())
+    return float(int(q))
+
+
+def _order_qty(delta: float) -> float:
+    """Absolute order quantity for a leg, respecting the fractional setting."""
+    return abs(_quantize_qty(delta))
+
+
 def _extract_nlv(summary_rows: list[Any]) -> float | None:
     for row in summary_rows or []:
         tag = str(getattr(row, "tag", "") or "")
@@ -580,10 +598,15 @@ def _build_preview(db: Session, body: LiveRebalanceRequest) -> LiveRebalancePrev
                 raise HTTPException(status_code=400, detail=f"missing live quote for {t}")
             continue
         target_value = float(body.allocation_amount) * float(w)
-        target_qty = float(int(target_value / float(q.price)))
+        # Skip dust legs whose target value is below the per-leg minimum (fractional mode only;
+        # in whole-share mode sub-$min targets already truncate to 0 shares).
+        if settings.live_fractional_shares and target_value < float(settings.live_min_leg_usd):
+            continue
+        target_qty = _quantize_qty(target_value / float(q.price))
         cur_qty = float(current_positions.get(t, 0.0))
         delta = float(target_qty - cur_qty)
-        if abs(delta) < 1e-9:
+        min_delta = 10.0 ** (-int(settings.live_fractional_decimals)) if settings.live_fractional_shares else 1e-9
+        if abs(delta) < min_delta:
             continue
         side = "BUY" if delta > 0 else "SELL"
         legs.append(
@@ -693,6 +716,17 @@ def live_rebalance_execute(
     db: Session = Depends(get_db),
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ):
+    return execute_live_rebalance_core(db, body, idempotency_key)
+
+
+def execute_live_rebalance_core(
+    db: Session,
+    body: LiveRebalanceRequest,
+    idempotency_key: str | None,
+) -> LiveRebalancePreviewOut:
+    """Gated live-rebalance execution, callable from the HTTP route or the
+    scheduler. All hard gates (live-enabled, dry-run, halt, idempotency,
+    account allowlist, market-open, circuit breaker, NLV cap) live here."""
     if not settings.enable_live_trading:
         raise HTTPException(status_code=403, detail="Live trading disabled (set ENABLE_LIVE_TRADING=1)")
     if settings.live_dry_run:
@@ -791,6 +825,37 @@ def live_rebalance_execute(
             raise HTTPException(status_code=503, detail=f"ib_insync import failed: {type(e).__name__}: {e}") from e
 
         results: list[dict[str, Any]] = []
+        placed_trades: list[Any] = []  # orders we placed this rebalance (for scoped cancel)
+
+        # Anti-duplicate guard: if this account already has open orders at IB, do not
+        # stack a new rebalance on top (protects against the crash-to-retry duplicate path).
+        try:
+            existing_open = [
+                o for o in (ib.reqAllOpenOrders() or [])
+                if getattr(getattr(o, "order", None), "account", None) in (None, body.account_id)
+            ]
+        except Exception:
+            existing_open = []
+        if existing_open:
+            raise HTTPException(
+                status_code=409,
+                detail=f"account {body.account_id} has {len(existing_open)} open order(s) at IB; "
+                       "clear or reconcile them before executing a new rebalance",
+            )
+
+        def _cancel_placed(ib_: Any) -> None:
+            # Cancel ONLY the orders this rebalance placed (scoped), never gateway-wide,
+            # so concurrent rebalances on other sub-accounts are unaffected.
+            for tr in placed_trades:
+                try:
+                    st = getattr(getattr(tr, "orderStatus", None), "status", None)
+                    if st in TERMINAL_STATUSES:
+                        continue
+                    ord_obj = getattr(tr, "order", None)
+                    if ord_obj is not None:
+                        ib_.cancelOrder(ord_obj)
+                except Exception:
+                    pass
 
         def _execution_to_dict(exe: Any) -> dict[str, Any]:
             return {
@@ -805,12 +870,12 @@ def live_rebalance_execute(
         for leg in preview.legs:
             # Phase 1: Cooperative halt check between legs
             if settings.trading_halt:
-                ib.reqGlobalCancel()
+                _cancel_placed(ib)
                 results.append(
                     {
                         "ticker": leg.ticker,
                         "side": leg.side,
-                        "quantity": abs(int(leg.delta_quantity)),
+                        "quantity": _order_qty(leg.delta_quantity),
                         "order_id": None,
                         "perm_id": None,
                         "status": "Cancelled",
@@ -828,17 +893,18 @@ def live_rebalance_execute(
                 ib.qualifyContracts(contract)
             except Exception:
                 pass
-            order = MarketOrder(leg.side, abs(int(leg.delta_quantity)))
+            order = MarketOrder(leg.side, _order_qty(leg.delta_quantity))
             order.account = body.account_id
             try:
                 trade = ib.placeOrder(contract, order)
+                placed_trades.append(trade)
             except Exception as e:
-                ib.reqGlobalCancel()
+                _cancel_placed(ib)
                 results.append(
                     {
                         "ticker": leg.ticker,
                         "side": leg.side,
-                        "quantity": abs(int(leg.delta_quantity)),
+                        "quantity": _order_qty(leg.delta_quantity),
                         "order_id": None,
                         "perm_id": None,
                         "status": None,
@@ -867,7 +933,7 @@ def live_rebalance_execute(
             timed_out = final_status not in TERMINAL_STATUSES
             if timed_out:
                 # Phase 1: abort remaining legs, cancel in-flight order
-                ib.reqGlobalCancel()
+                _cancel_placed(ib)
 
             fills: list[dict[str, Any]] = []
             for f in getattr(trade, "fills", []) or []:
@@ -884,7 +950,7 @@ def live_rebalance_execute(
                 {
                     "ticker": leg.ticker,
                     "side": leg.side,
-                    "quantity": abs(int(leg.delta_quantity)),
+                    "quantity": _order_qty(leg.delta_quantity),
                     "order_id": getattr(getattr(trade, "order", None), "orderId", None),
                     "perm_id": getattr(getattr(trade, "order", None), "permId", None),
                     "status": final_status,
@@ -950,13 +1016,37 @@ def live_rebalance_execute(
             max_orders=body.max_orders,
             allow_short=body.allow_short,
         )
+
+        # Post-execute reconciliation: verify resulting positions match target, so an
+        # "OK" status can't silently hide partial fills / drift. Non-fatal by design.
+        try:
+            actual = _current_positions_for_account(body.account_id)
+            target = {l.ticker: float(l.target_quantity) for l in preview.legs}
+            tickers = set(actual) | set(target)
+            drifts = []
+            for t in tickers:
+                a = float(actual.get(t, 0.0))
+                tq = float(target.get(t, 0.0))
+                px = next((float(l.price) for l in preview.legs if l.ticker == t), 0.0)
+                if abs(a - tq) * (px or 0.0) > max(50.0, 0.001 * float(body.allocation_amount)):
+                    drifts.append({"ticker": t, "target_qty": tq, "actual_qty": a,
+                                   "drift_qty": round(a - tq, 4), "px": px})
+            if drifts:
+                idem_row.result = {**preview.model_dump(mode="json"), "reconciliation_drift": drifts}
+                from app.services.alerting import send_rebalance_alert as _sra
+                _sra("DRIFT", f"Account {body.account_id}: {len(drifts)} position(s) off target after rebalance: "
+                              + ", ".join(f"{d['ticker']}({d['drift_qty']:+g})" for d in drifts[:8]))
+        except Exception:
+            pass
+
         idem_row.status = "OK"
-        idem_row.result = preview.model_dump(mode="json")
+        if not isinstance(idem_row.result, dict) or "reconciliation_drift" not in (idem_row.result or {}):
+            idem_row.result = preview.model_dump(mode="json")
         db.add(idem_row)
         db.commit()
         from app.services.alerting import send_rebalance_alert
         legs_summary = ", ".join(
-            f"{l.side} {abs(int(l.delta_quantity))} {l.ticker}" for l in preview.legs[:5]
+            f"{l.side} {_order_qty(l.delta_quantity)} {l.ticker}" for l in preview.legs[:5]
         )
         if len(preview.legs) > 5:
             legs_summary += f" (+{len(preview.legs) - 5} more)"
@@ -1249,9 +1339,9 @@ def live_rebalance_dry_run(body: LiveRebalanceRequest, db: Session = Depends(get
         orders_log.append({
             "ticker": leg.ticker,
             "side": leg.side,
-            "quantity": abs(int(leg.delta_quantity)),
+            "quantity": _order_qty(leg.delta_quantity),
             "price": float(leg.price),
-            "notional": abs(int(leg.delta_quantity)) * float(leg.price),
+            "notional": _order_qty(leg.delta_quantity) * float(leg.price),
             "status": "DRY_RUN",
         })
 
@@ -1282,3 +1372,312 @@ def live_rebalance_dry_run(body: LiveRebalanceRequest, db: Session = Depends(get
         "estimated_notional": preview.estimated_notional,
         "orders": orders_log,
     }
+
+
+# ---------------------------------------------------------------------------
+# Pre-deploy verification engine
+# ---------------------------------------------------------------------------
+
+
+class VerifyFinding(BaseModel):
+    code: str
+    severity: str  # "error" | "warning" | "info"
+    title: str
+    detail: str = ""
+
+
+class VerifyOut(BaseModel):
+    ok: bool
+    errors: int
+    warnings: int
+    mode: str
+    account_id: str
+    portfolio_id: UUID
+    allocation_amount: float
+    metrics: dict[str, Any]
+    findings: list[VerifyFinding]
+
+
+def _probe_read_only(account_id: str, tickers: Iterable[str]) -> bool | None:
+    """Best-effort check whether the IB API rejects order entry (Read-Only mode).
+
+    Sends a whatIf order (placed nowhere — preview only). Returns True if the
+    gateway is read-only (IB error 321), False if order entry is accepted, or
+    None if it could not be determined.
+    """
+    syms = [str(t) for t in tickers if str(t).strip()]
+    if not syms:
+        return None
+
+    def _do(ib: Any) -> bool | None:
+        try:
+            from ib_insync import MarketOrder, Stock
+        except Exception:
+            return None
+        codes: list[int] = []
+
+        def _on_err(reqId: Any, code: Any, msg: Any, *a: Any) -> None:
+            try:
+                codes.append(int(code))
+            except Exception:
+                pass
+
+        ib.errorEvent += _on_err
+        try:
+            c = Stock(syms[0], "SMART", "USD")
+            try:
+                ib.qualifyContracts(c)
+            except Exception:
+                pass
+            o = MarketOrder("BUY", 1)
+            o.account = account_id
+            o.whatIf = True
+            st = ib.whatIfOrder(c, o)
+            ib.sleep(0.4)
+            if 321 in codes:
+                return True
+            init = getattr(st, "initMarginChange", None)
+            if init not in (None, ""):
+                return False
+            return None
+        except Exception:
+            # whatIfOrder may raise when the gateway refuses order entry
+            return True if 321 in codes else None
+        finally:
+            try:
+                ib.errorEvent -= _on_err
+            except Exception:
+                pass
+
+    try:
+        return call_ib(_do, timeout=15.0)
+    except Exception:
+        return None
+
+
+@router.post("/rebalance/verify", response_model=VerifyOut)
+def live_rebalance_verify(
+    body: LiveRebalanceRequest,
+    mode: str = Query(default="live"),
+    db: Session = Depends(get_db),
+):
+    """Pre-deploy verification: simulate the rebalance and report suitability +
+    safety findings WITHOUT placing any orders. Does not require live trading."""
+    mode = (mode or "live").strip().lower()
+    findings: list[VerifyFinding] = []
+    metrics: dict[str, Any] = {}
+    alloc = float(body.allocation_amount)
+
+    def add(code: str, severity: str, title: str, detail: str = "") -> None:
+        findings.append(VerifyFinding(code=code, severity=severity, title=title, detail=detail))
+
+    def result() -> VerifyOut:
+        errors = sum(1 for f in findings if f.severity == "error")
+        warnings = sum(1 for f in findings if f.severity == "warning")
+        return VerifyOut(
+            ok=(errors == 0),
+            errors=errors,
+            warnings=warnings,
+            mode=mode,
+            account_id=body.account_id,
+            portfolio_id=body.portfolio_id,
+            allocation_amount=alloc,
+            metrics=metrics,
+            findings=findings,
+        )
+
+    # --- target weights (fetch with shorts allowed so we can analyse everything) ---
+    try:
+        weights = _build_target_weights(db, body.portfolio_id, alloc, allow_short=True)
+    except HTTPException as e:
+        add("weights", "error", "Cannot build target weights", str(e.detail))
+        return result()
+
+    n_names = len(weights)
+    metrics["target_names"] = n_names
+
+    negatives = {t: w for t, w in weights.items() if w < 0}
+    if negatives:
+        if not body.allow_short:
+            add(
+                "short_targets",
+                "error",
+                f"{len(negatives)} short target(s) require a margin account",
+                "Enable 'Allow short' (margin account required) or choose a long-only portfolio. e.g. "
+                + ", ".join(list(negatives)[:6]),
+            )
+        else:
+            add("short_targets", "warning", f"{len(negatives)} short target(s)", "Shorting uses margin.")
+
+    # --- quotes (paper close when live off, IB quotes when live on) ---
+    quotes = _fetch_quotes_for_preview(weights.keys())
+    priced = {t for t in weights if t in quotes and quotes[t].price > 0}
+    unpriced = sorted(set(weights) - priced)
+    metrics["priced"] = len(priced)
+    metrics["unpriceable"] = unpriced
+    if unpriced:
+        shown = ", ".join(unpriced[:15]) + (f" +{len(unpriced) - 15} more" if len(unpriced) > 15 else "")
+        add("unpriceable", "warning", f"{len(unpriced)} ticker(s) have no price (likely delisted)", shown)
+
+    # --- sizing / deployment simulation ---
+    deployed = 0.0
+    dust = 0
+    zero_share = 0
+    legs = 0
+    max_leg_notional = 0.0
+    for t, w in weights.items():
+        if t not in priced:
+            continue
+        target_value = alloc * abs(float(w))
+        if settings.live_fractional_shares and target_value < float(settings.live_min_leg_usd):
+            dust += 1
+            continue
+        px = float(quotes[t].price)
+        qty = _quantize_qty(target_value / px)
+        if abs(qty) <= 0:
+            zero_share += 1
+            continue
+        notional = abs(qty) * px
+        deployed += notional
+        legs += 1
+        max_leg_notional = max(max_leg_notional, notional)
+
+    util = (deployed / alloc) if alloc > 0 else 0.0
+    metrics.update(
+        {
+            "legs": legs,
+            "deployed": round(deployed, 2),
+            "utilization": round(util, 4),
+            "dust_skipped": dust,
+            "zero_share_dropped": zero_share,
+            "max_leg_notional": round(max_leg_notional, 2),
+            "fractional": bool(settings.live_fractional_shares),
+        }
+    )
+
+    # --- suitability findings ---
+    if not settings.live_fractional_shares and zero_share > 0:
+        sev = "error" if zero_share > n_names * 0.3 else "warning"
+        add(
+            "whole_share_drop",
+            sev,
+            f"{zero_share} name(s) round to 0 whole shares",
+            "Fractional shares are off, so small-weight names cannot be bought with this cash. "
+            "Enable fractional shares or increase the allocation.",
+        )
+
+    if priced and util < 0.90:
+        sev = "error" if util < 0.5 else "warning"
+        add(
+            "low_utilization",
+            sev,
+            f"Only {util * 100:.0f}% of the allocation would deploy",
+            f"${deployed:,.0f} of ${alloc:,.0f} invested; the rest stays in cash. "
+            f"{dust + zero_share} name(s) are too small for this allocation.",
+        )
+
+    if dust > 0:
+        add(
+            "dust_legs",
+            "warning",
+            f"{dust} target(s) below ${float(settings.live_min_leg_usd):.0f} were skipped",
+            "The portfolio is too granular for this cash; tiny positions are dropped.",
+        )
+
+    if n_names > 0:
+        per_name = alloc / n_names
+        if per_name < float(settings.live_min_leg_usd) * 2:
+            add(
+                "too_granular",
+                "warning",
+                f"{n_names} holdings for ${alloc:,.0f} (~${per_name:,.2f} per name)",
+                "Use a portfolio with fewer holdings or a larger allocation for faithful tracking.",
+            )
+
+    if legs > int(body.max_orders):
+        add(
+            "order_count",
+            "error",
+            f"{legs} orders exceed the max_orders limit ({body.max_orders})",
+            "Raise max orders or reduce the number of holdings.",
+        )
+
+    if deployed > 0 and (max_leg_notional / deployed) > 0.35:
+        add(
+            "concentration",
+            "warning",
+            f"Largest position is {max_leg_notional / deployed * 100:.0f}% of deployed capital",
+            "High single-name concentration.",
+        )
+
+    cheap = sorted([t for t in priced if float(quotes[t].price) < 5.0])
+    if cheap:
+        add(
+            "illiquid",
+            "warning",
+            f"{len(cheap)} sub-$5 micro-cap name(s)",
+            "These may have wide spreads and could be rejected by the live spread check: "
+            + ", ".join(cheap[:10]),
+        )
+
+    # --- live-mode gating ---
+    if mode == "live":
+        if not settings.enable_live_trading:
+            add(
+                "live_disabled",
+                "error",
+                "Live trading is disabled in the backend (ENABLE_LIVE_TRADING=0)",
+                "Set the flag and recreate the API container before deploying live.",
+            )
+        if settings.live_dry_run:
+            add(
+                "dry_run",
+                "info",
+                "Dry-run mode is on (LIVE_DRY_RUN=true)",
+                "Execution is blocked; orders are simulated. Turn off to place real orders.",
+            )
+        if settings.trading_halt:
+            add("halted", "error", "Trading is halted", "Resume from the Trade page or clear the halt.")
+
+        try:
+            is_open, reason = market_is_open(settings.market_calendar)
+            if not is_open:
+                add("market_closed", "warning", "The US market is closed", reason or "Live orders fill only during RTH.")
+        except Exception as e:  # noqa: BLE001
+            add("market_unknown", "warning", "Could not determine market hours", str(e))
+
+        try:
+            _assert_account_allowed(body.account_id)
+        except HTTPException as e:
+            add("account_not_allowed", "error", "Account is not permitted for live trading", str(e.detail))
+
+        try:
+            nlv = _account_nlv(body.account_id)
+            if nlv is not None and nlv > 0:
+                metrics["nlv"] = round(nlv, 2)
+                if alloc > nlv:
+                    add("alloc_gt_nlv", "error", f"Allocation ${alloc:,.0f} exceeds account NLV ${nlv:,.0f}", "Reduce the allocation.")
+                else:
+                    cap = float(settings.live_max_order_pct_nlv)
+                    if cap > 0 and alloc > nlv * cap:
+                        add(
+                            "alloc_gt_cap",
+                            "warning",
+                            f"Allocation is {alloc / nlv * 100:.0f}% of NLV (server cap {cap * 100:.0f}%)",
+                            "The rebalance may be rejected by the NLV cap.",
+                        )
+            else:
+                add("nlv_unknown", "warning", "Could not read account NetLiquidation", "")
+        except Exception as e:  # noqa: BLE001
+            add("nlv_error", "warning", "Could not read account NetLiquidation", str(e))
+
+        read_only = _probe_read_only(body.account_id, sorted(priced))
+        if read_only is True:
+            add(
+                "read_only_api",
+                "error",
+                "IB Gateway API is in Read-Only mode",
+                "Orders are rejected (IB error 321). Disable Read-Only API on the Gateway to trade.",
+            )
+
+    return result()

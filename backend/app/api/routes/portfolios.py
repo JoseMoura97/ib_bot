@@ -26,10 +26,27 @@ from app.services.portfolio_math import (
     optimize_portfolio,
     records_to_series,
 )
+from app.services.rebalance_freq import (
+    DEFAULT_STRATEGY_FREQUENCY,
+    FREQUENCY_DAYS,
+    portfolio_native_frequency,
+    strategy_frequency_map,
+)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _native_freq(strategy_names: list[str], fmap: dict[str, str]) -> str:
+    """Fastest constituent cadence, using a prebuilt name->freq map."""
+    if not strategy_names:
+        return DEFAULT_STRATEGY_FREQUENCY
+    freqs = [fmap.get(n, DEFAULT_STRATEGY_FREQUENCY) for n in strategy_names]
+    return min(
+        freqs,
+        key=lambda f: FREQUENCY_DAYS.get(f, FREQUENCY_DAYS[DEFAULT_STRATEGY_FREQUENCY]),
+    )
 
 
 def _load_strategy_curves(strategy_names: list[str]) -> Dict[str, pd.Series]:
@@ -54,8 +71,24 @@ def _load_strategy_curves(strategy_names: list[str]) -> Dict[str, pd.Series]:
     for name in strategy_names:
         entry = strategies_data.get(name)
         if not entry:
+            # Fallback: some strategies only exist in the cache with a weighting
+            # suffix (e.g. "Dan Meuser (equal)").  Try the most common variants
+            # before giving up so bare strategy names still resolve.
+            for suffix in ("(equal)", "(size)"):
+                entry = strategies_data.get(f"{name} {suffix}")
+                if entry:
+                    break
+        if not entry:
             continue
-        equity = entry.get("equity_curve", [])
+        # The plot-data cache writes curves as parallel `dates` / `values` arrays,
+        # while older callers expected an `equity_curve` list-of-records. Support
+        # both shapes so the optimizer works against the current cache schema.
+        equity = entry.get("equity_curve")
+        if not equity:
+            dates = entry.get("dates") or []
+            values = entry.get("values") or []
+            if dates and values and len(dates) == len(values):
+                equity = [{"date": d, "value": v} for d, v in zip(dates, values)]
         if not equity:
             continue
         s = records_to_series(equity)
@@ -67,6 +100,11 @@ def _load_strategy_curves(strategy_names: list[str]) -> Dict[str, pd.Series]:
 @router.get("", response_model=list[PortfolioOut])
 def list_portfolios(db: Session = Depends(get_db)):
     rows = db.query(Portfolio).order_by(Portfolio.created_at.desc()).all()
+    fmap = strategy_frequency_map()
+    by_pf: dict[str, list[str]] = {}
+    for ps in db.query(PortfolioStrategy).all():
+        if ps.enabled:
+            by_pf.setdefault(str(ps.portfolio_id), []).append(ps.strategy_name)
     return [
         PortfolioOut(
             id=r.id,
@@ -76,6 +114,7 @@ def list_portfolios(db: Session = Depends(get_db)):
             settings=r.settings or {},
             created_at=r.created_at,
             updated_at=r.updated_at,
+            native_rebalance_frequency=_native_freq(by_pf.get(str(r.id), []), fmap),
         )
         for r in rows
     ]
@@ -100,6 +139,7 @@ def create_portfolio(body: PortfolioCreate, db: Session = Depends(get_db)):
         settings=p.settings or {},
         created_at=p.created_at,
         updated_at=p.updated_at,
+        native_rebalance_frequency=DEFAULT_STRATEGY_FREQUENCY,
     )
 
 
@@ -120,6 +160,11 @@ def patch_portfolio(portfolio_id: str, body: PortfolioPatch, db: Session = Depen
 
     db.commit()
     db.refresh(p)
+    names = [
+        s.strategy_name
+        for s in db.query(PortfolioStrategy).filter(PortfolioStrategy.portfolio_id == p.id).all()
+        if s.enabled
+    ]
     return PortfolioOut(
         id=p.id,
         name=p.name,
@@ -128,7 +173,26 @@ def patch_portfolio(portfolio_id: str, body: PortfolioPatch, db: Session = Depen
         settings=p.settings or {},
         created_at=p.created_at,
         updated_at=p.updated_at,
+        native_rebalance_frequency=portfolio_native_frequency(names),
     )
+
+
+@router.delete("/{portfolio_id}", status_code=204)
+def delete_portfolio(portfolio_id: str, db: Session = Depends(get_db)):
+    """
+    Permanently delete a portfolio.
+
+    Cascades to portfolio_strategies via FK ondelete=CASCADE.
+    Allocation rows and run records that reference this portfolio_id are NOT
+    deleted (those references are nominal strings, not enforced FKs) — they
+    keep their historical record but become orphaned.
+    """
+    p = db.query(Portfolio).filter(Portfolio.id == portfolio_id).one_or_none()
+    if p is None:
+        raise HTTPException(status_code=404, detail="Portfolio not found")
+    db.delete(p)
+    db.commit()
+    return None
 
 
 @router.get("/{portfolio_id}", response_model=PortfolioWithStrategies)
@@ -145,6 +209,9 @@ def get_portfolio(portfolio_id: str, db: Session = Depends(get_db)):
         settings=p.settings or {},
         created_at=p.created_at,
         updated_at=p.updated_at,
+        native_rebalance_frequency=portfolio_native_frequency(
+            [s.strategy_name for s in strategies if s.enabled]
+        ),
         strategies=[
             PortfolioStrategyIn(
                 strategy_name=s.strategy_name,
@@ -207,6 +274,9 @@ def set_portfolio_strategies(
         settings=p.settings or {},
         created_at=p.created_at,
         updated_at=p.updated_at,
+        native_rebalance_frequency=portfolio_native_frequency(
+            [s.strategy_name for s in strategies if s.enabled]
+        ),
         strategies=[
             PortfolioStrategyIn(
                 strategy_name=s.strategy_name,
