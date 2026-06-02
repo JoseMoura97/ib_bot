@@ -8,6 +8,33 @@ import re
 import logging
 import requests
 
+try:
+    from external_api_alert import report_api_failure as _report_api_failure
+except Exception:
+    def _report_api_failure(*a, **k):
+        return None
+
+_QUIVER_INFRA_NEEDLES = (
+    "401", "403", "429", "unauthorized", "forbidden", "invalid api key",
+    "api key", "quota", "rate limit", "subscription", "payment", "402",
+)
+
+
+def _alert_quiver_infra_failure(strategy_name, exc):
+    """Alert the trading manager only on a HARD QuiverQuant API failure
+    (auth/quota/rate) — silent alt-data outages otherwise just yield empty signals."""
+    try:
+        msg = str(exc).lower()
+        if not any(n in msg for n in _QUIVER_INFRA_NEEDLES):
+            return
+        _report_api_failure(
+            "ib_bot", "quiverquant",
+            f"QuiverQuant API hard failure (strategy {strategy_name}): {str(exc)[:200]}",
+            hint="Check QUIVER_API_KEY / subscription / rate limits. Alt-data signals are empty until fixed.",
+        )
+    except Exception:
+        pass
+
 
 _OPT_CONTRACTS_RE = re.compile(r"(\d+)\s+(?:CALL|PUT)\s+OPTIONS?", re.I)
 _OPT_STRIKE_RE = re.compile(r"STRIKE\s+PRICE\s+(?:OF\s+)?\$?([\d,.]+)", re.I)
@@ -491,7 +518,8 @@ class QuiverStrategyEngine:
                 return self._process_raw_df(df, meta)
         except Exception as e:
             logging.error(f"Error processing raw signals for {strategy_name}: {e}")
-            
+            _alert_quiver_infra_failure(strategy_name, e)
+
         return []
     
     def _get_raw_data_with_metadata(self, strategy_name):
