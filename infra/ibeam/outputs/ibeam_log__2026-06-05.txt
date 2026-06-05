@@ -1963,3 +1963,335 @@
 2026-06-05 04:48:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
 2026-06-05 04:48:13,038|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
 2026-06-05 04:48:13,038|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:49:12,928|I| Maintenance
+2026-06-05 04:49:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:49:13,026|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 04:49:13,026|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:50:12,928|I| Maintenance
+2026-06-05 04:50:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:50:13,026|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 04:50:13,027|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:51:12,928|I| Maintenance
+2026-06-05 04:51:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:51:13,046|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 04:51:13,046|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:52:12,928|I| Maintenance
+2026-06-05 04:52:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:52:13,050|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 04:52:13,050|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:53:12,928|I| Maintenance
+2026-06-05 04:53:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:53:13,021|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 04:53:13,021|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:54:12,928|I| Maintenance
+2026-06-05 04:54:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:54:13,020|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 04:54:13,020|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:55:12,928|I| Maintenance
+2026-06-05 04:55:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:55:13,018|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 04:55:13,018|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:56:12,928|I| Maintenance
+2026-06-05 04:56:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:56:13,014|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 04:56:13,014|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:57:12,928|I| Maintenance
+2026-06-05 04:57:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:57:13,014|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 04:57:13,014|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:58:12,928|I| Maintenance
+2026-06-05 04:58:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:58:13,017|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 04:58:13,017|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:59:12,928|I| Maintenance
+2026-06-05 04:59:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:59:13,029|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 04:59:13,029|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:00:12,928|I| Maintenance
+2026-06-05 05:00:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:00:13,018|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:00:13,019|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:01:12,928|I| Maintenance
+2026-06-05 05:01:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:01:13,019|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:01:13,019|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:02:12,928|I| Maintenance
+2026-06-05 05:02:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:02:13,031|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:02:13,032|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:03:12,928|I| Maintenance
+2026-06-05 05:03:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:03:13,024|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:03:13,024|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:04:12,928|I| Maintenance
+2026-06-05 05:04:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:04:13,021|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:04:13,021|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:05:12,928|I| Maintenance
+2026-06-05 05:05:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:05:13,023|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:05:13,024|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:06:12,928|I| Maintenance
+2026-06-05 05:06:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:06:13,024|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:06:13,024|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:07:12,928|I| Maintenance
+2026-06-05 05:07:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:07:13,028|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:07:13,028|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:08:12,928|I| Maintenance
+2026-06-05 05:08:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:08:13,017|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:08:13,018|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:09:12,928|I| Maintenance
+2026-06-05 05:09:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:09:13,017|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:09:13,017|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:10:12,928|I| Maintenance
+2026-06-05 05:10:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:10:13,040|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:10:13,040|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:11:12,928|I| Maintenance
+2026-06-05 05:11:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:11:13,021|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:11:13,021|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:12:12,928|I| Maintenance
+2026-06-05 05:12:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:12:13,032|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:12:13,032|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:13:12,928|I| Maintenance
+2026-06-05 05:13:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:13:13,024|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:13:13,025|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:14:12,928|I| Maintenance
+2026-06-05 05:14:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:14:13,020|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:14:13,020|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:15:12,928|I| Maintenance
+2026-06-05 05:15:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:15:13,084|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:15:13,084|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:16:12,928|I| Maintenance
+2026-06-05 05:16:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:16:13,019|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:16:13,019|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:17:12,928|I| Maintenance
+2026-06-05 05:17:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:17:13,023|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:17:13,023|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:18:12,928|I| Maintenance
+2026-06-05 05:18:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:18:13,028|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:18:13,028|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:19:12,928|I| Maintenance
+2026-06-05 05:19:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:19:13,025|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:19:13,025|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:20:12,928|I| Maintenance
+2026-06-05 05:20:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:20:13,023|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:20:13,024|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:21:12,928|I| Maintenance
+2026-06-05 05:21:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:21:13,032|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:21:13,032|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:22:12,928|I| Maintenance
+2026-06-05 05:22:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:22:13,014|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:22:13,015|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:23:12,928|I| Maintenance
+2026-06-05 05:23:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:23:13,137|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:23:13,138|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:24:12,928|I| Maintenance
+2026-06-05 05:24:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:24:13,019|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:24:13,019|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:25:12,928|I| Maintenance
+2026-06-05 05:25:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:25:13,022|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:25:13,022|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:26:12,928|I| Maintenance
+2026-06-05 05:26:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:26:13,025|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:26:13,025|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:27:12,928|I| Maintenance
+2026-06-05 05:27:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:27:13,017|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:27:13,017|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:28:12,928|I| Maintenance
+2026-06-05 05:28:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:28:13,022|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:28:13,022|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:29:12,928|I| Maintenance
+2026-06-05 05:29:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:29:13,048|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:29:13,048|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:30:12,928|I| Maintenance
+2026-06-05 05:30:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:30:13,026|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:30:13,026|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:31:12,928|I| Maintenance
+2026-06-05 05:31:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:31:13,016|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:31:13,016|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:32:12,928|I| Maintenance
+2026-06-05 05:32:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:32:13,012|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:32:13,012|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:33:12,928|I| Maintenance
+2026-06-05 05:33:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:33:13,038|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:33:13,038|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:34:12,928|I| Maintenance
+2026-06-05 05:34:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:34:13,010|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:34:13,010|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:35:12,928|I| Maintenance
+2026-06-05 05:35:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:35:13,027|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:35:13,027|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:36:12,928|I| Maintenance
+2026-06-05 05:36:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:36:13,031|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:36:13,031|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:37:12,928|I| Maintenance
+2026-06-05 05:37:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:37:13,019|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:37:13,020|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:38:12,928|I| Maintenance
+2026-06-05 05:38:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:38:13,020|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:38:13,020|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:39:12,928|I| Maintenance
+2026-06-05 05:39:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:39:13,050|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:39:13,050|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:40:12,928|I| Maintenance
+2026-06-05 05:40:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:40:13,015|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:40:13,015|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:41:12,928|I| Maintenance
+2026-06-05 05:41:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:41:13,017|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:41:13,018|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:42:12,928|I| Maintenance
+2026-06-05 05:42:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:42:13,014|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:42:13,014|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:43:12,928|I| Maintenance
+2026-06-05 05:43:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:43:13,015|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:43:13,015|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:44:12,928|I| Maintenance
+2026-06-05 05:44:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:44:13,035|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:44:13,035|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:45:12,928|I| Maintenance
+2026-06-05 05:45:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:45:13,011|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:45:13,011|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:46:12,928|I| Maintenance
+2026-06-05 05:46:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:46:13,080|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:46:13,081|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:47:12,928|I| Maintenance
+2026-06-05 05:47:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:47:13,056|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:47:13,057|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:48:12,928|I| Maintenance
+2026-06-05 05:48:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:48:13,026|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:48:13,026|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:49:12,928|I| Maintenance
+2026-06-05 05:49:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:49:13,018|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:49:13,018|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:50:12,928|I| Maintenance
+2026-06-05 05:50:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:50:13,023|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:50:13,024|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:51:12,928|I| Maintenance
+2026-06-05 05:51:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:51:13,014|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:51:13,015|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:52:12,928|I| Maintenance
+2026-06-05 05:52:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:52:13,022|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:52:13,022|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:53:12,928|I| Maintenance
+2026-06-05 05:53:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:53:13,018|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:53:13,018|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:54:12,928|I| Maintenance
+2026-06-05 05:54:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:54:13,026|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:54:13,026|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:55:12,928|I| Maintenance
+2026-06-05 05:55:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:55:13,023|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:55:13,024|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:56:12,928|I| Maintenance
+2026-06-05 05:56:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:56:13,038|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:56:13,038|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:57:12,928|I| Maintenance
+2026-06-05 05:57:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:57:13,013|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:57:13,013|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:58:12,928|I| Maintenance
+2026-06-05 05:58:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:58:13,020|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:58:13,020|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 05:59:12,928|I| Maintenance
+2026-06-05 05:59:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 05:59:13,018|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 05:59:13,018|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 06:00:12,928|I| Maintenance
+2026-06-05 06:00:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 06:00:13,014|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 06:00:13,015|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 06:01:12,928|I| Maintenance
+2026-06-05 06:01:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 06:01:13,025|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 06:01:13,026|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 06:02:12,928|I| Maintenance
+2026-06-05 06:02:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 06:02:13,019|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 06:02:13,019|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 06:03:12,928|I| Maintenance
+2026-06-05 06:03:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 06:03:13,022|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 06:03:13,023|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 06:04:12,928|I| Maintenance
+2026-06-05 06:04:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 06:04:13,029|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 06:04:13,029|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 06:05:12,928|I| Maintenance
+2026-06-05 06:05:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 06:05:13,053|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 06:05:13,053|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 06:06:12,928|I| Maintenance
+2026-06-05 06:06:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 06:06:13,030|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 06:06:13,030|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 06:07:12,928|I| Maintenance
+2026-06-05 06:07:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 06:07:13,019|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 06:07:13,019|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 06:08:12,928|I| Maintenance
+2026-06-05 06:08:12,932|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 06:08:13,030|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 06:08:13,030|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 06:09:12,928|I| Maintenance
+2026-06-05 06:09:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 06:09:13,023|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 06:09:13,023|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 06:10:12,928|I| Maintenance
+2026-06-05 06:10:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 06:10:13,023|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 06:10:13,023|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 06:11:12,928|I| Maintenance
+2026-06-05 06:11:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 06:11:13,021|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 06:11:13,021|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
