@@ -389,3 +389,1577 @@
 2026-06-05 01:29:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
 2026-06-05 01:29:13,018|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
 2026-06-05 01:29:13,018|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:30:12,928|I| Maintenance
+2026-06-05 01:30:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:30:13,027|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:30:13,027|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:31:12,928|I| Maintenance
+2026-06-05 01:31:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:31:13,026|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:31:13,026|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:32:12,928|I| Maintenance
+2026-06-05 01:32:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:32:13,012|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:32:13,012|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:33:12,928|I| Maintenance
+2026-06-05 01:33:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:33:13,024|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:33:13,025|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:34:12,928|I| Maintenance
+2026-06-05 01:34:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:34:13,020|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:34:13,020|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:35:12,928|I| Maintenance
+2026-06-05 01:35:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:35:13,014|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:35:13,014|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:36:12,928|I| Maintenance
+2026-06-05 01:36:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:36:13,029|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:36:13,029|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:37:12,928|I| Maintenance
+2026-06-05 01:37:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:37:13,030|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:37:13,030|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:38:12,928|I| Maintenance
+2026-06-05 01:38:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:38:13,028|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:38:13,028|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:39:12,928|I| Maintenance
+2026-06-05 01:39:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:39:13,026|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:39:13,026|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:40:12,928|I| Maintenance
+2026-06-05 01:40:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:40:13,033|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:40:13,033|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:41:12,928|I| Maintenance
+2026-06-05 01:41:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:41:13,024|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:41:13,024|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:42:12,928|I| Maintenance
+2026-06-05 01:42:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:42:13,028|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:42:13,028|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:43:12,928|I| Maintenance
+2026-06-05 01:43:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:43:13,023|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:43:13,023|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:44:12,928|I| Maintenance
+2026-06-05 01:44:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:44:13,036|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:44:13,037|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:45:12,928|I| Maintenance
+2026-06-05 01:45:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:45:13,023|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:45:13,023|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:46:12,928|I| Maintenance
+2026-06-05 01:46:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:46:13,017|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:46:13,018|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:47:12,928|I| Maintenance
+2026-06-05 01:47:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:47:13,033|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:47:13,034|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:48:12,928|I| Maintenance
+2026-06-05 01:48:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:48:13,006|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:48:13,006|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:49:12,928|I| Maintenance
+2026-06-05 01:49:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:49:13,024|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:49:13,025|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:50:12,928|I| Maintenance
+2026-06-05 01:50:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:50:13,015|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:50:13,015|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:51:12,928|I| Maintenance
+2026-06-05 01:51:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:51:13,013|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:51:13,013|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:52:12,928|I| Maintenance
+2026-06-05 01:52:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:52:13,023|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:52:13,024|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:53:12,928|I| Maintenance
+2026-06-05 01:53:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:53:13,020|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:53:13,020|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:54:12,928|I| Maintenance
+2026-06-05 01:54:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:54:13,019|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:54:13,020|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:55:12,928|I| Maintenance
+2026-06-05 01:55:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:55:13,021|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:55:13,022|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:56:12,928|I| Maintenance
+2026-06-05 01:56:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:56:13,016|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:56:13,016|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:57:12,928|I| Maintenance
+2026-06-05 01:57:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:57:13,012|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:57:13,012|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:58:12,928|I| Maintenance
+2026-06-05 01:58:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:58:13,019|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:58:13,019|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 01:59:12,928|I| Maintenance
+2026-06-05 01:59:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 01:59:13,023|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 01:59:13,023|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:00:12,928|I| Maintenance
+2026-06-05 02:00:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:00:13,013|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:00:13,014|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:01:12,928|I| Maintenance
+2026-06-05 02:01:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:01:13,022|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:01:13,022|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:02:12,928|I| Maintenance
+2026-06-05 02:02:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:02:13,013|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:02:13,013|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:03:12,928|I| Maintenance
+2026-06-05 02:03:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:03:13,013|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:03:13,013|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:04:12,928|I| Maintenance
+2026-06-05 02:04:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:04:13,017|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:04:13,018|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:05:12,928|I| Maintenance
+2026-06-05 02:05:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:05:13,024|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:05:13,024|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:06:12,928|I| Maintenance
+2026-06-05 02:06:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:06:13,014|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:06:13,015|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:07:12,928|I| Maintenance
+2026-06-05 02:07:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:07:13,037|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:07:13,037|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:08:12,928|I| Maintenance
+2026-06-05 02:08:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:08:13,021|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:08:13,021|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:09:12,928|I| Maintenance
+2026-06-05 02:09:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:09:13,026|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:09:13,026|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:10:12,928|I| Maintenance
+2026-06-05 02:10:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:10:13,020|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:10:13,020|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:11:12,928|I| Maintenance
+2026-06-05 02:11:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:11:13,023|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:11:13,023|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:12:12,928|I| Maintenance
+2026-06-05 02:12:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:12:13,017|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:12:13,018|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:13:12,928|I| Maintenance
+2026-06-05 02:13:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:13:13,023|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:13:13,023|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:14:12,928|I| Maintenance
+2026-06-05 02:14:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:14:13,022|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:14:13,022|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:15:12,928|I| Maintenance
+2026-06-05 02:15:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:15:13,023|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:15:13,024|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:16:12,928|I| Maintenance
+2026-06-05 02:16:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:16:13,019|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:16:13,019|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:17:12,928|I| Maintenance
+2026-06-05 02:17:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:17:13,023|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:17:13,023|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:18:12,928|I| Maintenance
+2026-06-05 02:18:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:18:13,015|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:18:13,015|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:19:12,928|I| Maintenance
+2026-06-05 02:19:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:19:13,015|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:19:13,016|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:20:12,928|I| Maintenance
+2026-06-05 02:20:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:20:13,058|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:20:13,058|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:21:12,928|I| Maintenance
+2026-06-05 02:21:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:21:13,020|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:21:13,020|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:22:12,928|I| Maintenance
+2026-06-05 02:22:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:22:13,021|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:22:13,021|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:23:12,928|I| Maintenance
+2026-06-05 02:23:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:23:13,027|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:23:13,027|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:24:12,928|I| Maintenance
+2026-06-05 02:24:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:24:13,012|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:24:13,013|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:25:12,928|I| Maintenance
+2026-06-05 02:25:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:25:13,109|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:25:13,110|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:26:12,928|I| Maintenance
+2026-06-05 02:26:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:26:13,015|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:26:13,016|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:27:12,928|I| Maintenance
+2026-06-05 02:27:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:27:13,020|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:27:13,020|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:28:12,928|I| Maintenance
+2026-06-05 02:28:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:28:13,010|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:28:13,011|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:29:12,928|I| Maintenance
+2026-06-05 02:29:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:29:13,025|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:29:13,025|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:30:12,928|I| Maintenance
+2026-06-05 02:30:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:30:13,021|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:30:13,022|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:31:12,928|I| Maintenance
+2026-06-05 02:31:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:31:13,127|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:31:13,127|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:32:12,928|I| Maintenance
+2026-06-05 02:32:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:32:13,018|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:32:13,018|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:33:12,928|I| Maintenance
+2026-06-05 02:33:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:33:13,021|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:33:13,021|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:34:12,928|I| Maintenance
+2026-06-05 02:34:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:34:13,013|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:34:13,013|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:35:12,928|I| Maintenance
+2026-06-05 02:35:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:35:13,020|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:35:13,021|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:36:12,928|I| Maintenance
+2026-06-05 02:36:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:36:13,010|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:36:13,011|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:37:12,928|I| Maintenance
+2026-06-05 02:37:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:37:13,020|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:37:13,020|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:38:12,928|I| Maintenance
+2026-06-05 02:38:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:38:13,036|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:38:13,037|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:39:12,928|I| Maintenance
+2026-06-05 02:39:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:39:13,012|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:39:13,012|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:40:12,928|I| Maintenance
+2026-06-05 02:40:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:40:13,006|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:40:13,007|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:41:12,928|I| Maintenance
+2026-06-05 02:41:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:41:13,011|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:41:13,011|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:42:12,928|I| Maintenance
+2026-06-05 02:42:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:42:13,021|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:42:13,021|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:43:12,928|I| Maintenance
+2026-06-05 02:43:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:43:13,040|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:43:13,040|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:44:12,928|I| Maintenance
+2026-06-05 02:44:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:44:13,013|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:44:13,013|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:45:12,928|I| Maintenance
+2026-06-05 02:45:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:45:13,013|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:45:13,014|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:46:12,928|I| Maintenance
+2026-06-05 02:46:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:46:13,018|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:46:13,018|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:47:12,928|I| Maintenance
+2026-06-05 02:47:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:47:13,017|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:47:13,017|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:48:12,928|I| Maintenance
+2026-06-05 02:48:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:48:13,008|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:48:13,008|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:49:12,928|I| Maintenance
+2026-06-05 02:49:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:49:13,006|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:49:13,006|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:50:12,928|I| Maintenance
+2026-06-05 02:50:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:50:13,011|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:50:13,012|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:51:12,928|I| Maintenance
+2026-06-05 02:51:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:51:13,024|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:51:13,024|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:52:12,928|I| Maintenance
+2026-06-05 02:52:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:52:13,019|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:52:13,019|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:53:12,928|I| Maintenance
+2026-06-05 02:53:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:53:13,048|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:53:13,048|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:54:12,928|I| Maintenance
+2026-06-05 02:54:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:54:13,016|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:54:13,016|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:55:12,928|I| Maintenance
+2026-06-05 02:55:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:55:13,014|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:55:13,014|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:56:12,928|I| Maintenance
+2026-06-05 02:56:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:56:13,021|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:56:13,021|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:57:12,928|I| Maintenance
+2026-06-05 02:57:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:57:13,019|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:57:13,019|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:58:12,928|I| Maintenance
+2026-06-05 02:58:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:58:13,016|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:58:13,017|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 02:59:12,928|I| Maintenance
+2026-06-05 02:59:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 02:59:13,013|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 02:59:13,013|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:00:12,928|I| Maintenance
+2026-06-05 03:00:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:00:13,026|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:00:13,026|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:01:12,928|I| Maintenance
+2026-06-05 03:01:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:01:13,022|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:01:13,022|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:02:12,928|I| Maintenance
+2026-06-05 03:02:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:02:13,020|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:02:13,020|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:03:12,928|I| Maintenance
+2026-06-05 03:03:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:03:13,026|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:03:13,026|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:04:12,928|I| Maintenance
+2026-06-05 03:04:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:04:13,020|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:04:13,021|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:05:12,928|I| Maintenance
+2026-06-05 03:05:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:05:13,019|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:05:13,019|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:06:12,928|I| Maintenance
+2026-06-05 03:06:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:06:13,020|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:06:13,020|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:07:12,928|I| Maintenance
+2026-06-05 03:07:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:07:13,019|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:07:13,019|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:08:12,928|I| Maintenance
+2026-06-05 03:08:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:08:13,021|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:08:13,021|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:09:12,928|I| Maintenance
+2026-06-05 03:09:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:09:13,024|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:09:13,024|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:10:12,928|I| Maintenance
+2026-06-05 03:10:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:10:13,053|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:10:13,053|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:11:12,928|I| Maintenance
+2026-06-05 03:11:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:11:13,032|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:11:13,032|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:12:12,928|I| Maintenance
+2026-06-05 03:12:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:12:13,026|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:12:13,026|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:13:12,928|I| Maintenance
+2026-06-05 03:13:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:13:13,018|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:13:13,019|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:14:12,928|I| Maintenance
+2026-06-05 03:14:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:14:13,012|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:14:13,013|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:15:12,928|I| Maintenance
+2026-06-05 03:15:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:15:13,014|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:15:13,014|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:16:12,928|I| Maintenance
+2026-06-05 03:16:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:16:13,013|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:16:13,014|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:17:12,928|I| Maintenance
+2026-06-05 03:17:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:17:13,005|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:17:13,005|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:18:12,928|I| Maintenance
+2026-06-05 03:18:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:18:13,008|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:18:13,008|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:19:12,928|I| Maintenance
+2026-06-05 03:19:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:19:13,013|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:19:13,013|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:20:12,928|I| Maintenance
+2026-06-05 03:20:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:20:13,015|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:20:13,016|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:21:12,928|I| Maintenance
+2026-06-05 03:21:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:21:13,013|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:21:13,013|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:22:12,928|I| Maintenance
+2026-06-05 03:22:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:22:13,018|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:22:13,018|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:23:12,928|I| Maintenance
+2026-06-05 03:23:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:23:13,013|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:23:13,013|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:24:12,928|I| Maintenance
+2026-06-05 03:24:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:24:13,029|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:24:13,029|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:25:12,928|I| Maintenance
+2026-06-05 03:25:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:25:13,020|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:25:13,021|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:26:12,928|I| Maintenance
+2026-06-05 03:26:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:26:13,021|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:26:13,021|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:27:12,928|I| Maintenance
+2026-06-05 03:27:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:27:13,010|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:27:13,010|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:28:12,928|I| Maintenance
+2026-06-05 03:28:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:28:13,014|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:28:13,014|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:29:12,928|I| Maintenance
+2026-06-05 03:29:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:29:13,019|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:29:13,019|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:30:12,928|I| Maintenance
+2026-06-05 03:30:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:30:13,020|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:30:13,020|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:31:12,928|I| Maintenance
+2026-06-05 03:31:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:31:13,023|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:31:13,023|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:32:12,928|I| Maintenance
+2026-06-05 03:32:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:32:13,014|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:32:13,014|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:33:12,928|I| Maintenance
+2026-06-05 03:33:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:33:13,026|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:33:13,027|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:34:12,928|I| Maintenance
+2026-06-05 03:34:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:34:13,012|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:34:13,013|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:35:12,928|I| Maintenance
+2026-06-05 03:35:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:35:13,016|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:35:13,017|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:36:12,928|I| Maintenance
+2026-06-05 03:36:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:36:13,026|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:36:13,026|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:37:12,928|I| Maintenance
+2026-06-05 03:37:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:37:13,020|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:37:13,020|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:38:12,928|I| Maintenance
+2026-06-05 03:38:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:38:13,008|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:38:13,008|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:39:12,928|I| Maintenance
+2026-06-05 03:39:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:39:13,010|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:39:13,011|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:40:12,928|I| Maintenance
+2026-06-05 03:40:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:40:13,011|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:40:13,011|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:41:12,928|I| Maintenance
+2026-06-05 03:41:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:41:13,018|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:41:13,018|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:42:12,928|I| Maintenance
+2026-06-05 03:42:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:42:13,016|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:42:13,016|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:43:12,928|I| Maintenance
+2026-06-05 03:43:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:43:13,038|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:43:13,039|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:44:12,928|I| Maintenance
+2026-06-05 03:44:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:44:13,016|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:44:13,016|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:45:12,928|I| Maintenance
+2026-06-05 03:45:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:45:13,014|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:45:13,014|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:46:12,928|I| Maintenance
+2026-06-05 03:46:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:46:13,007|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:46:13,008|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:47:12,928|I| Maintenance
+2026-06-05 03:47:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:47:13,018|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:47:13,018|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:48:12,928|I| Maintenance
+2026-06-05 03:48:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:48:13,014|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:48:13,014|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:49:12,928|I| Maintenance
+2026-06-05 03:49:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:49:13,013|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:49:13,014|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:50:12,928|I| Maintenance
+2026-06-05 03:50:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:50:13,016|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:50:13,016|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:51:12,928|I| Maintenance
+2026-06-05 03:51:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:51:13,008|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:51:13,008|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:52:12,928|I| Maintenance
+2026-06-05 03:52:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:52:13,011|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:52:13,012|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:53:12,928|I| Maintenance
+2026-06-05 03:53:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:53:13,012|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:53:13,012|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:54:12,928|I| Maintenance
+2026-06-05 03:54:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:54:13,014|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:54:13,014|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:55:12,928|I| Maintenance
+2026-06-05 03:55:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:55:13,022|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:55:13,022|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:56:12,928|I| Maintenance
+2026-06-05 03:56:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:56:13,051|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:56:13,051|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:57:12,928|I| Maintenance
+2026-06-05 03:57:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:57:13,010|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:57:13,010|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:58:12,928|I| Maintenance
+2026-06-05 03:58:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:58:13,019|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:58:13,019|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 03:59:12,928|I| Maintenance
+2026-06-05 03:59:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 03:59:13,013|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 03:59:13,013|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:00:12,928|I| Maintenance
+2026-06-05 04:00:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:00:13,015|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:00:13,015|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:01:12,928|I| Maintenance
+2026-06-05 04:01:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:01:13,017|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:01:13,017|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:02:12,928|I| Maintenance
+2026-06-05 04:02:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:02:13,025|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:02:13,025|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:03:12,928|I| Maintenance
+2026-06-05 04:03:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:03:13,014|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:03:13,015|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:04:12,928|I| Maintenance
+2026-06-05 04:04:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:04:13,018|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:04:13,018|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:05:12,928|I| Maintenance
+2026-06-05 04:05:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:05:13,007|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:05:13,007|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:06:12,928|I| Maintenance
+2026-06-05 04:06:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:06:13,015|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:06:13,015|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:07:12,928|I| Maintenance
+2026-06-05 04:07:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:07:13,016|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:07:13,016|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:08:12,928|I| Maintenance
+2026-06-05 04:08:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:08:13,020|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:08:13,020|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:09:12,928|I| Maintenance
+2026-06-05 04:09:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:09:13,016|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:09:13,016|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:10:12,928|I| Maintenance
+2026-06-05 04:10:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:10:13,008|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:10:13,008|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:11:12,928|I| Maintenance
+2026-06-05 04:11:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:11:13,026|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:11:13,026|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:12:12,928|I| Maintenance
+2026-06-05 04:12:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:12:13,011|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:12:13,011|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:13:12,928|I| Maintenance
+2026-06-05 04:13:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:13:13,014|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:13:13,014|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:14:12,928|I| Maintenance
+2026-06-05 04:14:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:14:13,013|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:14:13,013|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:15:12,928|I| Maintenance
+2026-06-05 04:15:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:15:13,012|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:15:13,012|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:16:12,928|I| Maintenance
+2026-06-05 04:16:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:16:13,072|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:16:13,072|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:17:12,928|I| Maintenance
+2026-06-05 04:17:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:17:13,013|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:17:13,013|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:18:12,928|I| Maintenance
+2026-06-05 04:18:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:18:13,014|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:18:13,014|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:19:12,928|I| Maintenance
+2026-06-05 04:19:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:19:13,011|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:19:13,011|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:20:12,928|I| Maintenance
+2026-06-05 04:20:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:20:13,015|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:20:13,015|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:21:12,928|I| Maintenance
+2026-06-05 04:21:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:21:13,011|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:21:13,012|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:22:12,928|I| Maintenance
+2026-06-05 04:22:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:22:13,018|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:22:13,018|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:23:12,928|I| Maintenance
+2026-06-05 04:23:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:23:13,009|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:23:13,010|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:24:12,928|I| Maintenance
+2026-06-05 04:24:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:24:13,020|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:24:13,021|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:25:12,928|I| Maintenance
+2026-06-05 04:25:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:25:13,034|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:25:13,034|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:26:12,928|I| Maintenance
+2026-06-05 04:26:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:26:13,025|I| Gateway running and authenticated, session id: 661eaa2564aef4bcafe123204dbfb872, server name: JifZ04069
+2026-06-05 04:26:13,026|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:27:12,928|I| Maintenance
+2026-06-05 04:27:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:13,018|I| NOT CONNECTED Status(running=True, session=True, connected=False, authenticated=False, competing=False, collision=False, session_id='661eaa2564aef4bcafe123204dbfb872', server_name='JifZ04069', server_version='Build 10.46.1h, May 29, 2026 11:39:59 AM', expires=480012)
+2026-06-05 04:27:13,018|I| Authentication strategy: "B"
+2026-06-05 04:27:13,018|I| Competing or disconnected Gateway session found, logging out and reauthenticating...
+2026-06-05 04:27:13,018|D| POST https://localhost:5000/v1/api/logout (unverified)
+2026-06-05 04:27:13,125|I| Gateway logout successful
+2026-06-05 04:27:13,125|D| POST https://localhost:5000/v1/portal/iserver/reauthenticate?force=true (unverified)
+2026-06-05 04:27:13,134|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:14,287|I| Repeating status check attempts another 119 times
+2026-06-05 04:27:14,287|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:15,380|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:16,468|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:17,555|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:18,679|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:20,738|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:21,851|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:22,960|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:24,073|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:25,179|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:26,301|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:27,412|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:28,502|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:29,613|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:30,720|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:31,832|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:32,950|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:34,060|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:35,177|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:36,289|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:37,392|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:38,532|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:39,641|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:40,752|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:41,859|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:42,972|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:44,068|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:45,231|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:46,391|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:47,504|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:48,610|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:49,726|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:50,838|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:51,941|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:53,053|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:54,168|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:55,277|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:56,379|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:57,496|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:58,600|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:27:59,687|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:00,797|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:01,953|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:03,136|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:04,245|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:05,359|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:06,475|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:07,578|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:08,685|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:09,788|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:10,897|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:12,003|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:13,117|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:14,197|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:15,334|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:16,444|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:17,583|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:18,699|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:19,822|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:20,940|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:22,050|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:23,159|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:24,261|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:25,363|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:26,470|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:27,576|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:28,723|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:29,808|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:30,925|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:32,036|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:33,145|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:34,251|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:35,360|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:36,471|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:37,585|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:38,689|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:39,791|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:40,902|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:42,007|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:43,114|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:44,249|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:45,387|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:46,499|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:47,602|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:48,716|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:49,821|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:50,927|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:52,032|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:53,164|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:54,274|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:55,393|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:56,507|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:57,616|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:58,734|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:28:59,827|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:00,940|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:02,039|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:03,148|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:04,263|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:05,372|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:06,487|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:07,601|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:08,716|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:09,865|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:10,969|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:12,077|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:13,185|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:14,265|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:15,376|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:16,508|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:17,652|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:18,764|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:19,863|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:20,967|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:22,072|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:23,178|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:24,290|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:25,421|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:26,520|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:26,629|I| Max status check retries reached after 120 attempts. Consider increasing the retries by setting IBEAM_MAX_STATUS_CHECK_ATTEMPTS environment variable
+2026-06-05 04:29:26,629|I| NOT CONNECTED Status(running=True, session=True, connected=False, authenticated=False, competing=False, collision=False, session_id='fb7ebcc3be68ada9ecd534f08c52316f', server_name=None, server_version=None, expires=466613)
+2026-06-05 04:29:26,629|D| POST https://localhost:5000/v1/portal/iserver/reauthenticate?force=true (unverified)
+2026-06-05 04:29:26,633|I| Repeated reauthentication attempt number 2
+2026-06-05 04:29:26,633|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:27,816|I| Repeating status check attempts another 119 times
+2026-06-05 04:29:27,817|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:28,910|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:30,008|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:31,092|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:32,201|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:33,307|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:34,420|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:35,533|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:36,638|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:37,758|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:38,864|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:39,989|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:41,091|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:42,202|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:43,314|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:44,421|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:45,549|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:46,670|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:47,771|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:48,923|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:50,039|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:51,146|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:52,257|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:53,371|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:54,479|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:55,592|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:56,706|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:57,810|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:29:58,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:00,019|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:01,134|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:02,258|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:03,361|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:04,470|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:05,585|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:06,687|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:07,803|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:08,912|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:10,016|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:11,134|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:12,238|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:13,354|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:14,439|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:15,544|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:16,651|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:17,840|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:18,957|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:20,075|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:21,187|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:22,297|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:23,416|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:24,522|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:25,633|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:26,735|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:27,844|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:28,957|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:30,039|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:31,162|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:32,270|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:33,380|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:34,485|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:35,603|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:36,707|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:37,825|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:38,934|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:40,034|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:41,135|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:42,237|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:43,443|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:44,530|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:45,635|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:46,744|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:47,998|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:49,099|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:50,203|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:51,422|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:52,530|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:53,637|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:54,748|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:55,857|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:56,967|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:58,083|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:30:59,189|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:00,277|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:01,390|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:02,495|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:03,601|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:04,732|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:05,836|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:06,942|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:08,047|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:09,170|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:10,280|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:11,387|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:12,497|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:13,647|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:14,729|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:15,837|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:16,941|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:18,067|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:19,168|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:20,407|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:21,510|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:22,624|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:23,727|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:24,837|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:25,939|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:27,045|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:28,154|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:29,259|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:30,368|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:31,484|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:32,600|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:33,719|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:34,831|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:35,941|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:37,049|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:38,167|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:39,290|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:39,391|I| Max status check retries reached after 120 attempts. Consider increasing the retries by setting IBEAM_MAX_STATUS_CHECK_ATTEMPTS environment variable
+2026-06-05 04:31:39,391|I| NOT CONNECTED Status(running=True, session=True, connected=False, authenticated=False, competing=False, collision=False, session_id='fb7ebcc3be68ada9ecd534f08c52316f', server_name=None, server_version=None, expires=333848)
+2026-06-05 04:31:39,391|D| POST https://localhost:5000/v1/portal/iserver/reauthenticate?force=true (unverified)
+2026-06-05 04:31:39,401|I| Repeated reauthentication attempt number 3
+2026-06-05 04:31:39,401|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:40,507|I| Repeating status check attempts another 119 times
+2026-06-05 04:31:40,507|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:41,594|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:42,691|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:43,773|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:44,876|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:45,981|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:47,165|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:48,353|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:49,461|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:50,578|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:51,687|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:52,909|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:54,016|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:55,124|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:56,239|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:57,356|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:58,464|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:31:59,598|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:00,688|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:01,790|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:02,898|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:04,010|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:05,122|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:06,222|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:07,319|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:08,417|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:09,526|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:10,627|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:11,733|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:12,837|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:13,924|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:15,044|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:16,147|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:17,248|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:18,402|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:19,504|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:20,608|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:21,714|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:22,811|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:23,920|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:25,028|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:26,243|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:27,350|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:28,450|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:29,565|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:30,648|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:31,756|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:32,876|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:33,984|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:35,096|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:36,201|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:37,304|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:38,413|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:39,514|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:40,621|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:41,725|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:42,832|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:43,913|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:45,010|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:46,112|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:47,226|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:48,321|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:49,599|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:50,709|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:51,812|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:52,921|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:54,064|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:55,162|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:56,278|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:57,383|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:58,498|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:32:59,602|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:00,695|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:01,803|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:02,915|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:04,019|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:05,132|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:06,239|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:07,351|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:08,452|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:09,573|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:10,689|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:11,808|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:12,916|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:13,990|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:15,095|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:16,197|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:17,294|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:18,403|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:19,507|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:20,622|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:21,730|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:22,844|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:23,948|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:25,047|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:26,268|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:27,371|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:28,467|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:29,580|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:30,663|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:31,772|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:32,899|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:34,005|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:35,109|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:36,209|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:37,311|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:38,419|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:39,530|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:40,637|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:41,749|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:42,856|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:43,938|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:45,041|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:46,141|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:47,272|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:48,381|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:49,483|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:50,580|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:51,735|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:33:51,837|I| Max status check retries reached after 120 attempts. Consider increasing the retries by setting IBEAM_MAX_STATUS_CHECK_ATTEMPTS environment variable
+2026-06-05 04:33:51,837|I| NOT CONNECTED Status(running=True, session=True, connected=False, authenticated=False, competing=False, collision=False, session_id='fb7ebcc3be68ada9ecd534f08c52316f', server_name=None, server_version=None, expires=201399)
+2026-06-05 04:33:51,837|I| Max reauthenticate retries reached after 3 attempts. Consider increasing the retries by setting IBEAM_MAX_REAUTHENTICATE_RETRIES environment variable
+2026-06-05 04:33:51,837|E| Repeatedly reauthenticating failed 3 times. Killing the Gateway and restarting the authentication process.
+2026-06-05 04:34:12,928|I| Maintenance
+2026-06-05 04:34:12,929|I| Gateway not found, starting new one...
+2026-06-05 04:34:12,930|I| Note that the Gateway log below may display "Open https://localhost:[PORT] to login" - ignore this command.
+2026-06-05 04:34:12,930|I| Starting Gateway as Linux process with params: ['bash', 'bin/run.sh', 'root/conf.yaml']
+2026-06-05 04:34:12,943|I| Gateway started with pids: [7097]
+2026-06-05 04:34:12,943|D| GET https://localhost:5000 (unverified)
+2026-06-05 04:34:12,944|I| Gateway running but not serving yet. Consider increasing IBEAM_GATEWAY_STARTUP timeout. Error: <urlopen error [Errno 111] Connection refused>
+2026-06-05 04:34:12,944|I| Gateway connection established
+2026-06-05 04:34:12,944|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:12,945|I| Gateway running but not serving yet. Consider increasing IBEAM_GATEWAY_STARTUP timeout. Error: <urlopen error [Errno 111] Connection refused>
+2026-06-05 04:34:12,945|I| Attempt number 2
+2026-06-05 04:34:12,945|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:12,945|I| Gateway running but not serving yet. Consider increasing IBEAM_GATEWAY_STARTUP timeout. Error: <urlopen error [Errno 111] Connection refused>
+2026-06-05 04:34:12,945|I| Max request retries reached after 2 attempts. Consider increasing the retries by setting IBEAM_REQUEST_RETRIES environment variable
+2026-06-05 04:34:12,945|I| NO SESSION Status(running=True, session=False, connected=False, authenticated=False, competing=False, collision=False, session_id=None, server_name=None, server_version=None, expires=None)
+2026-06-05 04:34:12,945|I| Authentication strategy: "B"
+2026-06-05 04:34:12,945|I| No active sessions, logging in...
+2026-06-05 04:34:12,945|I| Loading auth webpage at https://localhost:5000/sso/Login?forwardTo=22&RL=1&ip2loc=on
+2026-06-05 04:34:22,368|D| Targets: {'PASSWORD': Target(NAME@@password), 'SUBMIT': Target(CSS_SELECTOR@@.btn.btn-lg.xyz-button-login), 'SUCCESS': Target(TAG_NAME@@Client login succeeds), 'IBKEY_PROMO': Target(CLASS_NAME@@ibkey-promo-skip), 'TWO_FA': Target(ID@@xyz-field-silver-response), 'TWO_FA_NOTIFICATION': Target(CLASS_NAME@@login-step-notification), 'TWO_FA_INPUT': Target(ID@@xyz-field-silver-response), 'TWO_FA_SELECT': Target(CLASS_NAME@@xyz-multipleselect), 'LIVE_PAPER_TOGGLE': Target(FOR@@label[for=toggle1]), 'USER_NAME': Target(NAME@@username), 'ERROR': Target(CSS_SELECTOR@@.xyz-errormessage)}
+2026-06-05 04:34:22,411|I| Gateway auth webpage loaded
+2026-06-05 04:34:22,411|I| Login attempt number 1
+2026-06-05 04:34:22,631|D| target: Target(NAME@@username)
+2026-06-05 04:34:27,898|I| Submitting the form
+2026-06-05 04:34:28,766|D| target: Target(CLASS_NAME@@xyz-multipleselect)
+2026-06-05 04:34:28,767|I| Required to select a 2FA method.
+2026-06-05 04:34:29,541|D| target: Target(ID@@xyz-field-silver-response)
+2026-06-05 04:34:29,541|I| 2FA method "Mobile Authenticator App" selected successfully.
+2026-06-05 04:34:29,541|I| Credentials correct, but Gateway requires two-factor authentication.
+2026-06-05 04:34:29,541|I| Attempting to acquire 2FA code from: PyoptHandler(status=ready)
+2026-06-05 04:34:29,541|I| TOTP code expires in 0.5s (<8s buffer), stalling until a fresh code can be generated...
+2026-06-05 04:34:30,502|I| Generated TOTP code ending in 725 (valid for 29s)
+2026-06-05 04:34:30,502|D| 2FA code returned: 476725
+2026-06-05 04:34:30,605|I| Submitting the 2FA form
+2026-06-05 04:34:31,726|D| target: Target(TAG_NAME@@Client login succeeds)
+2026-06-05 04:34:31,726|I| Webpage displayed "Client login succeeds"
+2026-06-05 04:34:32,726|I| Cleaning up the resources. Display: <pyvirtualdisplay.display.Display object at 0x7bfc6daa99d0> | Driver: <selenium.webdriver.chrome.webdriver.WebDriver (session="e7430b582038553c40982475340eb99f")>
+2026-06-05 04:34:32,833|I| Logging in succeeded
+2026-06-05 04:34:32,833|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:33,932|I| Repeating status check attempts another 119 times
+2026-06-05 04:34:33,932|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:35,029|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:36,119|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:37,209|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:38,671|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:39,791|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:40,897|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:42,016|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:43,132|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:44,235|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:45,351|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:46,478|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:47,593|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:48,708|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:49,832|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:50,948|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:52,069|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:53,178|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:54,293|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:55,411|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:56,525|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:57,645|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:58,765|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:34:59,907|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:01,102|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:02,332|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:03,542|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:04,712|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:05,899|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:07,123|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:08,317|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:09,427|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:10,538|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:11,663|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:12,769|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:13,885|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:14,999|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:16,110|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:17,255|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:18,371|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:19,484|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:20,595|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:21,709|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:22,816|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:23,935|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:25,044|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:26,212|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:27,322|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:28,438|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:29,554|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:30,676|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:31,764|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:32,874|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:33,988|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:35,106|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:36,234|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:37,343|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:38,455|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:39,565|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:40,703|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:41,818|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:42,935|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:44,051|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:45,160|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:46,272|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:47,437|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:48,539|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:49,650|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:50,771|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:51,883|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:53,000|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:54,131|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:55,258|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:56,376|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:57,490|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:58,611|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:35:59,720|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:00,834|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:01,920|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:03,041|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:04,144|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:05,257|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:06,397|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:07,509|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:08,619|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:09,740|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:10,855|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:11,969|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:13,079|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:14,193|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:15,301|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:16,414|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:17,575|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:18,690|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:19,795|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:20,909|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:22,021|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:23,139|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:24,251|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:25,364|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:26,510|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:27,619|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:28,744|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:29,876|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:30,989|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:32,093|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:33,207|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:34,313|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:35,423|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:36,533|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:37,646|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:38,763|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:39,874|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:40,982|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:42,101|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:43,211|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:44,321|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:45,426|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:46,533|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:46,715|I| Max status check retries reached after 120 attempts. Consider increasing the retries by setting IBEAM_MAX_STATUS_CHECK_ATTEMPTS environment variable
+2026-06-05 04:36:46,715|I| NOT CONNECTED Status(running=True, session=True, connected=False, authenticated=False, competing=False, collision=False, session_id='660a3deebdac3b69cbd41b7925982518', server_name=None, server_version=None, expires=465172)
+2026-06-05 04:36:46,715|D| POST https://localhost:5000/v1/portal/iserver/reauthenticate?force=true (unverified)
+2026-06-05 04:36:46,724|I| Repeated reauthentication attempt number 2
+2026-06-05 04:36:46,724|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:47,825|I| Repeating status check attempts another 119 times
+2026-06-05 04:36:47,826|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:48,922|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:50,019|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:51,111|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:52,223|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:53,352|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:54,456|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:55,569|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:56,681|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:57,790|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:36:58,964|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:00,066|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:01,181|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:02,268|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:03,373|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:04,487|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:05,599|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:06,711|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:07,829|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:08,933|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:10,040|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:11,139|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:12,252|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:13,358|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:14,462|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:15,565|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:16,667|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:17,814|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:18,923|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:20,032|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:21,160|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:22,275|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:23,419|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:24,535|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:25,647|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:26,789|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:27,896|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:29,013|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:30,130|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:31,252|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:32,350|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:33,453|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:34,559|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:35,671|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:36,783|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:37,897|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:39,013|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:40,124|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:41,233|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:42,340|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:43,450|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:44,565|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:45,692|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:46,798|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:47,939|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:49,061|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:50,172|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:51,295|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:52,411|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:53,518|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:54,638|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:55,742|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:56,859|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:57,977|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:37:59,085|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:00,188|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:01,302|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:02,387|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:03,504|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:04,612|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:05,723|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:06,835|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:07,980|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:09,098|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:10,211|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:11,399|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:12,568|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:13,690|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:14,797|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:15,937|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:17,049|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:18,239|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:19,366|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:20,491|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:21,618|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:22,731|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:23,837|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:24,940|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:26,057|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:27,284|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:28,429|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:29,567|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:30,689|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:31,793|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:32,877|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:33,977|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:35,225|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:36,398|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:37,508|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:38,610|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:39,718|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:40,827|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:41,935|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:43,042|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:44,150|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:45,253|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:46,363|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:47,467|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:48,598|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:49,709|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:50,818|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:51,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:53,040|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:54,144|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:55,249|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:56,357|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:57,465|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:58,582|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:59,689|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:38:59,814|I| Max status check retries reached after 120 attempts. Consider increasing the retries by setting IBEAM_MAX_STATUS_CHECK_ATTEMPTS environment variable
+2026-06-05 04:38:59,814|I| NOT CONNECTED Status(running=True, session=True, connected=False, authenticated=False, competing=False, collision=False, session_id='660a3deebdac3b69cbd41b7925982518', server_name=None, server_version=None, expires=332059)
+2026-06-05 04:38:59,814|D| POST https://localhost:5000/v1/portal/iserver/reauthenticate?force=true (unverified)
+2026-06-05 04:38:59,823|I| Repeated reauthentication attempt number 3
+2026-06-05 04:38:59,823|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:00,928|I| Repeating status check attempts another 119 times
+2026-06-05 04:39:00,928|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:02,015|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:03,113|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:04,202|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:05,309|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:06,415|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:07,523|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:08,633|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:09,743|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:10,852|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:11,955|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:13,089|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:14,202|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:15,306|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:16,422|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:17,536|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:18,671|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:19,783|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:20,883|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:22,000|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:23,102|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:24,223|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:25,343|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:26,455|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:27,610|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:28,718|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:29,844|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:31,035|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:32,131|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:33,216|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:34,315|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:35,425|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:36,578|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:37,683|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:38,796|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:39,912|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:41,027|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:42,137|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:43,241|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:44,345|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:45,478|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:46,587|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:47,701|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:48,871|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:49,979|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:51,082|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:52,187|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:53,312|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:54,417|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:55,528|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:56,657|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:57,773|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:39:58,908|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:00,013|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:01,120|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:02,232|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:03,315|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:04,431|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:05,540|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:06,654|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:07,765|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:08,866|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:09,983|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:11,093|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:12,205|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:13,314|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:14,428|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:15,541|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:16,649|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:17,761|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:18,917|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:20,022|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:21,134|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:22,239|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:23,350|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:24,459|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:25,580|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:26,693|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:27,813|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:29,033|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:30,152|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:31,268|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:32,410|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:33,508|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:34,615|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:35,718|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:36,873|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:37,986|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:39,098|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:40,230|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:41,337|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:42,450|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:43,567|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:44,679|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:45,791|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:46,913|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:48,024|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:49,183|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:50,291|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:51,402|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:52,505|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:53,618|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:54,721|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:55,838|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:56,942|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:58,049|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:40:59,160|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:41:00,277|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:41:01,387|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:41:02,491|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:41:03,572|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:41:04,681|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:41:05,781|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:41:06,901|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:41:08,010|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:41:09,118|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:41:10,240|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:41:11,353|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:41:12,462|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:41:12,574|I| Max status check retries reached after 120 attempts. Consider increasing the retries by setting IBEAM_MAX_STATUS_CHECK_ATTEMPTS environment variable
+2026-06-05 04:41:12,574|I| NOT CONNECTED Status(running=True, session=True, connected=False, authenticated=False, competing=False, collision=False, session_id='660a3deebdac3b69cbd41b7925982518', server_name=None, server_version=None, expires=199298)
+2026-06-05 04:41:12,575|I| Max reauthenticate retries reached after 3 attempts. Consider increasing the retries by setting IBEAM_MAX_REAUTHENTICATE_RETRIES environment variable
+2026-06-05 04:41:12,575|E| Repeatedly reauthenticating failed 3 times. Killing the Gateway and restarting the authentication process.
+2026-06-05 04:42:12,928|I| Maintenance
+2026-06-05 04:42:12,930|I| Gateway not found, starting new one...
+2026-06-05 04:42:12,930|I| Note that the Gateway log below may display "Open https://localhost:[PORT] to login" - ignore this command.
+2026-06-05 04:42:12,930|I| Starting Gateway as Linux process with params: ['bash', 'bin/run.sh', 'root/conf.yaml']
+2026-06-05 04:42:12,938|I| Gateway started with pids: [7515]
+2026-06-05 04:42:12,938|D| GET https://localhost:5000 (unverified)
+2026-06-05 04:42:12,940|I| Gateway running but not serving yet. Consider increasing IBEAM_GATEWAY_STARTUP timeout. Error: <urlopen error [Errno 111] Connection refused>
+2026-06-05 04:42:12,940|I| Gateway connection established
+2026-06-05 04:42:12,940|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:42:12,941|I| Gateway running but not serving yet. Consider increasing IBEAM_GATEWAY_STARTUP timeout. Error: <urlopen error [Errno 111] Connection refused>
+2026-06-05 04:42:12,941|I| Attempt number 2
+2026-06-05 04:42:12,942|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:42:12,943|I| Gateway running but not serving yet. Consider increasing IBEAM_GATEWAY_STARTUP timeout. Error: <urlopen error [Errno 111] Connection refused>
+2026-06-05 04:42:12,943|I| Max request retries reached after 2 attempts. Consider increasing the retries by setting IBEAM_REQUEST_RETRIES environment variable
+2026-06-05 04:42:12,943|I| NO SESSION Status(running=True, session=False, connected=False, authenticated=False, competing=False, collision=False, session_id=None, server_name=None, server_version=None, expires=None)
+2026-06-05 04:42:12,943|I| Authentication strategy: "B"
+2026-06-05 04:42:12,943|I| No active sessions, logging in...
+2026-06-05 04:42:12,943|I| Loading auth webpage at https://localhost:5000/sso/Login?forwardTo=22&RL=1&ip2loc=on
+2026-06-05 04:42:22,053|D| Targets: {'PASSWORD': Target(NAME@@password), 'SUBMIT': Target(CSS_SELECTOR@@.btn.btn-lg.xyz-button-login), 'SUCCESS': Target(TAG_NAME@@Client login succeeds), 'IBKEY_PROMO': Target(CLASS_NAME@@ibkey-promo-skip), 'TWO_FA': Target(ID@@xyz-field-silver-response), 'TWO_FA_NOTIFICATION': Target(CLASS_NAME@@login-step-notification), 'TWO_FA_INPUT': Target(ID@@xyz-field-silver-response), 'TWO_FA_SELECT': Target(CLASS_NAME@@xyz-multipleselect), 'LIVE_PAPER_TOGGLE': Target(FOR@@label[for=toggle1]), 'USER_NAME': Target(NAME@@username), 'ERROR': Target(CSS_SELECTOR@@.xyz-errormessage)}
+2026-06-05 04:42:22,096|I| Gateway auth webpage loaded
+2026-06-05 04:42:22,096|I| Login attempt number 1
+2026-06-05 04:42:22,296|D| target: Target(NAME@@username)
+2026-06-05 04:42:27,491|I| Submitting the form
+2026-06-05 04:42:28,355|D| target: Target(CLASS_NAME@@xyz-multipleselect)
+2026-06-05 04:42:28,355|I| Required to select a 2FA method.
+2026-06-05 04:42:29,074|D| target: Target(ID@@xyz-field-silver-response)
+2026-06-05 04:42:29,074|I| 2FA method "Mobile Authenticator App" selected successfully.
+2026-06-05 04:42:29,074|I| Credentials correct, but Gateway requires two-factor authentication.
+2026-06-05 04:42:29,074|I| Attempting to acquire 2FA code from: PyoptHandler(status=ready)
+2026-06-05 04:42:29,074|I| TOTP code expires in 0.9s (<8s buffer), stalling until a fresh code can be generated...
+2026-06-05 04:42:30,500|I| Generated TOTP code ending in 284 (valid for 29s)
+2026-06-05 04:42:30,500|D| 2FA code returned: 063284
+2026-06-05 04:42:30,607|I| Submitting the 2FA form
+2026-06-05 04:42:31,361|D| target: Target(TAG_NAME@@Client login succeeds)
+2026-06-05 04:42:31,361|I| Webpage displayed "Client login succeeds"
+2026-06-05 04:42:32,361|I| Cleaning up the resources. Display: <pyvirtualdisplay.display.Display object at 0x7bfc6daca010> | Driver: <selenium.webdriver.chrome.webdriver.WebDriver (session="57d0240cd35c67a6f5e11dc0af28ba3f")>
+2026-06-05 04:42:32,450|I| Logging in succeeded
+2026-06-05 04:42:32,450|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:42:33,554|I| Repeating status check attempts another 119 times
+2026-06-05 04:42:33,554|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:42:34,645|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:42:35,747|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:42:36,835|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:42:36,932|I| AUTHENTICATED Status(running=True, session=True, connected=True, authenticated=True, competing=False, collision=False, session_id='6bf667fe26ae7e1f2e95798ed86936e8', server_name='JifZ14002', server_version='Build 10.46.1h, May 29, 2026 11:39:59 AM', expires=594538)
+2026-06-05 04:42:36,932|D| POST https://localhost:5000/v1/api/iserver/auth/ssodh/init (unverified)
+2026-06-05 04:42:37,139|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 04:42:37,140|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:43:12,928|I| Maintenance
+2026-06-05 04:43:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:43:13,028|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 04:43:13,028|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:44:12,928|I| Maintenance
+2026-06-05 04:44:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:44:13,028|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 04:44:13,028|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:45:12,928|I| Maintenance
+2026-06-05 04:45:12,929|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:45:13,021|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 04:45:13,021|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:46:12,928|I| Maintenance
+2026-06-05 04:46:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:46:13,030|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 04:46:13,031|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:47:12,928|I| Maintenance
+2026-06-05 04:47:12,931|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:47:13,026|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 04:47:13,026|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
+2026-06-05 04:48:12,928|I| Maintenance
+2026-06-05 04:48:12,930|D| POST https://localhost:5000/v1/api/tickle (unverified)
+2026-06-05 04:48:13,038|I| Gateway running and authenticated, session id: 6bf667fe26ae7e1f2e95798ed86936e8, server name: JifZ14002
+2026-06-05 04:48:13,038|D| GET https://localhost:5000/v1/portal/sso/validate (unverified)
