@@ -7214,3 +7214,49 @@ Stacktrace:
 2026-06-06 18:29:20,523|E| Error displayed by the login webpage: Authentication failed
 2026-06-06 18:29:20,552|I| Saving screenshot to /srv/outputs/ibeam__0.5.12__2026-06-06_18-29-20__failed_attempt.png. Make sure to cover your credentials if you share it with others.
 2026-06-06 18:29:21,722|I| Login attempt number 5
+2026-06-06 18:30:21,807|I| Page loaded but Target(NAME@@username) is not clickable. Reloading webpage.
+2026-06-06 18:30:29,710|D| Targets: {'PASSWORD': Target(NAME@@password), 'SUBMIT': Target(CSS_SELECTOR@@.btn.btn-lg.xyz-button-login), 'SUCCESS': Target(TAG_NAME@@Client login succeeds), 'IBKEY_PROMO': Target(CLASS_NAME@@ibkey-promo-skip), 'TWO_FA': Target(ID@@xyz-field-silver-response), 'TWO_FA_NOTIFICATION': Target(CLASS_NAME@@login-step-notification), 'TWO_FA_INPUT': Target(ID@@xyz-field-silver-response), 'TWO_FA_SELECT': Target(CLASS_NAME@@xyz-multipleselect), 'LIVE_PAPER_TOGGLE': Target(FOR@@label[for=toggle1]), 'USER_NAME': Target(NAME@@username), 'ERROR': Target(CSS_SELECTOR@@.xyz-errormessage)}
+2026-06-06 18:30:29,741|I| Gateway auth webpage loaded
+2026-06-06 18:30:29,884|D| target: Target(NAME@@username)
+2026-06-06 18:30:35,111|I| Submitting the form
+2026-06-06 18:30:36,484|D| target: Target(ID@@xyz-field-silver-response)
+2026-06-06 18:30:36,484|I| Credentials correct, but Gateway requires two-factor authentication.
+2026-06-06 18:30:36,484|I| Attempting to acquire 2FA code from: PyoptHandler(status=ready)
+2026-06-06 18:30:36,484|I| Generated TOTP code ending in 830 (valid for 24s)
+2026-06-06 18:30:36,484|D| 2FA code returned: 204830
+2026-06-06 18:30:36,557|I| Submitting the 2FA form
+2026-06-06 18:30:37,253|D| target: Target(CSS_SELECTOR@@.xyz-errormessage)
+2026-06-06 18:30:37,260|E| Error displayed by the login webpage: Authentication failed
+2026-06-06 18:30:37,281|I| Saving screenshot to /srv/outputs/ibeam__0.5.12__2026-06-06_18-30-37__failed_attempt.png. Make sure to cover your credentials if you share it with others.
+2026-06-06 18:30:38,389|I| Login attempt number 6
+2026-06-06 18:31:38,570|I| Page loaded but Target(NAME@@username) is not clickable. Reloading webpage.
+2026-06-06 18:31:46,055|D| Targets: {'PASSWORD': Target(NAME@@password), 'SUBMIT': Target(CSS_SELECTOR@@.btn.btn-lg.xyz-button-login), 'SUCCESS': Target(TAG_NAME@@Client login succeeds), 'IBKEY_PROMO': Target(CLASS_NAME@@ibkey-promo-skip), 'TWO_FA': Target(ID@@xyz-field-silver-response), 'TWO_FA_NOTIFICATION': Target(CLASS_NAME@@login-step-notification), 'TWO_FA_INPUT': Target(ID@@xyz-field-silver-response), 'TWO_FA_SELECT': Target(CLASS_NAME@@xyz-multipleselect), 'LIVE_PAPER_TOGGLE': Target(FOR@@label[for=toggle1]), 'USER_NAME': Target(NAME@@username), 'ERROR': Target(CSS_SELECTOR@@.xyz-errormessage)}
+2026-06-06 18:31:46,085|I| Gateway auth webpage loaded
+2026-06-06 18:31:46,237|D| target: Target(NAME@@username)
+2026-06-06 18:31:51,473|I| Submitting the form
+2026-06-06 18:31:52,925|D| target: Target(ID@@xyz-field-silver-response)
+2026-06-06 18:31:52,925|I| Credentials correct, but Gateway requires two-factor authentication.
+2026-06-06 18:31:52,925|I| Attempting to acquire 2FA code from: PyoptHandler(status=ready)
+2026-06-06 18:31:52,925|I| TOTP code expires in 7.1s (<8s buffer), stalling until a fresh code can be generated...
+2026-06-06 18:32:00,500|I| Generated TOTP code ending in 248 (valid for 29s)
+2026-06-06 18:32:00,500|D| 2FA code returned: 585248
+2026-06-06 18:32:00,575|I| Submitting the 2FA form
+2026-06-06 18:32:01,241|D| target: Target(CSS_SELECTOR@@.xyz-errormessage)
+2026-06-06 18:32:01,248|E| Error displayed by the login webpage: Authentication failed
+2026-06-06 18:32:01,271|I| Saving screenshot to /srv/outputs/ibeam__0.5.12__2026-06-06_18-32-01__failed_attempt.png. Make sure to cover your credentials if you share it with others.
+2026-06-06 18:32:02,400|I| Login attempt number 7
+2026-06-06 18:33:02,689|I| Page loaded but Target(NAME@@username) is not clickable. Reloading webpage.
+2026-06-06 18:33:10,261|D| Targets: {'PASSWORD': Target(NAME@@password), 'SUBMIT': Target(CSS_SELECTOR@@.btn.btn-lg.xyz-button-login), 'SUCCESS': Target(TAG_NAME@@Client login succeeds), 'IBKEY_PROMO': Target(CLASS_NAME@@ibkey-promo-skip), 'TWO_FA': Target(ID@@xyz-field-silver-response), 'TWO_FA_NOTIFICATION': Target(CLASS_NAME@@login-step-notification), 'TWO_FA_INPUT': Target(ID@@xyz-field-silver-response), 'TWO_FA_SELECT': Target(CLASS_NAME@@xyz-multipleselect), 'LIVE_PAPER_TOGGLE': Target(FOR@@label[for=toggle1]), 'USER_NAME': Target(NAME@@username), 'ERROR': Target(CSS_SELECTOR@@.xyz-errormessage)}
+2026-06-06 18:33:10,291|I| Gateway auth webpage loaded
+2026-06-06 18:33:10,392|D| target: Target(NAME@@username)
+2026-06-06 18:33:15,531|I| Submitting the form
+2026-06-06 18:33:16,909|D| target: Target(ID@@xyz-field-silver-response)
+2026-06-06 18:33:16,909|I| Credentials correct, but Gateway requires two-factor authentication.
+2026-06-06 18:33:16,909|I| Attempting to acquire 2FA code from: PyoptHandler(status=ready)
+2026-06-06 18:33:16,909|I| Generated TOTP code ending in 678 (valid for 13s)
+2026-06-06 18:33:16,909|D| 2FA code returned: 681678
+2026-06-06 18:33:16,975|I| Submitting the 2FA form
+2026-06-06 18:33:17,739|D| target: Target(CSS_SELECTOR@@.xyz-errormessage)
+2026-06-06 18:33:17,749|E| Error displayed by the login webpage: Authentication failed
+2026-06-06 18:33:17,776|I| Saving screenshot to /srv/outputs/ibeam__0.5.12__2026-06-06_18-33-17__failed_attempt.png. Make sure to cover your credentials if you share it with others.
+2026-06-06 18:33:18,944|I| Login attempt number 8
