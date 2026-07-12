@@ -297,3 +297,17 @@ acrescentando o resultado multiregime (PF<0,4 todos os anos, por reconciliar) e
 
 **Gotchas**: escritas na DB do conductor podem estar restringidas — usar as ferramentas MCP
 do conductor em vez de UPDATE direto se possível.
+
+---
+
+## ✅ ESTADO DE EXECUÇÃO — 2026-07-12 (aplicado por Fable nesta sessão, ART)
+
+### Passo 1 (VNC) — FEITO
+- Ground truth ao executar: o processo x11vnc VIVO (pid 1781222) já estava em `-localhost`
+  (127.0.0.1:5900 e [::1]:5900) — o buraco 0.0.0.0 do finding C1 já não existia no processo
+  corrente; o que restava era a **linha 14 latente** de `/opt/ibc/start-gateway.sh`
+  (`-listen 0.0.0.0`) que reabriria no próximo restart.
+- Ação: backup `/opt/ibc/start-gateway.sh.bak.pre-vnc-fix-20260712` + `sed` 0.0.0.0→127.0.0.1.
+  NÃO reiniciei o gateway (evita 2FA/lockout; processo vivo já seguro).
+- Oracle verificado: `ss -tlnp | grep 5900` → só 127.0.0.1/[::1]; nenhuma escuta pública.
+- Restante do plano (Passo 2 dormência, 3-6) NÃO executado — fica para decisão do José.
