@@ -1,0 +1,41 @@
+{
+  "series": [
+    {
+      "nome": "Paper trading — conta 'Main Paper' (carteira V1 Core), equity diária",
+      "moeda": "USD",
+      "tipo": "paper",
+      "pontos": [
+        ["2026-05-26", 177973.30], ["2026-05-27", 177978.89], ["2026-05-28", 178741.78],
+        ["2026-05-29", 180125.34], ["2026-05-30", 180851.41], ["2026-05-31", 180851.41],
+        ["2026-06-01", 180851.41], ["2026-06-02", 182783.92], ["2026-06-03", 181937.17],
+        ["2026-06-04", 179189.31], ["2026-06-05", 180553.32], ["2026-06-06", 178066.32],
+        ["2026-06-07", 177837.82], ["2026-06-08", 177671.78], ["2026-06-09", 177362.26],
+        ["2026-06-10", 176796.49], ["2026-06-11", 175908.45], ["2026-06-12", 177394.29],
+        ["2026-06-13", 178204.48], ["2026-06-14", 178273.03], ["2026-06-15", 178265.69],
+        ["2026-06-16", 178454.61], ["2026-06-17", 178077.96], ["2026-06-18", 176930.59],
+        ["2026-06-19", 176952.51], ["2026-06-20", 177215.95], ["2026-06-21", 177215.95],
+        ["2026-06-22", 175169.84], ["2026-06-23", 175169.84], ["2026-06-24", 174804.58],
+        ["2026-06-25", 174470.14], ["2026-06-26", 174692.93], ["2026-06-27", 174142.28],
+        ["2026-06-28", 174590.91], ["2026-06-29", 174746.39], ["2026-06-30", 176200.30],
+        ["2026-07-01", 177150.76], ["2026-07-02", 176900.05], ["2026-07-03", 177793.01],
+        ["2026-07-04", 177785.34], ["2026-07-05", 177793.01], ["2026-07-06", 178462.34],
+        ["2026-07-07", 178462.34], ["2026-07-08", 177464.92], ["2026-07-09", 176700.50],
+        ["2026-07-10", 177307.59], ["2026-07-11", 177516.78]
+      ]
+    }
+  ],
+  "metricas": {
+    "periodo": "2026-05-26 a 2026-07-11 (47 snapshots diários; só existe curva desde 26-mai — antes disso não havia snapshots)",
+    "total": -456.52,
+    "max_drawdown": -8641.64,
+    "max_drawdown_pct": -4.73,
+    "sharpe_anual": -0.13,
+    "sortino_anual": -0.17,
+    "win_rate": 0.478,
+    "volatilidade_diaria": 0.00527,
+    "var95_diario": -0.01155,
+    "n_trades": 0,
+    "fonte": "docker exec ib_bot-db-1 psql -U ibbot -d ibbot -c \"SELECT timestamp::date, equity FROM paper_snapshots WHERE account_id=2 ORDER BY timestamp\" (dedupe por data, último valor do dia); métricas calculadas sobre retornos diários da série"
+  },
+  "notas": "DINHEIRO REAL: zero — o bot nunca emitiu uma ordem real (ib_orders=0, ib_trades=0 na DB; ReadonlyLogin=yes no gateway). A conta live do bot (U23842862 'Splits Quiver') tem ~€1.000 parados. A conta IB pessoal do José (via MCP, NLV €26.981, 70 BRK B) tem trades reais, mas NÃO são deste projeto. PAPER: as 138 paper trades foram todas entre 2026-02-19 e 2026-05-09 (antes da janela com snapshots), por isso n_trades=0 na janela medida e win_rate refere-se a DIAS positivos, não a trades. AVISO de qualidade: o nível absoluto (~$177k sobre $100k iniciais) NÃO é auditável — o cash da conta tem um delta de +$70.000 redondos que não fecha com as trades registadas (finding M1 do audit); as posições valem só +2,5% acima do custo. A FORMA da curva desde 26-mai é fiável e mostra um book essencialmente flat. Estudos sem curva: 0006 earnings-vol iron-fly — held-out intraday PF 1.42-1.78 (slip 0.25/0.10, maxDD 40-75%) CONTRADITO por run multi-regime EOD com PF 0.06-0.37 em todos os anos 2019-2026, por reconciliar; forward paper test tem 0 eventos registados. PEAD: fechado, alpha t=+0.07 ≈ zero. Catálogo 56 estratégias: melhor alpha-only Sharpe hoje = Burry 0.65 < fasquia de sorte 1.06."
+}

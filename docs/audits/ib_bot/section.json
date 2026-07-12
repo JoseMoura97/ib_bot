@@ -1,0 +1,93 @@
+{
+  "slug": "ib_bot",
+  "titulo": "IB Bot — robô de investimento (Interactive Brokers) — PAUSADO",
+  "status": "vermelho",
+  "tldr_kids": [
+    "O IB Bot é um robô que copia as compras de ações de políticos americanos e gestores famosos, ligado à corretora Interactive Brokers.",
+    "Nunca usou dinheiro real (zero ordens reais na base de dados) e o projeto está oficialmente pausado desde junho.",
+    "Problema grave encontrado: a 'janela remota' (VNC) para o programa da corretora está aberta SEM password para toda a rede — qualquer pessoa na rede podia mexer na conta.",
+    "Apesar de pausado, ficou tudo ligado: 14 'caixas' Docker, dois logins automáticos diários na corretora com conta real, e um backtest semanal de 63 minutos que ninguém lê.",
+    "O único estudo com esperança (vender opções caras antes de resultados trimestrais) tem dois testes que se contradizem — um diz que ganha, outro que perde todos os anos — e ninguém foi ver porquê; o teste ao vivo em modo fictício registou 0 eventos em 6 semanas porque está mal configurado.",
+    "A recomendação nº1 do audit anterior (guardar todos os dias uma 'fotografia' dos dados, o único ativo que ganha valor com o tempo) nunca foi implementada — a tabela está vazia.",
+    "Plano: fechar o VNC já, pôr o projeto em dormência a sério, ligar o arquivo diário de dados, e resolver a contradição do estudo antes de decidir retomar ou matar."
+  ],
+  "o_que_e": "Plataforma de trading algorítmico ligada à Interactive Brokers (corretora de ações): 56 estratégias que imitam congressistas dos EUA e fundos famosos (via relatórios públicos 13F e dados alternativos), com backtests (simulações históricas), paper trading (dinheiro fictício) e um caminho de execução real nunca usado. Um audit interno rigoroso (v4, 26-mai-2026) concluiu que nenhuma estratégia tem ganho real acima da sorte, e o projeto foi pausado — mas a infraestrutura ficou toda ligada.",
+  "evolucao": [
+    {"data": "2026-02", "marco": "Conta paper criada ($100k); primeiras 138 paper trades (fev→mai)"},
+    {"data": "2026-05", "marco": "Preparação go-live (fractional shares, verify engine); conta live U23842862 com €1.000, API deixada read-only; estudo PEAD rejeitado (era beta, não alpha)"},
+    {"data": "2026-05", "marco": "Audit v4 AUTHORITATIVE: nenhum alpha robusto em 56 estratégias; recomendação nº1 = arquivar snapshots point-in-time (nunca feito); caminho recomendado = licenciar dados B2B"},
+    {"data": "2026-05", "marco": "Estudo 0006 earnings-vol: iron-fly de asas largas sobrevive held-out intraday (PF 1.42-1.78), MAS run multi-regime EOD dá PF<0,4 em todos os anos — contradição nunca reconciliada; forward paper test lançado (e nunca registou 1 evento)"},
+    {"data": "2026-06", "marco": "Fase alt-data (Signal Explorer UI, stack v2 em :8092); último commit real 29-jun; projeto pausado"},
+    {"data": "2026-07", "marco": "Hoje: tudo ainda ligado (2 sessões live IB diárias, 14 containers, backtest semanal); VNC sem password descoberto; ThetaData caiu para plano FREE"}
+  ],
+  "estado_hoje": [
+    "Dinheiro real: ZERO ordens de sempre (ib_orders=0, ib_trades=0); trava read-only confirmada no gateway; conta live do bot com ~€1.000 parados",
+    "Paper: equity $177.5k mas com +$70.000 de caixa inexplicados (não usar como prova de skill); desde 26-mai a curva é flat (−$457, maxDD −4,7%)",
+    "Backtest semanal correu hoje (54/56 estratégias OK, 63 min): melhor alpha-only Sharpe = Burry 0.65 — tudo abaixo da fasquia de sorte (1.06); 2 estratégias falham; passo final do dashboard recusado há 9 semanas",
+    "IB Gateway em modo LIVE reinicia e faz login com 2FA automatizado todos os dias às 21:45 (ontem o código foi rejeitado à 1ª); ibeam mantém 2ª sessão live 24/7 (unhealthy no healthcheck)",
+    "14 containers Docker + frontends :3001/:3002 + portas 8001/8090/8092 abertas (~1,6 GB RAM) para projeto pausado",
+    "altdata_snapshots = 0 linhas (a ação de maior ROI do audit v4 nunca começou)",
+    "Repo sujo: 357 ficheiros untracked (lixo de screenshots do ibeam), branch de trabalho ≠ main",
+    "Serviços theta-learned/historical-backfill/execution-metrics/cost-recalibration NÃO são deste projeto (são do Polymarket); paper-ironfly/options-cache/theta-terminal são do repo trading (estudo 0006); lifeos-ib-refresh é do lifeos"
+  ],
+  "processos": [
+    {"nome": "ibgateway.service (IB Gateway, modo LIVE)", "tipo": "service", "estado": "degradado", "nota": "ativo e autenticado, mas relogin live diário com 2FA-bot frágil (código rejeitado ontem à 1ª tentativa) — risco de lockout; desnecessário com projeto pausado"},
+    {"nome": "x11vnc (porta 5900, dentro do ibgateway)", "tipo": "service", "estado": "degradado", "nota": "CRÍTICO: sem password, aberto a 0.0.0.0, firewall inactive — controlo remoto do gateway live"},
+    {"nome": "xvfb-ibgw.service + ib-socat.service + ibgw-watchdog.service", "tipo": "service", "estado": "ok", "nota": "acessórios do gateway; a desligar em dormência"},
+    {"nome": "ibeam-primary (Client Portal IB)", "tipo": "service", "estado": "degradado", "nota": "2ª sessão live 24/7; healthcheck unhealthy há 10 dias apesar de autenticado; 712 screenshots de logins falhados acumulados no repo"},
+    {"nome": "stack Docker ib_bot (7 containers, API :8001, web :8090)", "tipo": "service", "estado": "ok", "nota": "up 12 dias; beat continua a gravar snapshots paper diários"},
+    {"nome": "stack Docker ib_bot-v2 (6 containers, :8092)", "tipo": "service", "estado": "ok", "nota": "duplicada ('Plan B'), DB vazia — candidata a desligar"},
+    {"nome": "ib-bot-v2-frontend (:3001) e -public (:3002)", "tipo": "service", "estado": "ok", "nota": "painéis Next.js; :3001 é o que José usa"},
+    {"nome": "ib-backtests.timer (semanal dom 04:15 UTC)", "tipo": "timer", "estado": "degradado", "nota": "63 min/semana; 54/56 OK mas o passo do dashboard é recusado (api_caution 4500 chamadas IB) há 9 execuções; ninguém lê o output"},
+    {"nome": "paper-ironfly.timer (repo trading)", "tipo": "timer", "estado": "degradado", "nota": "corre diariamente mas registou 0 eventos em 6 semanas — universo do snapshot cache não cobre os earnings"},
+    {"nome": "options-cache.timer (repo trading)", "tipo": "timer", "estado": "ok", "nota": "6x/dia em dias úteis; 173 MB acumulados"},
+    {"nome": "theta-terminal.service (ThetaData)", "tipo": "service", "estado": "degradado", "nota": "ligado mas a subscrição caiu para FREE tier — sem dados intraday de opções (o plano $80/mês caducou)"},
+    {"nome": "lifeos-ib-refresh.timer", "tipo": "timer", "estado": "ok", "nota": "do projeto lifeos — lê o saldo IB 1x/dia via ibeam/MCP"}
+  ],
+  "findings": [
+    {"gravidade": "CRITICO", "titulo": "VNC sem password aberto para o IB Gateway live", "detalhe": "Existe uma 'janela remota' (VNC — programa que deixa ver e controlar o ecrã de outro computador) ligada ao programa da corretora com a conta REAL, sem password nenhuma e acessível a qualquer máquina da rede (a firewall do servidor está desligada). Alguém mal-intencionado na rede podia mexer nas definições da conta.", "acao": "Trancar o x11vnc a localhost (1 linha no script) e reiniciar o gateway — Passo 1 do plano de fixes"},
+    {"gravidade": "ALTO", "titulo": "Duas sessões live diárias na IB com 2FA automatizado frágil, sem necessidade", "detalhe": "O sistema faz login na conta real da corretora todos os dias (um robô lê o código de segurança e clica no ecrã; ontem falhou à primeira), e um segundo programa (ibeam) mantém outro login 24/7 e teve dezenas de tentativas falhadas a 4-jul. Logins automáticos falhados repetidos podem levar a corretora a bloquear a conta — e o projeto está pausado, ninguém está a usar isto.", "acao": "Modo dormência: desligar gateway+ibeam (Passo 2 dos fixes); decidir com José se o lifeos mantém o refresh de saldo"},
+    {"gravidade": "ALTO", "titulo": "Estudo 0006 (iron-fly): validações contraditórias nunca reconciliadas + forward test vazio + dados pagos perdidos", "detalhe": "O único candidato a estratégia rentável tem um teste que diz 'ganha' (PF 1.42-1.78 com dados intraday reais) e outro que diz 'perde todos os anos' (PF<0,4 com dados de fim-de-dia) — ninguém investigou qual está certo; o teste ao vivo fictício registou 0 eventos em 6 semanas (mal configurado); e a subscrição de dados que permitiria repetir o teste bom caducou.", "acao": "Reconciliar offline com os dados já no disco (plano futuro earnings-vol), corrigir o universo do forward test (Passo 5 dos fixes)"},
+    {"gravidade": "ALTO", "titulo": "Arquivo point-in-time nunca arrancou (altdata_snapshots = 0 linhas)", "detalhe": "O audit de 26-mai disse que a coisa mais valiosa a fazer era guardar todos os dias uma fotografia datada dos dados alternativos (o único ativo que ganha valor sozinho e que ninguém pode reconstruir depois). A tabela foi criada e está vazia — já se perderam 45+ dias de história irrecuperável.", "acao": "Ligar o job diário de snapshots (Passo 3 dos fixes); depois seguir o plano futuro de licenciamento B2B"},
+    {"gravidade": "MEDIO", "titulo": "Contabilidade do paper trading não fecha (+$70.000 inexplicados)", "detalhe": "A conta fictícia tem mais $70.000 redondos em caixa do que as compras e vendas registadas justificam. Enquanto não se explicar, a curva de resultados paper não serve de prova de nada.", "acao": "Investigação de 1h na DB e documento de reconciliação (Passo 4 dos fixes)"},
+    {"gravidade": "MEDIO", "titulo": "Backtest semanal de 63 min com passo final falhado há 9 semanas e 2 estratégias quebradas", "detalhe": "Todos os domingos o servidor gasta uma hora a recalcular 56 estratégias que ninguém está a olhar; o passo que atualizaria o dashboard é recusado por um guarda de segurança de chamadas à corretora; as estratégias 'SMB Factor Regime' falham com 'No tickers found'.", "acao": "Desligar o timer em dormência (Passo 2); se um dia se retomar, corrigir o passo do plot_data e as 2 estratégias"},
+    {"gravidade": "MEDIO", "titulo": "Repo sujo e à deriva (357 ficheiros untracked, branch ≠ main)", "detalhe": "Centenas de screenshots de logins falhados dentro do repositório de código, e os últimos fixes estão numa branch paralela que não é a principal — o próximo agente pode trabalhar em código errado.", "acao": "gitignore + merge para main (Passo 6 dos fixes)"},
+    {"gravidade": "MEDIO", "titulo": "14 containers e 5 portas abertas para um projeto pausado", "detalhe": "Duas cópias completas da aplicação a correr há 12 dias (uma delas com a base de dados vazia), com portas expostas a toda a rede. Pouco consumo (~1,6 GB de RAM) mas superfície de risco e de confusão desnecessária.", "acao": "Reduzir a 1 stack (Passo 7 dos fixes)"},
+    {"gravidade": "BAIXO", "titulo": "Estado do conductor e memórias desatualizados", "detalhe": "O orquestrador da frota ainda marca o projeto como 'active' e a memória do estudo 0006 ficou parada em 'survivor' sem o resultado negativo do multi-regime — informação errada para os próximos agentes.", "acao": "Atualizar status + memórias (Passo 8 dos fixes)"}
+  ],
+  "planos": [
+    {"ficheiro": "docs/plans/2026-07-12_plano_fixes.md", "titulo": "Plano de fixes (8 passos)", "objetivo": "Fechar o VNC, pôr o projeto em dormência real (zero sessões live), ligar o arquivo point-in-time, reconciliar o paper ledger, corrigir/parar o forward test, limpar o repo, reduzir a 1 stack, atualizar conductor/memórias", "quando": "agora"},
+    {"ficheiro": "docs/plans/2026-07-12_futuro_earnings_vol_ironfly.md", "titulo": "Reconciliar e decidir o estudo 0006 (iron-fly)", "objetivo": "Explicar a contradição EOD vs intraday com os dados já no disco, acumular 30 eventos de forward test e decidir go/kill com critérios pré-registados", "quando": "apos_fixes"},
+    {"ficheiro": "docs/plans/2026-07-12_futuro_altdata_arquivo_licenciamento.md", "titulo": "Arquivo alt-data → licenciamento B2B", "objetivo": "Transformar o arquivo diário point-in-time num dataset licenciável (caminho nº1 do audit v4: vender dados/índices a fundos e emissores de ETF, não alpha a consumidores)", "quando": "gated"},
+    {"ficheiro": "docs/plans/2026-07-12_futuro_motor_pessoal_familia.md", "titulo": "Motor pessoal/família em modo mínimo (path A)", "objetivo": "Se José quiser voltar a usar o painel: religar o mínimo, carteira escolhida por ele em paper 4 semanas, e só depois (gated one-tap) um primeiro trade real pequeno", "quando": "gated"}
+  ],
+  "metricas_resumo": {
+    "dinheiro_real": "0 ordens de sempre; conta live do bot ~€1.000 parados (read-only)",
+    "paper_janela_medida": "2026-05-26→2026-07-11: −$457 (flat), maxDD −4,7%, Sharpe −0.13",
+    "paper_avisos": "+$70.000 de caixa inexplicados antes da janela — nível absoluto não auditável",
+    "melhor_estrategia_hoje": "Michael Burry alpha-only Sharpe 0.65 (fasquia de sorte: 1.06) — nada passa",
+    "estudo_0006": "held-out intraday PF 1.42-1.78 vs multi-regime EOD PF<0.4 todos os anos — POR RECONCILIAR; forward test 0 eventos"
+  },
+  "glossario": [
+    {"termo": "IB / Interactive Brokers", "explicacao": "A corretora — a empresa através da qual se compram e vendem ações. O 'IB Gateway' é o programa dela que dá acesso à conta a partir de código."},
+    {"termo": "API", "explicacao": "Application Programming Interface — a 'porta' por onde dois programas falam um com o outro."},
+    {"termo": "Alpha vs beta", "explicacao": "Alpha é o ganho que vem de habilidade/informação; beta é o ganho que qualquer pessoa teria só por estar no mercado. As estratégias do bot pareciam boas mas eram quase todas beta."},
+    {"termo": "Backtest", "explicacao": "Simulação histórica: 'quanto teria ganho se tivesse seguido esta regra nos últimos anos'."},
+    {"termo": "Paper trading", "explicacao": "Negociar com dinheiro de mentira para testar o sistema sem risco."},
+    {"termo": "13F", "explicacao": "Relatório trimestral que os grandes fundos americanos são obrigados a entregar ao regulador (SEC) a listar as ações que têm — é público, e o bot usa-o para os imitar."},
+    {"termo": "Deflated Sharpe", "explicacao": "Medida de 'ganho por risco' corrigida pelo número de tentativas: se testas 36 estratégias, a melhor parece boa por pura sorte; esta correção desconta isso."},
+    {"termo": "Iron-fly", "explicacao": "Aposta com opções em que se ganha se a ação mexer POUCO no dia dos resultados: vende-se o 'seguro' caro no preço atual e compram-se proteções mais afastadas para limitar a perda máxima."},
+    {"termo": "PF (Profit Factor)", "explicacao": "Soma de tudo o que se ganhou a dividir pela soma de tudo o que se perdeu; acima de 1 é lucrativo."},
+    {"termo": "EOD vs intraday", "explicacao": "EOD (end of day) = um preço por dia, ao fecho; intraday = preços ao longo do dia. Para opções, os preços EOD podem ser enganadores."},
+    {"termo": "Point-in-time / vintage", "explicacao": "Guardar os dados exatamente como eram naquele dia. Sem isto, os backtests fazem batota sem querer (usam informação que só apareceu depois)."},
+    {"termo": "VNC / x11vnc", "explicacao": "Programa que deixa ver e controlar o ecrã de outro computador à distância — como um TeamViewer básico."},
+    {"termo": "2FA / TOTP", "explicacao": "Segundo código de segurança no login (6 dígitos que mudam a cada 30 segundos). Aqui há um robô que lê o código e escreve-o sozinho no ecrã do gateway."},
+    {"termo": "Docker / container", "explicacao": "'Caixas' isoladas onde cada parte do sistema corre com tudo o que precisa lá dentro."},
+    {"termo": "systemd timer", "explicacao": "O despertador do Linux: liga um programa automaticamente a horas certas."},
+    {"termo": "ThetaData", "explicacao": "Fornecedor de dados históricos de opções. O plano pago ($80/mês) dava preços ao longo do dia; caducou e voltou ao gratuito, que não dá."},
+    {"termo": "ibeam / Client Portal", "explicacao": "A interface web da corretora; o ibeam é um programa que mantém esse login vivo automaticamente para outros sistemas lerem o saldo."},
+    {"termo": "RIA", "explicacao": "Registered Investment Adviser — registo obrigatório nos EUA para quem gere dinheiro dos outros a troco de dinheiro. Gerir o próprio dinheiro não precisa."},
+    {"termo": "Drawdown (maxDD)", "explicacao": "A maior queda desde um pico até ao fundo seguinte — mede o pior momento para quem tivesse entrado no topo."},
+    {"termo": "Slippage", "explicacao": "A diferença entre o preço 'ideal' e o preço a que realmente se consegue comprar/vender. Em opções pouco líquidas pode comer o lucro todo."}
+  ]
+}
