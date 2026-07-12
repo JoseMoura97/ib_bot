@@ -32,15 +32,17 @@
 
 **Objetivo**: o x11vnc do IB Gateway deixa de aceitar ligações de fora da própria máquina.
 
-**Comandos** (o x11vnc é lançado pelos scripts do IBC; primeiro localizar onde):
+**Comandos**: o x11vnc é lançado por `/opt/ibc/start-gateway.sh` (o script que o
+`ExecStart` do unit `ibgateway.service` chama), linha 14:
+`x11vnc -display :1 -bg -nopw -listen 0.0.0.0 -xkb -forever -quiet &`. Confirmar primeiro:
 ```bash
-grep -rn "x11vnc" /opt/ibc/scripts/ /etc/systemd/system/ibgateway.service 2>/dev/null
+grep -rn "x11vnc" /opt/ibc/
 ```
-No ficheiro onde aparecer `x11vnc -display :1 -bg -nopw -listen 0.0.0.0 ...` (esperado:
-um script chamado por `/opt/ibc/scripts/displaybannerandlaunch.sh` ou o unit), editar a linha
+Output esperado: hits em `/opt/ibc/start-gateway.sh` (linhas ~12-14). NOTA: NÃO está em
+`/opt/ibc/scripts/` nem no unit file — não perder tempo a procurar lá. Depois editar a linha
 para escutar só em localhost:
 ```bash
-sudo sed -i 's/-listen 0\.0\.0\.0/-listen 127.0.0.1/' <FICHEIRO_ENCONTRADO>
+sudo sed -i 's/-listen 0\.0\.0\.0/-listen 127.0.0.1/' /opt/ibc/start-gateway.sh
 ```
 (Se quiser manter acesso remoto ao ecrã, a alternativa correta é `-rfbauth` com ficheiro de
 password criado com `x11vnc -storepasswd` — mas localhost-only chega: acede-se por túnel SSH.)
@@ -57,7 +59,7 @@ Output esperado: linha com `127.0.0.1:5900` (e NENHUMA com `0.0.0.0:5900` ou `[:
 E o gateway volta a autenticar: `ss -tlnp | grep 4001` mostra a porta 4001 em escuta
 (pode demorar ~2-3 min após restart).
 
-**Rollback**: reverter o sed (trocar `127.0.0.1` por `0.0.0.0` no mesmo ficheiro) e
+**Rollback**: reverter o sed (trocar `127.0.0.1` por `0.0.0.0` em `/opt/ibc/start-gateway.sh`) e
 `sudo systemctl restart ibgateway.service`.
 
 **Gotchas**: se o Passo 2 (dormência) for executado no mesmo dia, este passo continua a valer
@@ -142,10 +144,11 @@ cd /home/servidor/Desktop/cursor-projects/ib_bot && git add -A scripts/ backend/
 
 **Oracle de aceitação** (no dia seguinte ao deploy, ou após disparo manual do job):
 ```bash
-docker exec ib_bot-db-1 psql -U ibbot -d ibbot -tAc "SELECT count(*), max(created_at) FROM altdata_snapshots"
+docker exec ib_bot-db-1 psql -U ibbot -d ibbot -tAc "SELECT count(*), max(captured_at) FROM altdata_snapshots"
 ```
-Output esperado: count > 0 e `max(created_at)` = hoje. Correr 2 dias seguidos e ver o count a
-crescer diariamente.
+Output esperado: count > 0 e `max(captured_at)` = hoje. Correr 2 dias seguidos e ver o count a
+crescer diariamente. (Colunas reais da tabela: `id, source, as_of_date, captured_at, n_rows,
+content_hash, payload` — NÃO existe `created_at`.)
 
 **Rollback**: desativar o timer/beat entry; os dados gravados ficam (são só INSERTs).
 
@@ -165,8 +168,10 @@ que a subscrição ainda existe (o audit não a verificou).
 docker exec ib_bot-db-1 psql -U ibbot -d ibbot -c "SELECT action, count(*), sum(value::numeric) FROM paper_trades WHERE account_id=2 GROUP BY action"
 docker exec ib_bot-db-1 psql -U ibbot -d ibbot -c "SELECT * FROM paper_orders ORDER BY id LIMIT 20"
 docker exec ib_bot-db-1 psql -U ibbot -d ibbot -c "SELECT * FROM paper_rebalance_logs ORDER BY id DESC LIMIT 20"
-grep -rn "paper_cash\|update.*cash\|deposit" /home/servidor/Desktop/cursor-projects/ib_bot/paper_trading.py /home/servidor/Desktop/cursor-projects/ib_bot/backend/app --include='*.py' -i | head -30
+grep -rn "paper_cash\|update.*cash\|deposit" /home/servidor/Desktop/cursor-projects/ib_bot/backend/app --include='*.py' -i | head -30
 ```
+(A lógica de cash do paper trading vive em
+`backend/app/services/paper_trading.py` — não há nenhum `paper_trading.py` na raiz do repo.)
 Hipóteses a testar por esta ordem: (1) `paper_trades.value` de SELLs gravado com sinal/base
 errada; (2) rebalances que creditam cash sem trade correspondente; (3) top-up manual de $70k
 em maio; (4) trades apagadas. Escrever o veredito em
