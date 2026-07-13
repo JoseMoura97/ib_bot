@@ -70,44 +70,52 @@ de lockout da conta IB).
 
 ---
 
-### Passo 2 — Modo dormência: desligar as sessões live e o backtest semanal (A1, M2)
+### Passo 2 — Modo dormência: desligar as sessões live e preservar os jobs independentes (A1, M2)
 
-**Objetivo**: zero logins live automáticos na IB e zero compute semanal, mantendo os dados.
-⚠️ Decisão embutida (já tomada no audit, confirmar com José só se ele reagir): o
-`lifeos-ib-refresh.timer` (projeto lifeos) usa o ibeam para ler o saldo diário — ao desligar
-o ibeam, esse refresh começa a falhar. É aceitável (saldo fica stale no lifeos); se José
-quiser manter, ver o gotcha no fim.
+**Objetivo**: zero logins live automáticos na IB, mantendo os dados, o backtest semanal e o
+fetch diário do saldo para o LifeOS. Correção factual verificada em 2026-07-13: o
+`lifeos-ib-refresh.timer` corre `lifeos/scripts/ib_daily_refresh.py`, que usa o conector IBKR
+MCP do claude.ai (OAuth na conta José via `CLAUDE_CONFIG_DIR`) e faz POST ao LifeOS. Não usa
+o ibeam; os runs de 11/12/13-jul terminaram com `pushed: {"status":"ok"...}`. Logo, as duas
+sessões live podem ficar totalmente dormentes sem sacrificar o saldo diário.
 
 **Comandos**:
 ```bash
 # 1) parar e desativar o IB Gateway e os seus acessórios
 sudo systemctl disable --now ibgateway.service xvfb-ibgw.service ib-socat.service ibgw-watchdog.service
-# 2) parar a segunda sessão live (ibeam / Client Portal)
+# 2) parar o VNC loopback pertencente ao utilizador servidor
+XDG_RUNTIME_DIR=/run/user/1000 systemctl --user disable --now ibgw-vnc-loopback.service
+# 3) parar a segunda sessão live (ibeam / Client Portal)
 cd /home/servidor/Desktop/cursor-projects/ib_bot/infra/ibeam && docker compose down
-# 3) matar o ibeam_starter avulso se ainda existir
-pkill -f "python ibeam_starter.py" || true
-# 4) desligar o backtest semanal
-sudo systemctl disable --now ib-backtests.timer
+# 4) matar o ibeam_starter avulso se ainda existir (padrão protegido para não matar o shell)
+pkill -f "[p]ython ibeam_starter.py" || true
+# NÃO tocar em ib-backtests.timer nem lifeos-ib-refresh.timer: ambos ficam ativos
 ```
 
 **Oracle de aceitação**:
 ```bash
-systemctl is-active ibgateway.service xvfb-ibgw.service ib-socat.service ibgw-watchdog.service ib-backtests.timer; docker ps --format '{{.Names}}' | grep -c ibeam; ss -tlnp | grep -E ':4001|:4003|:5900' | wc -l
+systemctl is-active ibgateway.service xvfb-ibgw.service ib-socat.service ibgw-watchdog.service
+XDG_RUNTIME_DIR=/run/user/1000 systemctl --user is-active ibgw-vnc-loopback.service
+docker ps --format '{{.Names}}' | grep -c ibeam
+ss -tlnp | grep -E ':4001|:4003|:5900' | wc -l
+systemctl is-active ib-backtests.timer lifeos-ib-refresh.timer
 ```
-Output esperado: cinco linhas `inactive` (ou `failed`→depois `inactive`), `0` containers
-ibeam, `0` portas 4001/4003/5900 em escuta.
+Output esperado: cinco linhas `inactive`, `0` containers ibeam, `0` portas
+4001/4003/5900 em escuta e duas linhas `active` para os timers preservados. No primeiro run
+03:15 posterior à dormência, o journal do `lifeos-ib-refresh.service` deve voltar a mostrar
+`pushed: {"status":"ok"...}` e `Finished`.
 
 **Rollback**:
 ```bash
-sudo systemctl enable --now xvfb-ibgw.service ibgateway.service ib-socat.service ibgw-watchdog.service ib-backtests.timer
+sudo systemctl enable --now xvfb-ibgw.service ibgateway.service ib-socat.service ibgw-watchdog.service
+XDG_RUNTIME_DIR=/run/user/1000 systemctl --user enable --now ibgw-vnc-loopback.service
 cd /home/servidor/Desktop/cursor-projects/ib_bot/infra/ibeam && docker compose up -d
 ```
 
 **Gotchas**: (a) NÃO tocar em `theta-learned/historical-backfill/execution-metrics/
 cost-recalibration` — são do Polymarket, não deste projeto. (b) NÃO tocar em
-`paper-ironfly.timer`/`options-cache.timer` neste passo — decisão no Passo 5. (c) Se José
-quiser manter o saldo diário no lifeos: manter APENAS o ibeam ligado (saltar o sub-passo 2)
-e desligar o resto na mesma — o ibeam não usa GUI nem o 2FA-bot de pixels. (d) O
+`paper-ironfly.timer`/`options-cache.timer` neste passo — decisão no Passo 5. (c) O fetch do
+LifeOS é independente: não reativar o ibeam para o manter. (d) O
 `ibgw-watchdog` manda alertas quando a 4001 cai — desativá-lo JUNTO com o gateway, senão
 spamma alertas.
 
@@ -266,7 +274,7 @@ sudo systemctl disable --now ib-bot-v2-frontend-public.service
 
 **Oracle de aceitação**:
 ```bash
-docker ps --format '{{.Names}}' | grep -c 'ib_bot-v2'; ss -tlnp | grep -c ':8092\|:3002'; curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3001/
+docker ps --format '{{.Names}}' | grep -c 'ib_bot-v2'; ss -tlnp | grep -c ':8092\|:3002'; curl -Ls -o /dev/null -w '%{http_code}' http://127.0.0.1:3001/
 ```
 Output esperado: `0`, `0`, `200` (o frontend 3001 continua a servir).
 
@@ -275,7 +283,10 @@ sudo systemctl enable --now ib-bot-v2-frontend-public.service`.
 
 **Gotchas**: o frontend :3001 fala com a API :8001 da stack V1 — confirmar que se desliga a
 v2 e não a v1 (os nomes enganam: o frontend "v2" usa a API "v1"). A DB `ib_bot-v2-db-1` está
-praticamente vazia (paper_trades=0) — não se perde nada.
+praticamente vazia (paper_trades=0) — não se perde nada. A rota `/` do frontend sobrevivente
+tem um redirect Next.js intencional para `/dashboard`: o probe sem `-L` devolve 307; com
+redirect seguido devolve 200. Não alterar a app sobrevivente só para transformar o 307 em
+200.
 
 ---
 

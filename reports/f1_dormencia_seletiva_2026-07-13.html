@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ib_bot — Dormência seletiva F1</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0f1117; --panel:#171b24; --text:#e7eaf0;
+      --muted:#9aa4b2; --ok:#52d273; --warn:#f4c95d; --line:#2a3242; }
+    html, body { background:#0f1117!important; color:var(--text); }
+    body { margin:0 auto; max-width:980px; padding:32px 22px; font:15px/1.55 system-ui,sans-serif; }
+    h1, h2 { line-height:1.2; } h1 { margin-bottom:4px; } h2 { margin-top:28px; }
+    .meta { color:var(--muted); } .card { background:var(--panel); border:1px solid var(--line);
+      border-radius:10px; padding:16px 18px; margin:14px 0; }
+    .ok { color:var(--ok); font-weight:700; } .warn { color:var(--warn); font-weight:700; }
+    code { background:#11151d; border:1px solid var(--line); border-radius:4px; padding:1px 5px; }
+    table { width:100%; border-collapse:collapse; } th, td { padding:8px; text-align:left;
+      border-bottom:1px solid var(--line); } th { color:var(--muted); }
+  </style>
+</head>
+<body>
+  <h1>Dormência seletiva F1</h1>
+  <div class="meta">Plano e36e04ec · fase f1_dormencia_seletiva · aplicado 2026-07-13 17:39 ART</div>
+
+  <div class="card">
+    <span class="ok">ORÁCULO IMEDIATO: PASS</span>
+    <p>As duas sessões live IB e a stack redundante v2 ficaram dormentes. A stack v1,
+    o frontend :3001 e os timers de backtest/LifeOS foram preservados.</p>
+  </div>
+
+  <h2>Contrato de conclusão</h2>
+  <p>DONE quando o verificador retorna zero para todos os alvos de dormência, confirma os
+  dois timers e a stack v1 ativos, e encontra um <code>pushed: {"status":"ok"</code> seguido
+  de <code>Finished</code> no primeiro refresh automático posterior ao cutoff
+  <code>2026-07-13T21:39:00+01:00</code>. Prazo: 26 horas.</p>
+
+  <h2>Snapshot e ações</h2>
+  <table>
+    <thead><tr><th>Alvo</th><th>Antes</th><th>Depois</th></tr></thead>
+    <tbody>
+      <tr><td>Gateway host + acessórios</td><td>4 units active/enabled; :4001</td><td>4 inactive/disabled; porta fechada</td></tr>
+      <tr><td>VNC loopback user</td><td>active/enabled; 127.0.0.1/[::1]:5900</td><td>inactive/disabled; porta fechada</td></tr>
+      <tr><td>ibeam</td><td>1 container + 1 starter PID</td><td>0 containers; 0 starter PIDs</td></tr>
+      <tr><td>ib_bot-v2</td><td>6 containers; :8092</td><td>0 containers; porta fechada</td></tr>
+      <tr><td>frontend público :3002</td><td>active/enabled</td><td>inactive/disabled; porta fechada</td></tr>
+      <tr><td>stack v1</td><td>7 containers; :8001/:8090</td><td>7 containers; :8001/:8090</td></tr>
+      <tr><td>frontend sobrevivente :3001</td><td>active</td><td>active; dashboard HTTP 200</td></tr>
+      <tr><td>timers preservados</td><td>2 active/enabled</td><td>2 active/enabled</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Prova factual do LifeOS</h2>
+  <p>A unit executa <code>lifeos/scripts/ib_daily_refresh.py</code>. O script fixa
+  <code>CLAUDE_CONFIG_DIR</code> na conta José, chama o conector IBKR MCP do claude.ai e faz
+  POST ao API LifeOS. Não referencia o ibeam. Antes da dormência, os runs de 12 e 13-jul
+  tinham ambos <code>pushed: {"status":"ok"...}</code> e <code>Finished</code>. O próximo
+  disparo é 14-jul 03:15 WEST = 13-jul 23:15 ART.</p>
+
+  <h2>Oráculo imediato</h2>
+  <p><code>scripts/verify_f1_dormencia_seletiva.sh</code>:</p>
+  <ul>
+    <li class="ok">4/4 system units inactive; user VNC inactive.</li>
+    <li class="ok">ibeam=0; ib_bot-v2=0; listeners alvo=0.</li>
+    <li class="ok">ib-backtests.timer e lifeos-ib-refresh.timer ativos.</li>
+    <li class="ok">7 containers v1 ativos; frontend seguido até /dashboard = HTTP 200.</li>
+  </ul>
+
+  <h2>Exceção impossível dentro da fase</h2>
+  <p><span class="warn">O probe cru de / devolve 307, não 200.</span> A rota do frontend
+  sobrevivente contém um redirect Next.js intencional de <code>/</code> para
+  <code>/dashboard</code>; seguindo-o, o resultado é 200. O processo não foi reiniciado pela
+  fase. Alterar a aplicação sobrevivente, noutro checkout, só para converter o 307 em 200
+  estaria fora de âmbito. O verificador documenta esta exclusão e exige o redirect exato +
+  HTTP 200 final.</p>
+
+  <h2>Rollback</h2>
+  <p>Gateway: enable/start de xvfb, ibgateway, ib-socat e watchdog; enable/start da unit user
+  VNC. ibeam: <code>docker compose up -d</code> em <code>infra/ibeam</code>. Stack v2: compose
+  up com os dois ficheiros originais + enable/start do frontend público. Se o refresh
+  posterior falhar com nexo demonstrado a esta dormência, reativar primeiro o ibeam e
+  escalar; uma falha externa do MCP deve ficar documentada sem reativar sessões por palpite.</p>
+</body>
+</html>
