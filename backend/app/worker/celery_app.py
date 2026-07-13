@@ -55,7 +55,7 @@ celery_app.conf.update(
         # Daily point-in-time vintage of every free alt-data source (the compounding archive).
         "altdata_snapshot_daily": {
             "task": "altdata_snapshot_daily_task",
-            "schedule": crontab(hour=5, minute=0),  # 05:00 UTC, before market open
+            "schedule": crontab(hour=6, minute=0),  # 06:00 UTC, before market open
         },
         # Phase 2: Reconcile stuck IN_PROGRESS execution rows every 5 minutes
         "reconcile_stuck_executions": {
