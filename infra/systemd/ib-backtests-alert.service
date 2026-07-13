@@ -1,0 +1,13 @@
+[Unit]
+Description=OnFailure alert for ib-backtests — wake ib_bot Domain Manager in Conductor
+# No After= on ib-backtests.service: this runs precisely because that unit failed.
+
+[Service]
+Type=oneshot
+User=servidor
+WorkingDirectory=/home/servidor/Desktop/cursor-projects/ib_bot
+ExecStart=/usr/local/bin/ib_backtests_alert.sh
+# The conductor CLI + psql (peer auth) need the servidor HOME/PATH.
+Environment=HOME=/home/servidor
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+TimeoutStartSec=120

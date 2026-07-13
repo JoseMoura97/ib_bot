@@ -999,11 +999,13 @@ def main():
         gen_script = ROOT_DIR / "generate_plot_data.py"
         if gen_script.exists():
             import subprocess as _sp
-            gen_cmd = [sys.executable, str(gen_script)]
-            # Propagate api_caution acceptance so the post-step doesn't abort
-            # on a non-TTY parent run that's already past its own gate.
-            if args.yes:
-                gen_cmd.append("--yes")
+            # Always regenerate the dashboard from the CACHE the strategies just
+            # populated (plus yfinance for the SPY benchmark) — never live IB.
+            # --cache-only runs REAL backtests on cached prices and bypasses the
+            # api_caution gate, so the step works with the IB Gateway OFF and
+            # cannot be refused on a non-TTY weekly run (was the 9-week failure:
+            # api_caution refused 4500 IB calls → dashboard silently stale).
+            gen_cmd = [sys.executable, str(gen_script), "--cache-only"]
             ret = _sp.run(
                 gen_cmd,
                 cwd=str(ROOT_DIR),
@@ -1012,9 +1014,15 @@ def main():
             if ret.returncode == 0:
                 print("[OK] plot_data.json updated — dashboard is current.")
             else:
-                print(f"[WARN] generate_plot_data.py exited {ret.returncode} — dashboard may be stale.")
+                # Do NOT swallow the failure. The weekly oneshot service used to
+                # print this WARN and still exit 0, so a broken dashboard looked
+                # like a healthy run for 9 weeks. Propagate a non-zero exit so
+                # systemd marks ExecMainStatus!=0 and the OnFailure alert fires.
+                print(f"[ERROR] generate_plot_data.py exited {ret.returncode} — dashboard step FAILED; propagating failure.")
+                sys.exit(ret.returncode or 1)
         else:
-            print("[WARN] generate_plot_data.py not found — dashboard not updated.")
+            print("[ERROR] generate_plot_data.py not found — dashboard not updated; propagating failure.")
+            sys.exit(1)
 
 
 if __name__ == "__main__":
