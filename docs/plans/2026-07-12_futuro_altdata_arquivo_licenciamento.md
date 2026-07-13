@@ -2,7 +2,7 @@
 
 **GATE DE ARRANQUE**: só começa quando o Passo 3 do plano de fixes estiver verde (o arquivo
 diário `altdata_snapshots` a crescer). Verificar com:
-`docker exec ib_bot-db-1 psql -U ibbot -d ibbot -tAc "SELECT count(DISTINCT created_at::date) FROM altdata_snapshots"`
+`docker exec ib_bot-db-1 psql -U ibbot -d ibbot -tAc "SELECT count(DISTINCT captured_at::date) FROM altdata_snapshots"`
 → deve devolver ≥ 14 (duas semanas de vintages) antes de gastar 1 minuto neste plano.
 
 ## Contexto para o executor
@@ -40,7 +40,7 @@ git add scripts/ && git commit -m "feat(altdata): QA diario do arquivo point-in-
 ```
 
 **Oracle de aceitação**: 7 dias seguidos com QA verde:
-`docker exec ib_bot-db-1 psql -U ibbot -d ibbot -tAc "SELECT created_at::date, count(*) FROM altdata_snapshots GROUP BY 1 ORDER BY 1 DESC LIMIT 7"`
+`docker exec ib_bot-db-1 psql -U ibbot -d ibbot -tAc "SELECT captured_at::date, count(*) FROM altdata_snapshots GROUP BY 1 ORDER BY 1 DESC LIMIT 7"`
 → 7 dias consecutivos, contagens estáveis; e o log do QA sem alertas.
 
 **Rollback**: desligar o QA (o arquivo continua).
