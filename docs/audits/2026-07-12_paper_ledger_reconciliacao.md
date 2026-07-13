@@ -35,6 +35,8 @@ Valores obtidos diretamente de `paper_cash` e `paper_trades` para
 Equação reproduzível:
 
 ```text
+100000 + Σcréditos − Σdébitos = 36892.07
+Σcréditos = 70000.00000000 + 31596.92996094; Σdébitos = 164704.86288422
 100000.00000000 + 70000.00000000 + 31596.92996094 - 164704.86288422
 = 36892.06707672  (diferença sub-centavo de floating point face ao valor armazenado)
 ```
