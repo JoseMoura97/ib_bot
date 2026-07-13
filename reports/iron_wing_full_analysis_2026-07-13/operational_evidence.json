@@ -1,0 +1,548 @@
+{
+  "captured_at_utc": "2026-07-13T07:13:25.909109+00:00",
+  "collector_validation": {
+    "database_snapshot_rows": 9,
+    "idempotent_cached_rerun": {
+      "accounted_sources": 9,
+      "as_of_date": "2026-07-13",
+      "expected_sources": 9,
+      "failed_sources": 0,
+      "ib_requests": 0,
+      "mandatory_failed_sources": 0,
+      "mode": "research_only_non_trading",
+      "optional_failed_sources": 0,
+      "orders_placed": 0,
+      "overall_status": "ok",
+      "results": [
+        {
+          "content_hash": "e79e1c76ab03ed234b9cec4e3c4f050bfa30cb83de4b665099be1ece195b7659",
+          "criticality": "mandatory",
+          "elapsed_seconds": 1.356,
+          "error": null,
+          "error_code": null,
+          "n_rows": 12991,
+          "source": "nasdaq_symbol_directory",
+          "status": "exists"
+        },
+        {
+          "content_hash": "da415de1807ac11f183ade4c0a8226d5c4db7cba197ce0132ccf704c305b61bb",
+          "criticality": "mandatory",
+          "elapsed_seconds": 0.205,
+          "error": null,
+          "error_code": null,
+          "n_rows": 3332,
+          "source": "iron_wing_equity_daily_bars",
+          "status": "exists"
+        },
+        {
+          "content_hash": "f43091c16246ceee97ad17ff69ab99b6c86ac8d2a3c8fc62b41b6a55e2df9844",
+          "criticality": "mandatory",
+          "elapsed_seconds": 0.674,
+          "error": null,
+          "error_code": null,
+          "n_rows": 6352,
+          "source": "finra_offexchange_short_volume",
+          "status": "exists"
+        },
+        {
+          "content_hash": "b57845f45b3496dee7aaaaf1e629d65dbb1713402988d24bac50156810189ff6",
+          "criticality": "mandatory",
+          "elapsed_seconds": 0.392,
+          "error": null,
+          "error_code": null,
+          "n_rows": 1340,
+          "source": "house_financial_disclosure_index",
+          "status": "exists"
+        },
+        {
+          "content_hash": "caa6fa31e7d2a63b9206d2f2e79504d68f8c8e67b816d871267fda04a54a3c71",
+          "criticality": "optional",
+          "elapsed_seconds": 0.011,
+          "error": null,
+          "error_code": null,
+          "n_rows": 1066,
+          "source": "sec_daily_material_filings",
+          "status": "exists"
+        },
+        {
+          "content_hash": "7b5b032ea3ceb412448fdc06a0d1493542abfe996c6b4ee0a320c2ff91373716",
+          "criticality": "mandatory",
+          "elapsed_seconds": 5.727,
+          "error": null,
+          "error_code": null,
+          "n_rows": 240,
+          "source": "fred_market_regime",
+          "status": "exists"
+        },
+        {
+          "content_hash": "af8ac9d0484a2bbf6155b6ef26cf85d084d289cedb43c59818edd4c154caa870",
+          "criticality": "mandatory",
+          "elapsed_seconds": 1.204,
+          "error": null,
+          "error_code": null,
+          "n_rows": 100,
+          "source": "usaspending_recent_contract_awards",
+          "status": "exists"
+        },
+        {
+          "content_hash": "09926a32b5bcffdf01a62fdc42b212a8eff46fc8a3ff53ad77af04b0cc8a8a6a",
+          "criticality": "mandatory",
+          "elapsed_seconds": 0.03,
+          "error": null,
+          "error_code": null,
+          "n_rows": 3,
+          "source": "sec_13f_scion_asset_management",
+          "status": "exists"
+        },
+        {
+          "content_hash": "0a6fbc909342291f8b8a8c67a987504c5e35ec3c12479757ab7212f2f0e80376",
+          "criticality": "mandatory",
+          "elapsed_seconds": 0.011,
+          "error": null,
+          "error_code": null,
+          "n_rows": 90,
+          "source": "sec_13f_berkshire_hathaway",
+          "status": "exists"
+        }
+      ],
+      "run_finished_utc": "2026-07-13T07:00:07.812773+00:00",
+      "run_started_utc": "2026-07-13T06:59:58.202539+00:00",
+      "schema_version": 1,
+      "source_notes": {
+        "house_financial_disclosure_index": "index metadata only; does not parse every filing attachment or holding",
+        "quiver_congress_trades": "excluded: bulk endpoint timed out and requires licensed/API-key access; no silent replacement"
+      },
+      "subscriptions_purchased": 0,
+      "successful_sources": 9
+    },
+    "initial_population_run": {
+      "as_of_date": "2026-07-13",
+      "failed_sources": 0,
+      "ib_requests": 0,
+      "mode": "research_only_non_trading",
+      "orders_placed": 0,
+      "results": [
+        {
+          "content_hash": "e79e1c76ab03ed234b9cec4e3c4f050bfa30cb83de4b665099be1ece195b7659",
+          "elapsed_seconds": 1.354,
+          "error": null,
+          "n_rows": 12991,
+          "source": "nasdaq_symbol_directory",
+          "status": "exists"
+        },
+        {
+          "content_hash": "da415de1807ac11f183ade4c0a8226d5c4db7cba197ce0132ccf704c305b61bb",
+          "elapsed_seconds": 56.535,
+          "error": null,
+          "n_rows": 3332,
+          "source": "iron_wing_equity_daily_bars",
+          "status": "updated"
+        },
+        {
+          "content_hash": "f43091c16246ceee97ad17ff69ab99b6c86ac8d2a3c8fc62b41b6a55e2df9844",
+          "elapsed_seconds": 0.748,
+          "error": null,
+          "n_rows": 6352,
+          "source": "finra_offexchange_short_volume",
+          "status": "exists"
+        },
+        {
+          "content_hash": "b57845f45b3496dee7aaaaf1e629d65dbb1713402988d24bac50156810189ff6",
+          "elapsed_seconds": 0.286,
+          "error": null,
+          "n_rows": 1340,
+          "source": "house_financial_disclosure_index",
+          "status": "exists"
+        },
+        {
+          "content_hash": "caa6fa31e7d2a63b9206d2f2e79504d68f8c8e67b816d871267fda04a54a3c71",
+          "elapsed_seconds": 0.023,
+          "error": null,
+          "n_rows": 1066,
+          "source": "sec_daily_material_filings",
+          "status": "stored"
+        },
+        {
+          "content_hash": "7b5b032ea3ceb412448fdc06a0d1493542abfe996c6b4ee0a320c2ff91373716",
+          "elapsed_seconds": 1.892,
+          "error": null,
+          "n_rows": 240,
+          "source": "fred_market_regime",
+          "status": "exists"
+        },
+        {
+          "content_hash": "af8ac9d0484a2bbf6155b6ef26cf85d084d289cedb43c59818edd4c154caa870",
+          "elapsed_seconds": 1.03,
+          "error": null,
+          "n_rows": 100,
+          "source": "usaspending_recent_contract_awards",
+          "status": "exists"
+        },
+        {
+          "content_hash": "09926a32b5bcffdf01a62fdc42b212a8eff46fc8a3ff53ad77af04b0cc8a8a6a",
+          "elapsed_seconds": 0.001,
+          "error": null,
+          "n_rows": 3,
+          "source": "sec_13f_scion_asset_management",
+          "status": "exists"
+        },
+        {
+          "content_hash": "0a6fbc909342291f8b8a8c67a987504c5e35ec3c12479757ab7212f2f0e80376",
+          "elapsed_seconds": 0.002,
+          "error": null,
+          "n_rows": 90,
+          "source": "sec_13f_berkshire_hathaway",
+          "status": "exists"
+        }
+      ],
+      "run_finished_utc": "2026-07-13T06:27:15.682272+00:00",
+      "run_started_utc": "2026-07-13T06:26:13.786643+00:00",
+      "schema_version": 1,
+      "subscriptions_purchased": 0,
+      "successful_sources": 9
+    },
+    "post_patch_validation": {
+      "accounted_sources": 9,
+      "as_of_date": "2026-07-13",
+      "expected_sources": 9,
+      "failed_sources": 0,
+      "ib_requests": 0,
+      "mandatory_failed_sources": 0,
+      "mode": "research_only_non_trading",
+      "optional_failed_sources": 0,
+      "orders_placed": 0,
+      "overall_status": "ok",
+      "results": [
+        {
+          "content_hash": "e79e1c76ab03ed234b9cec4e3c4f050bfa30cb83de4b665099be1ece195b7659",
+          "criticality": "mandatory",
+          "elapsed_seconds": 1.526,
+          "error": null,
+          "error_code": null,
+          "n_rows": 12991,
+          "source": "nasdaq_symbol_directory",
+          "status": "exists"
+        },
+        {
+          "content_hash": "da415de1807ac11f183ade4c0a8226d5c4db7cba197ce0132ccf704c305b61bb",
+          "criticality": "mandatory",
+          "elapsed_seconds": 0.235,
+          "error": null,
+          "error_code": null,
+          "n_rows": 3332,
+          "source": "iron_wing_equity_daily_bars",
+          "status": "exists"
+        },
+        {
+          "content_hash": "f43091c16246ceee97ad17ff69ab99b6c86ac8d2a3c8fc62b41b6a55e2df9844",
+          "criticality": "mandatory",
+          "elapsed_seconds": 0.75,
+          "error": null,
+          "error_code": null,
+          "n_rows": 6352,
+          "source": "finra_offexchange_short_volume",
+          "status": "exists"
+        },
+        {
+          "content_hash": "b57845f45b3496dee7aaaaf1e629d65dbb1713402988d24bac50156810189ff6",
+          "criticality": "mandatory",
+          "elapsed_seconds": 0.388,
+          "error": null,
+          "error_code": null,
+          "n_rows": 1340,
+          "source": "house_financial_disclosure_index",
+          "status": "exists"
+        },
+        {
+          "content_hash": "caa6fa31e7d2a63b9206d2f2e79504d68f8c8e67b816d871267fda04a54a3c71",
+          "criticality": "optional",
+          "elapsed_seconds": 0.011,
+          "error": null,
+          "error_code": null,
+          "n_rows": 1066,
+          "source": "sec_daily_material_filings",
+          "status": "exists"
+        },
+        {
+          "content_hash": "7b5b032ea3ceb412448fdc06a0d1493542abfe996c6b4ee0a320c2ff91373716",
+          "criticality": "mandatory",
+          "elapsed_seconds": 2.293,
+          "error": null,
+          "error_code": null,
+          "n_rows": 240,
+          "source": "fred_market_regime",
+          "status": "exists"
+        },
+        {
+          "content_hash": "af8ac9d0484a2bbf6155b6ef26cf85d084d289cedb43c59818edd4c154caa870",
+          "criticality": "mandatory",
+          "elapsed_seconds": 1.186,
+          "error": null,
+          "error_code": null,
+          "n_rows": 100,
+          "source": "usaspending_recent_contract_awards",
+          "status": "exists"
+        },
+        {
+          "content_hash": "09926a32b5bcffdf01a62fdc42b212a8eff46fc8a3ff53ad77af04b0cc8a8a6a",
+          "criticality": "mandatory",
+          "elapsed_seconds": 0.031,
+          "error": null,
+          "error_code": null,
+          "n_rows": 3,
+          "source": "sec_13f_scion_asset_management",
+          "status": "exists"
+        },
+        {
+          "content_hash": "0a6fbc909342291f8b8a8c67a987504c5e35ec3c12479757ab7212f2f0e80376",
+          "criticality": "mandatory",
+          "elapsed_seconds": 0.012,
+          "error": null,
+          "error_code": null,
+          "n_rows": 90,
+          "source": "sec_13f_berkshire_hathaway",
+          "status": "exists"
+        }
+      ],
+      "run_finished_utc": "2026-07-13T06:54:43.191543+00:00",
+      "run_started_utc": "2026-07-13T06:54:36.759773+00:00",
+      "schema_version": 1,
+      "source_notes": {
+        "house_financial_disclosure_index": "index metadata only; does not parse every filing attachment or holding",
+        "quiver_congress_trades": "excluded: bulk endpoint timed out and requires licensed/API-key access; no silent replacement"
+      },
+      "subscriptions_purchased": 0,
+      "successful_sources": 9
+    }
+  },
+  "daily_coverage_schedule": {
+    "celery_registered_exit_code": 0,
+    "celery_schedule_probe": {
+      "command": [
+        "docker",
+        "compose",
+        "exec",
+        "-T",
+        "worker",
+        "python",
+        "-c",
+        "from app.worker.celery_app import celery_app; s=[v for v in celery_app.conf.beat_schedule.values() if v.get('task')=='altdata_snapshot_daily_task']; print(len(s), sorted(s[0]['schedule'].hour), sorted(s[0]['schedule'].minute))"
+      ],
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "1 [5] [0]\n"
+    },
+    "celery_task_registered": true,
+    "primary": "Celery beat altdata_snapshot_daily at 05:00 UTC",
+    "redundant_systemd_timer_enabled": false,
+    "redundant_systemd_units_in_repo": [],
+    "sole_schedule_verified": true
+  },
+  "forward_systemd_timers": {
+    "command_exit_code": 0,
+    "options_cache_active": true,
+    "paper_ironfly_active": true,
+    "raw": "NextElapseUSecRealtime=Mon 2026-07-13 14:45:00 WEST\nId=options-cache.timer\nActiveState=active\nUnitFileState=enabled\n\nNextElapseUSecRealtime=Tue 2026-07-14 22:10:00 WEST\nId=paper-ironfly.timer\nActiveState=active\nUnitFileState=enabled\n",
+    "states": {
+      "options-cache.timer": {
+        "ActiveState": "active",
+        "Id": "options-cache.timer",
+        "NextElapseUSecRealtime": "Mon 2026-07-13 14:45:00 WEST",
+        "UnitFileState": "enabled"
+      },
+      "paper-ironfly.timer": {
+        "ActiveState": "active",
+        "Id": "paper-ironfly.timer",
+        "NextElapseUSecRealtime": "Tue 2026-07-14 22:10:00 WEST",
+        "UnitFileState": "enabled"
+      }
+    }
+  },
+  "forward_validation": {
+    "dolt_calendar_sync": {
+      "branch": "master",
+      "elapsed_seconds": 4.396,
+      "mode": "fetch_then_ff_only",
+      "remote": "origin",
+      "repo": "/home/servidor/dolt-data/earnings",
+      "run_started_utc": "2026-07-13T06:53:29.231990+00:00",
+      "status": "up_to_date"
+    },
+    "earnings_calendar": {
+      "failed_symbols": 1,
+      "failures": {
+        "CHWY": "KeyError: ['Earnings Date']"
+      },
+      "ib_requests": 0,
+      "orders_placed": 0,
+      "requested_symbols": 243,
+      "rows": 237,
+      "run_finished_utc": "2026-07-13T06:01:47.875638+00:00",
+      "status": "refreshed",
+      "successful_symbols": 242
+    },
+    "paper_ironfly": {
+      "funnel": {
+        "already_done": 0,
+        "earnings": 42,
+        "missing_symbol_snapshot": 1,
+        "no_day_pair": 0,
+        "no_entry_legs": 1,
+        "no_exit_quotes": 0,
+        "outside_fixed_snapshot_universe": 36,
+        "unknown_earnings_when": 1
+      },
+      "ib_requests": 0,
+      "ledger_rows_before": 0,
+      "logged_this_run": 3,
+      "mode": "offline_forward_research",
+      "observed_symbols": 241,
+      "orders_placed": 0,
+      "rejection_symbols": {
+        "already_done": [],
+        "missing_symbol_snapshot": [
+          "UNF"
+        ],
+        "no_day_pair": [],
+        "no_entry_legs": [
+          "FC"
+        ],
+        "no_exit_quotes": [],
+        "outside_fixed_snapshot_universe": [
+          "AERO",
+          "ARTW",
+          "AZZ",
+          "BKSC",
+          "BSET",
+          "BYRN",
+          "EDUC",
+          "EPAC",
+          "FBK",
+          "FDS",
+          "GBX",
+          "GLDG",
+          "HELE",
+          "HIFS",
+          "JCTC",
+          "KRUS",
+          "LEDS",
+          "LEVI",
+          "LEXX",
+          "LNN",
+          "MSM",
+          "NB",
+          "NRIX",
+          "NTIC",
+          "PAPL",
+          "PCYO",
+          "PENG",
+          "PLG",
+          "PSMT",
+          "SAR",
+          "SMPL",
+          "SOTK",
+          "TMQ",
+          "TRX",
+          "VMAR",
+          "WDFC"
+        ],
+        "unknown_earnings_when": [
+          "FIZZ"
+        ]
+      },
+      "run_finished_utc": "2026-07-13T06:57:37.461715+00:00",
+      "snapshot_date_range": [
+        "2026-05-26",
+        "2026-07-10"
+      ],
+      "snapshot_days": 32
+    },
+    "paper_ledger": {
+      "all_near_1545_et": true,
+      "commission_quote_all_0_052": true,
+      "events": [
+        {
+          "commission_quote": 0.052,
+          "entry_ts_utc": "2026-06-30T19:45:01.321077+00:00",
+          "exit_ts_utc": "2026-07-01T19:45:02.107759+00:00",
+          "ret_mid": -0.41540577716643745,
+          "ret_touch": -0.7065727699530521,
+          "symbol": "GIS"
+        },
+        {
+          "commission_quote": 0.052,
+          "entry_ts_utc": "2026-07-08T19:45:04.666942+00:00",
+          "exit_ts_utc": "2026-07-09T19:45:04.064039+00:00",
+          "ret_mid": -0.1490842883153048,
+          "ret_touch": -0.28644975288303137,
+          "symbol": "PEP"
+        },
+        {
+          "commission_quote": 0.052,
+          "entry_ts_utc": "2026-07-09T19:45:04.064039+00:00",
+          "exit_ts_utc": "2026-07-10T19:45:02.797901+00:00",
+          "ret_mid": 0.4270386266094416,
+          "ret_touch": 0.1987818383167219,
+          "symbol": "DAL"
+        }
+      ],
+      "mid": {
+        "mean": -0.045817146290766865,
+        "profit_factor": 0.756503351826045,
+        "win_rate": 0.3333333333333333
+      },
+      "rows": 3,
+      "touch": {
+        "mean": -0.26474689483978714,
+        "profit_factor": 0.20017857978588316,
+        "win_rate": 0.3333333333333333
+      },
+      "touch_le_mid_all": true
+    },
+    "trading_commit": "b98e1504168018e43d74cd0fd990d1c1f85e1150"
+  },
+  "runtime": {
+    "containers": {
+      "command": [
+        "docker",
+        "compose",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "{\"Command\":\"\\\"/bin/sh /app/backen\u2026\\\"\",\"CreatedAt\":\"2026-05-26 18:39:43 +0100 WEST\",\"ExitCode\":0,\"Health\":\"\",\"ID\":\"468badfa8722\",\"Image\":\"ib_bot-api\",\"Labels\":\"com.docker.compose.container-number=1,com.docker.compose.image=sha256:a04a576aba7652bc2d1ac75d206974aedd45d17d597ff09a389d41a581bc3a2a,com.docker.compose.oneoff=False,com.docker.compose.project=ib_bot,com.docker.compose.depends_on=redis:service_started:false,db:service_started:false,com.docker.compose.project.config_files=/home/servidor/Desktop/cursor-projects/ib_bot/docker-compose.yml,com.docker.compose.project.working_dir=/home/servidor/Desktop/cursor-projects/ib_bot,com.docker.compose.replace=api-1,com.docker.compose.service=api,com.docker.compose.version=2.40.3,com.docker.compose.config-hash=1e64c0e82f21005152c9ce416da3c9ccb967bf2ee245e94cb45fb40e4a2cfb62\",\"LocalVolumes\":\"0\",\"Mounts\":\"/home/servidor\u2026\",\"Name\":\"ib_bot-api-1\",\"Names\":\"ib_bot-api-1\",\"Networks\":\"ib_bot_default\",\"Ports\":\"0.0.0.0:8001-\\u003e8000/tcp, [::]:8001-\\u003e8000/tcp\",\"Project\":\"ib_bot\",\"Publishers\":[{\"URL\":\"0.0.0.0\",\"TargetPort\":8000,\"PublishedPort\":8001,\"Protocol\":\"tcp\"},{\"URL\":\"::\",\"TargetPort\":8000,\"PublishedPort\":8001,\"Protocol\":\"tcp\"}],\"RunningFor\":\"6 weeks ago\",\"Service\":\"api\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 13 days\"}\n{\"Command\":\"\\\"/bin/sh /app/backen\u2026\\\"\",\"CreatedAt\":\"2026-07-13 08:12:23 +0100 WEST\",\"ExitCode\":0,\"Health\":\"\",\"ID\":\"730383d49ae7\",\"Image\":\"ib_bot-beat\",\"Labels\":\"com.docker.compose.config-hash=0642496082db5b296f0c0aea5ec20c25087a015a2e25b31133b1b1c3e0433833,com.docker.compose.container-number=1,com.docker.compose.oneoff=False,com.docker.compose.project=ib_bot,com.docker.compose.project.config_files=/home/servidor/Desktop/cursor-projects/ib_bot/docker-compose.yml,com.docker.compose.project.working_dir=/home/servidor/Desktop/cursor-projects/ib_bot,com.docker.compose.service=beat,com.docker.compose.version=2.40.3,com.docker.compose.depends_on=,com.docker.compose.image=sha256:6e5fdf781331beeeb69f0940a24b4ba411685afc4d036bda62b45f56f70c93e1,com.docker.compose.replace=beat-1\",\"LocalVolumes\":\"0\",\"Mounts\":\"/home/servidor\u2026\",\"Name\":\"ib_bot-beat-1\",\"Names\":\"ib_bot-beat-1\",\"Networks\":\"ib_bot_default\",\"Ports\":\"\",\"Project\":\"ib_bot\",\"Publishers\":[],\"RunningFor\":\"About a minute ago\",\"Service\":\"beat\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 56 seconds\"}\n{\"Command\":\"\\\"docker-entrypoint.s\u2026\\\"\",\"CreatedAt\":\"2026-05-21 18:07:41 +0100 WEST\",\"ExitCode\":0,\"Health\":\"\",\"ID\":\"ca5a37bb425c\",\"Image\":\"postgres:16\",\"Labels\":\"com.docker.compose.depends_on=,com.docker.compose.project.config_files=/home/servidor/Desktop/cursor-projects/ib_bot/docker-compose.yml,com.docker.compose.version=2.40.3,com.docker.compose.config-hash=3a855d25346a7d8fc0e727fc840eb0ad3a572027485b79f6c55b3586cae23d6a,com.docker.compose.container-number=1,com.docker.compose.image=sha256:71e27bf60b70bded003791b5573f8b808365613f341df20ffcf0c1ed7bc13ddf,com.docker.compose.oneoff=False,com.docker.compose.project=ib_bot,com.docker.compose.project.working_dir=/home/servidor/Desktop/cursor-projects/ib_bot,com.docker.compose.replace=db-1,com.docker.compose.service=db\",\"LocalVolumes\":\"1\",\"Mounts\":\"ib_bot_pgdata\",\"Name\":\"ib_bot-db-1\",\"Names\":\"ib_bot-db-1\",\"Networks\":\"ib_bot_default\",\"Ports\":\"5432/tcp\",\"Project\":\"ib_bot\",\"Publishers\":[{\"URL\":\"\",\"TargetPort\":5432,\"PublishedPort\":0,\"Protocol\":\"tcp\"}],\"RunningFor\":\"7 weeks ago\",\"Service\":\"db\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 13 days\"}\n{\"Command\":\"\\\"/docker-entrypoint.\u2026\\\"\",\"CreatedAt\":\"2026-05-09 04:30:28 +0100 WEST\",\"ExitCode\":0,\"Health\":\"\",\"ID\":\"1a0f943c23fb\",\"Image\":\"nginx:1.27\",\"Labels\":\"com.docker.compose.container-number=1,com.docker.compose.depends_on=api:service_started:false,web:service_started:false,com.docker.compose.image=sha256:6784fb0834aa7dbbe12e3d7471e69c290df3e6ba810dc38b34ae33d3c1c05f7d,com.docker.compose.service=nginx,com.docker.compose.version=2.40.3,maintainer=NGINX Docker Maintainers \\u003cdocker-maint@nginx.com\\u003e,com.docker.compose.config-hash=3e493e0a835ee7292a628334bb1a1a5ef2a81632eb64463be25c22c3f36fd627,com.docker.compose.oneoff=False,com.docker.compose.project=ib_bot,com.docker.compose.project.config_files=/home/servidor/Desktop/cursor-projects/ib_bot/docker-compose.yml,/home/servidor/Desktop/cursor-projects/ib_bot/docker-compose.epyc.yml,com.docker.compose.project.working_dir=/home/servidor/Desktop/cursor-projects/ib_bot\",\"LocalVolumes\":\"0\",\"Mounts\":\"/home/servidor\u2026\",\"Name\":\"ib_bot-nginx-1\",\"Names\":\"ib_bot-nginx-1\",\"Networks\":\"ib_bot_default\",\"Ports\":\"0.0.0.0:8090-\\u003e80/tcp, [::]:8090-\\u003e80/tcp\",\"Project\":\"ib_bot\",\"Publishers\":[{\"URL\":\"0.0.0.0\",\"TargetPort\":80,\"PublishedPort\":8090,\"Protocol\":\"tcp\"},{\"URL\":\"::\",\"TargetPort\":80,\"PublishedPort\":8090,\"Protocol\":\"tcp\"}],\"RunningFor\":\"2 months ago\",\"Service\":\"nginx\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 13 days\"}\n{\"Command\":\"\\\"docker-entrypoint.s\u2026\\\"\",\"CreatedAt\":\"2026-05-21 18:07:41 +0100 WEST\",\"ExitCode\":0,\"Health\":\"\",\"ID\":\"eee3b06d611a\",\"Image\":\"redis:7\",\"Labels\":\"com.docker.compose.service=redis,com.docker.compose.container-number=1,com.docker.compose.project=ib_bot,com.docker.compose.project.config_files=/home/servidor/Desktop/cursor-projects/ib_bot/docker-compose.yml,com.docker.compose.project.working_dir=/home/servidor/Desktop/cursor-projects/ib_bot,com.docker.compose.version=2.40.3,com.docker.compose.config-hash=a1e619b92ec610fb7724cf4141f70aabd8057d5cd878b6f0d3228972f00f39d0,com.docker.compose.depends_on=,com.docker.compose.image=sha256:3e0669e42d4fe421c9dea0ba5fbc04d336b80b4f32a6c7d25bee3a1d089288a1,com.docker.compose.oneoff=False,com.docker.compose.replace=redis-1\",\"LocalVolumes\":\"1\",\"Mounts\":\"ded839875fc614\u2026\",\"Name\":\"ib_bot-redis-1\",\"Names\":\"ib_bot-redis-1\",\"Networks\":\"ib_bot_default\",\"Ports\":\"6379/tcp\",\"Project\":\"ib_bot\",\"Publishers\":[{\"URL\":\"\",\"TargetPort\":6379,\"PublishedPort\":0,\"Protocol\":\"tcp\"}],\"RunningFor\":\"7 weeks ago\",\"Service\":\"redis\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 13 days\"}\n{\"Command\":\"\\\"docker-entrypoint.s\u2026\\\"\",\"CreatedAt\":\"2026-05-19 22:33:37 +0100 WEST\",\"ExitCode\":0,\"Health\":\"\",\"ID\":\"3344cacc4297\",\"Image\":\"ib_bot-web\",\"Labels\":\"com.docker.compose.oneoff=False,com.docker.compose.project.working_dir=/home/servidor/Desktop/cursor-projects/ib_bot,com.docker.compose.replace=web-1,com.docker.compose.service=web,com.docker.compose.container-number=1,com.docker.compose.depends_on=api:service_started:false,com.docker.compose.image=sha256:19eb58909000729fdef22a38634a6f35ebf218d7dfb4e0ea4a646c94c47b3c8b,com.docker.compose.project=ib_bot,com.docker.compose.project.config_files=/home/servidor/Desktop/cursor-projects/ib_bot/docker-compose.yml,com.docker.compose.version=2.40.3,com.docker.compose.config-hash=2d3c95c4aa2440f4247bdbac3e83647b0637cbf5a947a9e30cb7bdec6f91263a\",\"LocalVolumes\":\"0\",\"Mounts\":\"\",\"Name\":\"ib_bot-web-1\",\"Names\":\"ib_bot-web-1\",\"Networks\":\"ib_bot_default\",\"Ports\":\"3000/tcp\",\"Project\":\"ib_bot\",\"Publishers\":[{\"URL\":\"\",\"TargetPort\":3000,\"PublishedPort\":0,\"Protocol\":\"tcp\"}],\"RunningFor\":\"7 weeks ago\",\"Service\":\"web\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 13 days\"}\n{\"Command\":\"\\\"/bin/sh /app/backen\u2026\\\"\",\"CreatedAt\":\"2026-07-13 08:12:23 +0100 WEST\",\"ExitCode\":0,\"Health\":\"\",\"ID\":\"5a0769af6d11\",\"Image\":\"ib_bot-worker\",\"Labels\":\"com.docker.compose.project=ib_bot,com.docker.compose.project.config_files=/home/servidor/Desktop/cursor-projects/ib_bot/docker-compose.yml,com.docker.compose.project.working_dir=/home/servidor/Desktop/cursor-projects/ib_bot,com.docker.compose.service=worker,com.docker.compose.version=2.40.3,com.docker.compose.config-hash=1c9f8daa43f79f18c3142bbd54310964371a3511f3f0ab27c3fe958283d034a3,com.docker.compose.depends_on=,com.docker.compose.image=sha256:482c917792a2c24a6d4f9384c844681531084d5be89234273a64e79f4259e822,com.docker.compose.oneoff=False,com.docker.compose.replace=worker-1,com.docker.compose.container-number=1\",\"LocalVolumes\":\"0\",\"Mounts\":\"/home/servidor\u2026\",\"Name\":\"ib_bot-worker-1\",\"Names\":\"ib_bot-worker-1\",\"Networks\":\"ib_bot_default\",\"Ports\":\"\",\"Project\":\"ib_bot\",\"Publishers\":[],\"RunningFor\":\"About a minute ago\",\"Service\":\"worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 56 seconds\"}\n"
+    },
+    "database": {
+      "command": [
+        "docker",
+        "compose",
+        "exec",
+        "-T",
+        "db",
+        "psql",
+        "-U",
+        "ibbot",
+        "-d",
+        "ibbot",
+        "-At",
+        "-F",
+        "|",
+        "-c",
+        "SELECT source,as_of_date,n_rows FROM altdata_snapshots ORDER BY source;"
+      ],
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "finra_offexchange_short_volume|2026-07-13|6352\nfred_market_regime|2026-07-13|240\nhouse_financial_disclosure_index|2026-07-13|1340\niron_wing_equity_daily_bars|2026-07-13|3332\nnasdaq_symbol_directory|2026-07-13|12984\nsec_13f_berkshire_hathaway|2026-07-13|90\nsec_13f_scion_asset_management|2026-07-13|3\nsec_daily_material_filings|2026-07-13|1066\nusaspending_recent_contract_awards|2026-07-13|100\n"
+    }
+  },
+  "safety": {
+    "collector_ib_requests": 0,
+    "collector_orders_placed": 0,
+    "collector_subscriptions_purchased": 0,
+    "forward_ib_requests": 0,
+    "forward_orders_placed": 0
+  },
+  "schema_version": 1
+}

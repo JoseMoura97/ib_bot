@@ -1,0 +1,613 @@
+{
+  "forward_coverage": {
+    "dolt_calendar_max_date": "2026-08-21",
+    "fixed_universe_symbols": 238,
+    "forward_ledger_exists": true,
+    "historical_intraday_current_listing_coverage_pct": 1.0,
+    "historical_intraday_symbols_accounted_for_including_legacy": 174,
+    "historical_intraday_symbols_currently_listed": 174,
+    "legacy_symbol_map": {
+      "FI": "FISV",
+      "HES": null,
+      "MRO": null,
+      "PARA": null,
+      "SQ": "XYZ",
+      "WBA": null,
+      "X": null
+    },
+    "snapshot_date_range": [
+      "2026-05-26",
+      "2026-07-10"
+    ],
+    "snapshot_files": 191,
+    "snapshot_symbols_observed": 241,
+    "yahoo_calendar_rows": 237,
+    "yahoo_calendar_symbols": 236
+  },
+  "generated_at_utc": "2026-07-13T06:58:59.789520+00:00",
+  "historical_timing_audit": {
+    "all_expected_values_verified": true,
+    "bug": {
+      "description": "The historical builder normalized raw timing to 'BMO', then passed that token through _classify_when again. The classifier recognized only strings containing 'before', so literal 'BMO' fell through to AMC and _reaction_date shifted the window one day late.",
+      "effect": "The invalid BMO rows lose money and therefore drag the combined headline; they do not create the AMC alpha."
+    },
+    "correct_prior_day_theta_raw_availability": {
+      "available": 0,
+      "coverage_pct": 0.0,
+      "required": 1296
+    },
+    "evidence_version": "iron-wing-timing-audit-v1-2026-07-13",
+    "expected_rounded_audit_values": {
+      "invalid_bmo_shifted_window": {
+        "slip_0.10": {
+          "mean_return_pct": -1.02,
+          "n": 347,
+          "profit_factor": 0.837
+        },
+        "slip_0.25": {
+          "mean_return_pct": -3.69,
+          "n": 347,
+          "profit_factor": 0.52
+        }
+      },
+      "valid_amc_heldout": {
+        "slip_0.10": {
+          "mean_return_pct": 18.53,
+          "n": 530,
+          "profit_factor": 1.986
+        },
+        "slip_0.10_commission_5_20": {
+          "mean_return_pct": 15.4,
+          "n": 531,
+          "profit_factor": 1.801
+        },
+        "slip_0.25": {
+          "mean_return_pct": 13.27,
+          "n": 531,
+          "profit_factor": 1.643
+        },
+        "slip_0.25_commission_5_20": {
+          "mean_return_pct": 10.01,
+          "n": 531,
+          "profit_factor": 1.475
+        }
+      }
+    },
+    "provenance": {
+      "live_or_paid_api_calls": 0,
+      "method": "reprice 10%-wing hold-to-close flies from stored chains; split heldout 2023+ by original when field",
+      "roundtrip_commission_usd": 5.2,
+      "source_dataset": "intraday_events.parquet plus its referenced on-disk Theta bulk chains"
+    },
+    "recomputed_from_disk": {
+      "invalid_bmo_shifted_window": {
+        "slip_0.10": {
+          "mean_return_pct": -1.0156624274319122,
+          "n": 347,
+          "profit_factor": 0.8365816606162555,
+          "win_rate": 0.6051873198847262
+        },
+        "slip_0.25": {
+          "mean_return_pct": -3.6947070606085224,
+          "n": 347,
+          "profit_factor": 0.5197605091835173,
+          "win_rate": 0.515850144092219
+        }
+      },
+      "valid_amc_heldout": {
+        "slip_0.10": {
+          "mean_return_pct": 18.531293691710204,
+          "n": 530,
+          "profit_factor": 1.9859918621585348,
+          "win_rate": 0.6320754716981132
+        },
+        "slip_0.10_commission_5_20": {
+          "mean_return_pct": 15.403981520857524,
+          "n": 531,
+          "profit_factor": 1.8014014408306818,
+          "win_rate": 0.6271186440677966
+        },
+        "slip_0.25": {
+          "mean_return_pct": 13.268921110845202,
+          "n": 531,
+          "profit_factor": 1.6430574833814116,
+          "win_rate": 0.6120527306967984
+        },
+        "slip_0.25_commission_5_20": {
+          "mean_return_pct": 10.01372716667468,
+          "n": 531,
+          "profit_factor": 1.475338318908327,
+          "win_rate": 0.5951035781544256
+        }
+      }
+    },
+    "source_counts": {
+      "all": 3264,
+      "amc": 1514,
+      "bmo": 1750,
+      "heldout_bmo": 1296
+    }
+  },
+  "inputs": {
+    "eod_dataset": "/home/servidor/Desktop/cursor-projects/trading/backtests/reports/0006_earnings_vol/events_multiregime.parquet",
+    "eod_date_range": [
+      "2019-02-12",
+      "2026-05-21"
+    ],
+    "eod_rows": 3692,
+    "eod_symbols": 157,
+    "intraday_dataset": "/home/servidor/Desktop/cursor-projects/trading/backtests/reports/0006_earnings_vol/intraday_events.parquet",
+    "intraday_date_range": [
+      "2020-01-22",
+      "2026-05-21"
+    ],
+    "intraday_repriced_rows": 3264,
+    "intraday_rows": 3264,
+    "intraday_symbols": 174,
+    "theta_bulk_files": 15172
+  },
+  "reconciliation": {
+    "eod_front_dte_median": 16.0,
+    "eod_quoted_spread_to_credit": {
+      "median": 0.1788772597526167,
+      "n": 2263,
+      "p75": 0.3615071499814848,
+      "p90": 0.7463749717495882
+    },
+    "eod_reprice_unavailable_reasons": {
+      "incomplete_quotes": 898,
+      "invalid_max_risk": 243,
+      "invalid_wings": 316,
+      "no_common_strikes": 28
+    },
+    "eod_stored_vs_repriced_slip025_mae": 0.0,
+    "eod_weekend_entry_pct": 0.0728602383531961,
+    "eod_weekend_exit_pct": 0.07177681473456121,
+    "event_intersection": 2579,
+    "intraday_front_dte_median": 3.0,
+    "intraday_weekend_entry_pct": 0.0,
+    "median_abs_atm_difference": 2.5,
+    "same_entry_date_pct": 0.25552539744086855,
+    "same_exit_date_pct": 0.5284994183792168,
+    "same_expiration_pct": 0.053509112058937575,
+    "slip025_overlap_return_correlation": 0.4246079997456127,
+    "symbol_intersection": 157
+  },
+  "safety": {
+    "ib_requests": 0,
+    "mode": "offline_research",
+    "orders_placed": 0,
+    "subscriptions_purchased": 0
+  },
+  "scenarios": {
+    "eod_mid_all": {
+      "by_year": {
+        "2019": {
+          "mean_return": 0.04001128064371471,
+          "n": 173,
+          "profit_factor": 1.4653366995093515,
+          "win_rate": 0.6069364161849711
+        },
+        "2020": {
+          "mean_return": 0.04232896795881984,
+          "n": 293,
+          "profit_factor": 1.386506117735898,
+          "win_rate": 0.6040955631399317
+        },
+        "2021": {
+          "mean_return": -0.0008085299072435188,
+          "n": 326,
+          "profit_factor": 0.992179129710218,
+          "win_rate": 0.5613496932515337
+        },
+        "2022": {
+          "mean_return": -0.01391173446306359,
+          "n": 314,
+          "profit_factor": 0.8703630085738777,
+          "win_rate": 0.554140127388535
+        },
+        "2023": {
+          "mean_return": -0.035701333512833985,
+          "n": 307,
+          "profit_factor": 0.7666193109739364,
+          "win_rate": 0.498371335504886
+        },
+        "2024": {
+          "mean_return": 0.041547942176089855,
+          "n": 289,
+          "profit_factor": 1.3526532279454764,
+          "win_rate": 0.5847750865051903
+        },
+        "2025": {
+          "mean_return": 0.06280153999814132,
+          "n": 322,
+          "profit_factor": 1.5073907703447105,
+          "win_rate": 0.6149068322981367
+        },
+        "2026": {
+          "mean_return": 0.06465160493153252,
+          "n": 183,
+          "profit_factor": 1.5810141748542137,
+          "win_rate": 0.6284153005464481
+        }
+      },
+      "end": "2026-05-20",
+      "event_sharpe": 1.0112453777790127,
+      "mean_return": 0.021655124274787222,
+      "mean_return_bootstrap_95_ci": [
+        0.005461035319932698,
+        0.03716473123469436
+      ],
+      "median_return": 0.04247941048981337,
+      "n": 2207,
+      "normalized_1pct_risk_cagr": 0.0658985509835035,
+      "normalized_1pct_risk_max_drawdown": -0.19417805213724626,
+      "normalized_1pct_risk_total_return": 0.5880327188567966,
+      "profit_factor": 1.1869887795246576,
+      "start": "2019-02-19",
+      "win_rate": 0.577254191209787
+    },
+    "eod_slip025_all": {
+      "by_year": {
+        "2019": {
+          "mean_return": -0.0973522250477805,
+          "n": 177,
+          "profit_factor": 0.3714316953479137,
+          "win_rate": 0.384180790960452
+        },
+        "2020": {
+          "mean_return": -0.3112965111552195,
+          "n": 307,
+          "profit_factor": 0.06938172805978868,
+          "win_rate": 0.18241042345276873
+        },
+        "2021": {
+          "mean_return": -0.2067478552235902,
+          "n": 330,
+          "profit_factor": 0.10415158526022558,
+          "win_rate": 0.2545454545454545
+        },
+        "2022": {
+          "mean_return": -0.23218398434236281,
+          "n": 321,
+          "profit_factor": 0.09549300659218661,
+          "win_rate": 0.1838006230529595
+        },
+        "2023": {
+          "mean_return": -0.17886452054136281,
+          "n": 311,
+          "profit_factor": 0.23225439822413424,
+          "win_rate": 0.3665594855305466
+        },
+        "2024": {
+          "mean_return": -0.15411110795086516,
+          "n": 299,
+          "profit_factor": 0.3103650343215984,
+          "win_rate": 0.36454849498327757
+        },
+        "2025": {
+          "mean_return": -0.19029993022547875,
+          "n": 338,
+          "profit_factor": 0.277410798795308,
+          "win_rate": 0.32840236686390534
+        },
+        "2026": {
+          "mean_return": -0.3311275414375083,
+          "n": 195,
+          "profit_factor": 0.06072478494389673,
+          "win_rate": 0.17435897435897435
+        }
+      },
+      "end": "2026-05-21",
+      "event_sharpe": -10.590072408143277,
+      "mean_return": -0.2134128876725159,
+      "mean_return_bootstrap_95_ci": [
+        -0.22793301616452122,
+        -0.19888510757930744
+      ],
+      "median_return": -0.14360338125442945,
+      "n": 2278,
+      "normalized_1pct_risk_cagr": -0.489979703129377,
+      "normalized_1pct_risk_max_drawdown": -0.9924290515086454,
+      "normalized_1pct_risk_total_return": -0.9924131915491127,
+      "profit_factor": 0.1699545805684422,
+      "start": "2019-02-19",
+      "win_rate": 0.2787532923617208
+    },
+    "intraday_mid_all": {
+      "by_year": {
+        "2020": {
+          "mean_return": 0.11350791338378426,
+          "n": 283,
+          "profit_factor": 2.206591823535228,
+          "win_rate": 0.6360424028268551
+        },
+        "2022": {
+          "mean_return": 0.04104174691615659,
+          "n": 143,
+          "profit_factor": 1.302521012002804,
+          "win_rate": 0.5664335664335665
+        },
+        "2023": {
+          "mean_return": 0.14391786280092073,
+          "n": 250,
+          "profit_factor": 2.360836402998998,
+          "win_rate": 0.632
+        },
+        "2024": {
+          "mean_return": 0.1353225762070697,
+          "n": 254,
+          "profit_factor": 1.9201232346040429,
+          "win_rate": 0.6141732283464567
+        },
+        "2025": {
+          "mean_return": 0.17443066012540703,
+          "n": 249,
+          "profit_factor": 2.593491764080729,
+          "win_rate": 0.6987951807228916
+        },
+        "2026": {
+          "mean_return": 0.08755878155728886,
+          "n": 124,
+          "profit_factor": 1.5445267637589601,
+          "win_rate": 0.5967741935483871
+        }
+      },
+      "end": "2026-05-21",
+      "event_sharpe": 3.491930290363976,
+      "mean_return": 0.12481476027457973,
+      "mean_return_bootstrap_95_ci": [
+        0.0958923146008905,
+        0.15323577823366888
+      ],
+      "median_return": 0.07179054054054043,
+      "n": 1303,
+      "normalized_1pct_risk_cagr": 0.28955147192635233,
+      "normalized_1pct_risk_max_drawdown": -0.036927178365499524,
+      "normalized_1pct_risk_total_return": 3.9941582282218375,
+      "profit_factor": 2.035793802365071,
+      "start": "2020-01-23",
+      "win_rate": 0.6316193399846508
+    },
+    "intraday_mid_heldout_2023plus": {
+      "by_year": {
+        "2023": {
+          "mean_return": 0.14391786280092073,
+          "n": 250,
+          "profit_factor": 2.360836402998998,
+          "win_rate": 0.632
+        },
+        "2024": {
+          "mean_return": 0.1353225762070697,
+          "n": 254,
+          "profit_factor": 1.9201232346040429,
+          "win_rate": 0.6141732283464567
+        },
+        "2025": {
+          "mean_return": 0.17443066012540703,
+          "n": 249,
+          "profit_factor": 2.593491764080729,
+          "win_rate": 0.6987951807228916
+        },
+        "2026": {
+          "mean_return": 0.08755878155728886,
+          "n": 124,
+          "profit_factor": 1.5445267637589601,
+          "win_rate": 0.5967741935483871
+        }
+      },
+      "end": "2026-05-21",
+      "event_sharpe": 4.228965749712724,
+      "mean_return": 0.14212305968204791,
+      "mean_return_bootstrap_95_ci": [
+        0.10832035499616045,
+        0.1780833631380391
+      ],
+      "median_return": 0.07313738892686257,
+      "n": 877,
+      "normalized_1pct_risk_cagr": 0.44459844793181813,
+      "normalized_1pct_risk_max_drawdown": -0.04310302994487747,
+      "normalized_1pct_risk_total_return": 2.4303098052775,
+      "profit_factor": 2.122995209014418,
+      "start": "2023-01-13",
+      "win_rate": 0.6408209806157354
+    },
+    "intraday_slip010_all": {
+      "by_year": {
+        "2020": {
+          "mean_return": 0.061426886296378304,
+          "n": 283,
+          "profit_factor": 1.543147518664386,
+          "win_rate": 0.5901060070671378
+        },
+        "2022": {
+          "mean_return": 0.008020443513313878,
+          "n": 143,
+          "profit_factor": 1.052926212650901,
+          "win_rate": 0.5244755244755245
+        },
+        "2023": {
+          "mean_return": 0.12139274481653257,
+          "n": 250,
+          "profit_factor": 2.05871942559207,
+          "win_rate": 0.628
+        },
+        "2024": {
+          "mean_return": 0.10691827570938807,
+          "n": 254,
+          "profit_factor": 1.6875969733517182,
+          "win_rate": 0.6062992125984252
+        },
+        "2025": {
+          "mean_return": 0.13916187687508272,
+          "n": 249,
+          "profit_factor": 2.1569641521100347,
+          "win_rate": 0.6626506024096386
+        },
+        "2026": {
+          "mean_return": 0.02044171263437131,
+          "n": 124,
+          "profit_factor": 1.1098893931475717,
+          "win_rate": 0.5564516129032258
+        }
+      },
+      "end": "2026-05-21",
+      "event_sharpe": 2.4909964664785464,
+      "mean_return": 0.08689350743450062,
+      "mean_return_bootstrap_95_ci": [
+        0.059295405557292014,
+        0.11499102152674931
+      ],
+      "median_return": 0.0542723429951691,
+      "n": 1303,
+      "normalized_1pct_risk_cagr": 0.19288448948207515,
+      "normalized_1pct_risk_max_drawdown": -0.05828796632399935,
+      "normalized_1pct_risk_total_return": 2.0509955467520857,
+      "profit_factor": 1.6475260617180938,
+      "start": "2020-01-23",
+      "win_rate": 0.6039907904834996
+    },
+    "intraday_slip010_heldout_2023plus": {
+      "by_year": {
+        "2023": {
+          "mean_return": 0.12139274481653257,
+          "n": 250,
+          "profit_factor": 2.05871942559207,
+          "win_rate": 0.628
+        },
+        "2024": {
+          "mean_return": 0.10691827570938807,
+          "n": 254,
+          "profit_factor": 1.6875969733517182,
+          "win_rate": 0.6062992125984252
+        },
+        "2025": {
+          "mean_return": 0.13916187687508272,
+          "n": 249,
+          "profit_factor": 2.1569641521100347,
+          "win_rate": 0.6626506024096386
+        },
+        "2026": {
+          "mean_return": 0.02044171263437131,
+          "n": 124,
+          "profit_factor": 1.1098893931475717,
+          "win_rate": 0.5564516129032258
+        }
+      },
+      "end": "2026-05-21",
+      "event_sharpe": 3.274070330262314,
+      "mean_return": 0.1079720729109183,
+      "mean_return_bootstrap_95_ci": [
+        0.07468981418004805,
+        0.14315757117452485
+      ],
+      "median_return": 0.06009328560581411,
+      "n": 877,
+      "normalized_1pct_risk_cagr": 0.3214210500238035,
+      "normalized_1pct_risk_max_drawdown": -0.051920846086279226,
+      "normalized_1pct_risk_total_return": 1.544630856043506,
+      "profit_factor": 1.7814272020605089,
+      "start": "2023-01-13",
+      "win_rate": 0.621436716077537
+    },
+    "intraday_slip025_all": {
+      "by_year": {
+        "2020": {
+          "mean_return": -0.006274642673679784,
+          "n": 284,
+          "profit_factor": 0.9576165699085817,
+          "win_rate": 0.5
+        },
+        "2022": {
+          "mean_return": -0.036105603433749155,
+          "n": 143,
+          "profit_factor": 0.7928737580487155,
+          "win_rate": 0.46853146853146854
+        },
+        "2023": {
+          "mean_return": 0.10241470627364596,
+          "n": 251,
+          "profit_factor": 1.8182325587232622,
+          "win_rate": 0.601593625498008
+        },
+        "2024": {
+          "mean_return": 0.06755807907858487,
+          "n": 254,
+          "profit_factor": 1.4025998282470638,
+          "win_rate": 0.5708661417322834
+        },
+        "2025": {
+          "mean_return": 0.09135911661643852,
+          "n": 249,
+          "profit_factor": 1.6590963745281533,
+          "win_rate": 0.6024096385542169
+        },
+        "2026": {
+          "mean_return": -0.064330046773084,
+          "n": 124,
+          "profit_factor": 0.7121278194282672,
+          "win_rate": 0.46774193548387094
+        }
+      },
+      "end": "2026-05-21",
+      "event_sharpe": 1.1227530685613438,
+      "mean_return": 0.03884462665741401,
+      "mean_return_bootstrap_95_ci": [
+        0.013355510462377117,
+        0.06502802190393803
+      ],
+      "median_return": 0.02855361596009974,
+      "n": 1305,
+      "normalized_1pct_risk_cagr": 0.0806874427408788,
+      "normalized_1pct_risk_max_drawdown": -0.11600008115118743,
+      "normalized_1pct_risk_total_return": 0.6335564060973571,
+      "profit_factor": 1.2494261103716922,
+      "start": "2020-01-23",
+      "win_rate": 0.546360153256705
+    },
+    "intraday_slip025_heldout_2023plus": {
+      "by_year": {
+        "2023": {
+          "mean_return": 0.10241470627364596,
+          "n": 251,
+          "profit_factor": 1.8182325587232622,
+          "win_rate": 0.601593625498008
+        },
+        "2024": {
+          "mean_return": 0.06755807907858487,
+          "n": 254,
+          "profit_factor": 1.4025998282470638,
+          "win_rate": 0.5708661417322834
+        },
+        "2025": {
+          "mean_return": 0.09135911661643852,
+          "n": 249,
+          "profit_factor": 1.6590963745281533,
+          "win_rate": 0.6024096385542169
+        },
+        "2026": {
+          "mean_return": -0.064330046773084,
+          "n": 124,
+          "profit_factor": 0.7121278194282672,
+          "win_rate": 0.46774193548387094
+        }
+      },
+      "end": "2026-05-21",
+      "event_sharpe": 2.000508650835103,
+      "mean_return": 0.06564617038528073,
+      "mean_return_bootstrap_95_ci": [
+        0.03076217066861599,
+        0.10185609826960187
+      ],
+      "median_return": 0.03320814763687923,
+      "n": 878,
+      "normalized_1pct_risk_cagr": 0.1832406756432874,
+      "normalized_1pct_risk_max_drawdown": -0.11841735379718743,
+      "normalized_1pct_risk_total_return": 0.7574273471063879,
+      "profit_factor": 1.422984494926353,
+      "start": "2023-01-13",
+      "win_rate": 0.5740318906605922
+    }
+  },
+  "schema_version": 1
+}

@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "as_of_date": "2026-07-13",
+  "policy": {
+    "interactive_brokers_market_data_dependency": false,
+    "paid_subscriptions_added": 0,
+    "collection_pattern": "daily point-in-time vintages, per-source commits, strict JSON, cache-first and bounded retries"
+  },
+  "active_daily_sources": [
+    {
+      "source": "NASDAQ Trader Symbol Directory",
+      "collector_key": "nasdaq_symbol_directory",
+      "fields": ["symbol", "security name", "listing exchange", "ETF flag", "financial status", "round lot"],
+      "use": ["current universe", "ticker retirement/rename detection", "common-stock filter"],
+      "endpoint": "https://www.nasdaqtrader.com/Trader.aspx?id=SymbolDirDefs",
+      "credential": "none",
+      "cache": "daily database vintage"
+    },
+    {
+      "source": "Yahoo Finance via existing yfinance dependency",
+      "collector_key": "iron_wing_equity_daily_bars",
+      "fields": ["raw OHLCV", "adjusted close", "dividends", "stock splits"],
+      "use": ["prices", "returns", "corporate actions", "Iron Wing underlying context"],
+      "credential": "none",
+      "cache": ".cache/equity_coverage/equity_daily_bars/YYYY-MM-DD.json",
+      "limitations": "unofficial best-effort feed; current symbol directory is the authority for ticker validity"
+    },
+    {
+      "source": "FINRA Reg SHO Daily Short Sale Volume",
+      "collector_key": "finra_offexchange_short_volume",
+      "fields": ["short volume", "short-exempt volume", "total FINRA volume", "short-volume ratio"],
+      "use": ["liquidity", "off-exchange short-volume context"],
+      "endpoint": "https://www.finra.org/filing-reporting/adf/adf-regulation-sho",
+      "credential": "none",
+      "cache": ".cache/finra_short",
+      "limitations": "not short interest and not consolidated exchange volume"
+    },
+    {
+      "source": "US House Clerk Financial Disclosure Index",
+      "collector_key": "house_financial_disclosure_index",
+      "fields": ["document id", "bioguide id", "filing year", "filing type", "member name"],
+      "use": ["Congress disclosure discovery", "PTR/annual filing vintages"],
+            "credential": "none",
+            "cache": ".cache/annual_fd/index_YEAR.json",
+            "limitations": "index metadata only: identifies disclosure documents but does not parse every attachment, transaction, or holding"
+    },
+    {
+      "source": "SEC EDGAR daily index and 13F filings",
+      "collector_key": "sec_daily_material_filings + sec_13f_*",
+      "fields": ["CIK", "company", "form", "filed date", "filing path", "13F holdings"],
+      "use": ["earnings/fundamental filing events", "corporate actions", "institutional holdings"],
+      "endpoint": "https://www.sec.gov/search-filings/edgar-application-programming-interfaces",
+      "credential": "none",
+      "cache": ".cache/equity_coverage/sec_daily_index + .cache/sec_edgar",
+      "pacing": "identified user agent, at most 10 requests/second; collector uses far less"
+    },
+    {
+      "source": "FRED",
+      "collector_key": "fred_market_regime",
+      "fields": ["S&P 500", "VIX", "2Y and 10Y Treasury yields", "high-yield spread", "broad dollar index"],
+      "use": ["market regime", "rates curve", "credit and volatility context"],
+      "endpoint": "https://fred.stlouisfed.org/graph/fredgraph.csv",
+      "credential": "none",
+      "cache": "daily database vintage"
+    },
+    {
+      "source": "USAspending.gov",
+      "collector_key": "usaspending_recent_contract_awards",
+      "fields": ["award id", "recipient", "amount", "agency", "dates", "description"],
+      "use": ["government contract discovery"],
+      "endpoint": "https://api.usaspending.gov/docs/endpoints",
+      "credential": "none",
+      "cache": "one bounded page per daily vintage"
+    },
+    {
+      "source": "Yahoo earnings calendar fallback + local DoltHub calendar",
+      "collector_key": "trading/live/options_cache/earnings_calendar.py",
+      "fields": ["symbol", "earnings date", "before-open/after-close classification", "fetch timestamp"],
+      "use": ["Iron Wing entry/exit scheduling", "earnings universe augmentation"],
+      "credential": "none",
+      "cache": "data/options_cache/earnings_calendar_yahoo.parquet; last-good rows retained"
+    },
+    {
+      "source": "Yahoo option-chain snapshots",
+      "collector_key": "trading/live/options_cache/snapshot.py",
+      "fields": ["bid", "ask", "volume", "open interest", "implied volatility", "spot", "strike", "expiry", "timestamp"],
+      "use": ["Iron Wing forward fills", "spread and depth monitoring", "option surface archive"],
+      "credential": "none",
+      "cache": "append-only data/options_cache/dt=YYYY-MM-DD/snap_HHMMSS.parquet"
+    }
+  ],
+  "existing_offline_research_sources": [
+    {
+      "source": "ThetaData bulk intraday quotes already on disk",
+      "coverage": "15172 parquet files; 3264 earnings events; 174 symbols; 2020-01-22 through 2026-05-21",
+      "new_network_requests": 0
+    },
+    {
+      "source": "DoltHub/free EOD option chains already on disk",
+      "coverage": "3692 multi-regime earnings events; 157 symbols; 2019-02-12 through 2026-05-21",
+      "new_network_requests": 0
+    }
+  ],
+  "useful_not_active": [
+    {
+      "source": "CFTC Commitments of Traders historical compressed files",
+      "fields": ["dealer", "asset manager", "leveraged fund positioning"],
+      "reason": "useful macro regime feature but futures-level, not needed to repair Iron Wing equity coverage",
+      "endpoint": "https://www.cftc.gov/MarketReports/CommitmentsofTraders/HistoricalCompressed/index.htm"
+    },
+    {
+      "source": "SEC companyfacts bulk ZIP",
+      "fields": ["point-in-time XBRL revenue", "income", "balance sheet", "shares"],
+      "reason": "daily filing discovery is active; bulk fundamentals are the next incremental backfill, not required for the options verdict",
+      "endpoint": "https://www.sec.gov/Archives/edgar/daily-index/xbrl/companyfacts.zip"
+    }
+  ],
+  "explicitly_excluded": [
+        {
+            "source": "Quiver bulk Congress endpoint",
+            "reason": "existing paid/licensed endpoint timed out and made the old daily transaction fragile; deliberately excluded rather than pretending the House metadata index is an equivalent transaction-level replacement"
+    },
+    {
+      "source": "Alpha Vantage earnings calendar",
+      "reason": "no API credential is configured; Yahoo plus the local Dolt calendar currently covers the required fixed universe"
+    },
+    {
+      "source": "new ThetaData subscription",
+      "reason": "not justified while 15172 historical files are already local and the free forward ledger has zero completable events"
+    }
+  ]
+}

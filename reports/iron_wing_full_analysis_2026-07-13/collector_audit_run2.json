@@ -1,0 +1,113 @@
+{
+  "accounted_sources": 9,
+  "as_of_date": "2026-07-13",
+  "expected_sources": 9,
+  "failed_sources": 0,
+  "ib_requests": 0,
+  "mandatory_failed_sources": 0,
+  "mode": "research_only_non_trading",
+  "optional_failed_sources": 0,
+  "orders_placed": 0,
+  "overall_status": "ok",
+  "results": [
+    {
+      "content_hash": "e79e1c76ab03ed234b9cec4e3c4f050bfa30cb83de4b665099be1ece195b7659",
+      "criticality": "mandatory",
+      "elapsed_seconds": 1.356,
+      "error": null,
+      "error_code": null,
+      "n_rows": 12991,
+      "source": "nasdaq_symbol_directory",
+      "status": "exists"
+    },
+    {
+      "content_hash": "da415de1807ac11f183ade4c0a8226d5c4db7cba197ce0132ccf704c305b61bb",
+      "criticality": "mandatory",
+      "elapsed_seconds": 0.205,
+      "error": null,
+      "error_code": null,
+      "n_rows": 3332,
+      "source": "iron_wing_equity_daily_bars",
+      "status": "exists"
+    },
+    {
+      "content_hash": "f43091c16246ceee97ad17ff69ab99b6c86ac8d2a3c8fc62b41b6a55e2df9844",
+      "criticality": "mandatory",
+      "elapsed_seconds": 0.674,
+      "error": null,
+      "error_code": null,
+      "n_rows": 6352,
+      "source": "finra_offexchange_short_volume",
+      "status": "exists"
+    },
+    {
+      "content_hash": "b57845f45b3496dee7aaaaf1e629d65dbb1713402988d24bac50156810189ff6",
+      "criticality": "mandatory",
+      "elapsed_seconds": 0.392,
+      "error": null,
+      "error_code": null,
+      "n_rows": 1340,
+      "source": "house_financial_disclosure_index",
+      "status": "exists"
+    },
+    {
+      "content_hash": "caa6fa31e7d2a63b9206d2f2e79504d68f8c8e67b816d871267fda04a54a3c71",
+      "criticality": "optional",
+      "elapsed_seconds": 0.011,
+      "error": null,
+      "error_code": null,
+      "n_rows": 1066,
+      "source": "sec_daily_material_filings",
+      "status": "exists"
+    },
+    {
+      "content_hash": "7b5b032ea3ceb412448fdc06a0d1493542abfe996c6b4ee0a320c2ff91373716",
+      "criticality": "mandatory",
+      "elapsed_seconds": 5.727,
+      "error": null,
+      "error_code": null,
+      "n_rows": 240,
+      "source": "fred_market_regime",
+      "status": "exists"
+    },
+    {
+      "content_hash": "af8ac9d0484a2bbf6155b6ef26cf85d084d289cedb43c59818edd4c154caa870",
+      "criticality": "mandatory",
+      "elapsed_seconds": 1.204,
+      "error": null,
+      "error_code": null,
+      "n_rows": 100,
+      "source": "usaspending_recent_contract_awards",
+      "status": "exists"
+    },
+    {
+      "content_hash": "09926a32b5bcffdf01a62fdc42b212a8eff46fc8a3ff53ad77af04b0cc8a8a6a",
+      "criticality": "mandatory",
+      "elapsed_seconds": 0.03,
+      "error": null,
+      "error_code": null,
+      "n_rows": 3,
+      "source": "sec_13f_scion_asset_management",
+      "status": "exists"
+    },
+    {
+      "content_hash": "0a6fbc909342291f8b8a8c67a987504c5e35ec3c12479757ab7212f2f0e80376",
+      "criticality": "mandatory",
+      "elapsed_seconds": 0.011,
+      "error": null,
+      "error_code": null,
+      "n_rows": 90,
+      "source": "sec_13f_berkshire_hathaway",
+      "status": "exists"
+    }
+  ],
+  "run_finished_utc": "2026-07-13T07:00:07.812773+00:00",
+  "run_started_utc": "2026-07-13T06:59:58.202539+00:00",
+  "schema_version": 1,
+  "source_notes": {
+    "house_financial_disclosure_index": "index metadata only; does not parse every filing attachment or holding",
+    "quiver_congress_trades": "excluded: bulk endpoint timed out and requires licensed/API-key access; no silent replacement"
+  },
+  "subscriptions_purchased": 0,
+  "successful_sources": 9
+}

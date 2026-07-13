@@ -21,6 +21,8 @@ from typing import Optional
 
 import pandas as pd
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 log = logging.getLogger(__name__)
 
@@ -45,6 +47,20 @@ class FinraShortVolume:
         os.makedirs(_CACHE_DIR, exist_ok=True)
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": user_agent or _DEFAULT_UA})
+        self.session.mount(
+            "https://",
+            HTTPAdapter(
+                max_retries=Retry(
+                    total=3,
+                    connect=3,
+                    read=3,
+                    backoff_factor=0.75,
+                    status_forcelist=(429, 500, 502, 503, 504),
+                    allowed_methods=frozenset(("GET",)),
+                    respect_retry_after_header=True,
+                )
+            ),
+        )
         self._last_request_time = 0.0
         self._min_request_delay = 0.05  # 20 req/s is plenty for FINRA CDN
         self._etf_symbols: Optional[set[str]] = None
@@ -137,6 +153,13 @@ class FinraShortVolume:
     def get_daily(self, dt: datetime) -> pd.DataFrame:
         """Return one day's full short-volume table. Empty DataFrame if missing/holiday."""
         path = self._cache_path(dt)
+        # Old code cached every 403 as an empty file.  FINRA also uses 403 for
+        # transient CDN denials, so this permanently poisoned real weekdays.
+        if os.path.exists(path) and os.path.getsize(path) == 0 and dt.weekday() < 5:
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
         if not os.path.exists(path):
             self._rate_limit()
             url = _BASE_URL.format(ymd=dt.strftime("%Y%m%d"))
@@ -146,9 +169,11 @@ class FinraShortVolume:
                 log.warning(f"FINRA fetch error for {dt:%Y-%m-%d}: {e}")
                 return pd.DataFrame()
             if r.status_code == 403:
-                # Weekend or market holiday — cache an empty sentinel so we don't refetch
-                with open(path, "wb") as f:
-                    f.write(b"")
+                # Cache only obvious weekend misses.  A weekday 403 can be a
+                # transient CDN denial and must remain retryable on the next run.
+                if dt.weekday() >= 5:
+                    with open(path, "wb") as f:
+                        f.write(b"")
                 return pd.DataFrame()
             if r.status_code != 200:
                 log.warning(f"FINRA status {r.status_code} for {dt:%Y-%m-%d}")

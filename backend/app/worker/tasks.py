@@ -879,123 +879,21 @@ def refresh_validation_results_task(force: bool = True, max_age_hours: int = 24 
 
 
 
-# ---------------------------------------------------------------------------
-# Point-in-time alternative-data snapshots (the compounding archive)
-# ---------------------------------------------------------------------------
-
-
-def _altdata_store(db, source: str, records: list, as_of) -> str:
-    """Store one source's vintage for `as_of`, deduping by content hash.
-
-    If the latest stored snapshot for this source has the same content hash,
-    we store a metadata-only row (payload NULL) to avoid duplicating big blobs.
-    """
-    import hashlib
-    import json as _json
-    from app.models.altdata import AltDataSnapshot
-
-    body = _json.dumps(records, default=str, sort_keys=True)
-    chash = hashlib.sha256(body.encode("utf-8")).hexdigest()
-
-    # already captured today? (idempotent on re-run)
-    existing = (
-        db.query(AltDataSnapshot)
-        .filter(AltDataSnapshot.source == source, AltDataSnapshot.as_of_date == as_of)
-        .one_or_none()
-    )
-    if existing is not None:
-        return "exists"
-
-    prev = (
-        db.query(AltDataSnapshot)
-        .filter(AltDataSnapshot.source == source)
-        .order_by(AltDataSnapshot.as_of_date.desc())
-        .first()
-    )
-    unchanged = prev is not None and prev.content_hash == chash
-    snap = AltDataSnapshot(
-        source=source,
-        as_of_date=as_of,
-        n_rows=len(records),
-        content_hash=chash,
-        payload=None if unchanged else records,  # metadata-only when unchanged
-    )
-    db.add(snap)
-    return "unchanged" if unchanged else "stored"
-
-
-def _df_records(df, cap: int = 20000) -> list:
-    """DataFrame -> JSON-safe records (capped)."""
-    try:
-        import pandas as pd  # noqa: F401
-        if df is None or getattr(df, "empty", True):
-            return []
-        d = df.head(cap).copy()
-        for c in d.columns:
-            if str(d[c].dtype).startswith("datetime"):
-                d[c] = d[c].astype(str)
-        return d.to_dict(orient="records")
-    except Exception:
-        return []
-
-
 @celery_app.task(name="altdata_snapshot_daily_task")
 def altdata_snapshot_daily_task() -> None:
-    """Capture a daily point-in-time vintage of each free alt-data source.
-
-    Failure-safe: every source is wrapped; one source failing never aborts the
-    others or the task. This is the only un-replicable, compounding asset — it
-    must run every day going forward.
-    """
+    """Capture daily non-IB research vintages with per-source commits."""
     import logging
-    from datetime import date as _date
+
+    from app.services.equity_coverage import capture_all
 
     logger = logging.getLogger(__name__)
     db = _db()
-    as_of = _date.today()
-    summary: dict[str, str] = {}
     try:
-        # 1) Congressional trades (bulk full history) — the flagship signal
-        try:
-            import quiver_engine
-            eng = quiver_engine.QuiverStrategyEngine(api_key=settings.quiver_api_key or "")
-            df = eng._get_bulk_congress_data()
-            summary["congress_trades"] = _altdata_store(db, "congress_trades", _df_records(df), as_of)
-        except Exception as e:
-            summary["congress_trades"] = f"err:{type(e).__name__}"
-
-        # 2) FINRA off-exchange short volume (today's file)
-        try:
-            from finra_short import FinraShortVolume
-            fs = FinraShortVolume()
-            df = fs.get_window(end_date=datetime.utcnow(), lookback_days=1)
-            summary["finra_offexch_short"] = _altdata_store(db, "finra_offexch_short", _df_records(df), as_of)
-        except Exception as e:
-            summary["finra_offexch_short"] = f"err:{type(e).__name__}"
-
-        # 3) Latest 13F holdings for tracked funds (free EDGAR)
-        try:
-            import sec_edgar
-            sec = sec_edgar.SECEdgarClient() if hasattr(sec_edgar, "SECEdgarClient") else None
-            for fund in ["Scion Asset Management", "Berkshire Hathaway"]:
-                try:
-                    if sec is None:
-                        break
-                    hdf = sec.get_latest_holdings(fund)
-                    key = "13f_" + fund.lower().replace(" ", "_")
-                    summary[key] = _altdata_store(db, key, _df_records(hdf), as_of)
-                except Exception as e:
-                    summary["13f_" + fund.split()[0].lower()] = f"err:{type(e).__name__}"
-        except Exception as e:
-            summary["13f"] = f"err:{type(e).__name__}"
-
-        db.commit()
-        logger.info("altdata_snapshot_daily: %s", summary)
-    except Exception as e:
-        logger.warning("altdata_snapshot_daily: fatal: %s", e)
-        try:
-            db.rollback()
-        except Exception:
-            pass
+        audit = capture_all(db)
+        logger.info("altdata_snapshot_daily: %s", audit)
+        if audit["mandatory_failed_sources"]:
+            raise RuntimeError(
+                f"{audit['mandatory_failed_sources']} mandatory source(s) failed; see last_run.json"
+            )
     finally:
         db.close()

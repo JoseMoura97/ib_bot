@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "generated_date": "2026-07-13",
+  "verdict": {
+    "collector_enabled": true,
+    "paper_forward_enabled": true,
+    "live_trading_enabled": false,
+    "buy_thetadata_now": false,
+    "reason": "AMC history remains promising, but BMO history is invalid and the corrected forward has only 3 diagnostic events"
+  },
+  "commits": {
+    "trading_forward": "b98e1504168018e43d74cd0fd990d1c1f85e1150"
+  },
+  "tests": {
+    "ib_bot_equity_coverage": {"passed": 10, "failed": 0},
+    "trading_forward": {"passed": 18, "failed": 0},
+    "reconciliation_exit_code": 0,
+    "reconciliation_elapsed_seconds": 223.17
+  },
+  "collector": {
+    "expected_sources": 9,
+    "accounted_sources": 9,
+    "successful_sources": 9,
+    "mandatory_failed_sources": 0,
+    "idempotent_rerun": true,
+    "sole_external_fetch_schedule": "Celery altdata_snapshot_daily_task at 05:00 UTC"
+  },
+  "historical_timing_audit": {
+    "evidence_version": "iron-wing-timing-audit-v1-2026-07-13",
+    "all_expected_values_verified": true,
+    "correct_bmo_prior_day_files_available": 0,
+    "correct_bmo_prior_day_files_required": 1296
+  },
+  "forward_proof": {
+    "ledger_rows": 3,
+    "symbols": ["GIS", "PEP", "DAL"],
+    "all_near_1545_et": true,
+    "touch_le_mid_all": true,
+    "commission_quote": 0.052,
+    "sample_is_diagnostic_only": true
+  },
+  "dolt_calendar_sync": {
+    "mode": "fetch_then_ff_only",
+    "status": "up_to_date",
+    "elapsed_seconds": 4.396
+  },
+  "safety": {
+    "ib_requests": 0,
+    "orders_placed": 0,
+    "subscriptions_purchased": 0
+  },
+  "artifacts": [
+    "reports/iron_wing_full_analysis_2026-07-13.md",
+    "reports/iron_wing_full_analysis_2026-07-13/reconciliation_metrics.json",
+    "reports/iron_wing_full_analysis_2026-07-13/intraday_repriced_events.parquet",
+    "reports/iron_wing_full_analysis_2026-07-13/eod_repriced_events.parquet",
+    "reports/iron_wing_full_analysis_2026-07-13/equity_curves.csv",
+    "reports/iron_wing_full_analysis_2026-07-13/source_coverage_inventory.json",
+    "reports/iron_wing_full_analysis_2026-07-13/operational_evidence.json",
+    "reports/iron_wing_full_analysis_2026-07-13/collector_initial_population_run.json",
+    "reports/iron_wing_full_analysis_2026-07-13/collector_audit_run1.json",
+    "reports/iron_wing_full_analysis_2026-07-13/collector_audit_run2.json"
+  ]
+}
