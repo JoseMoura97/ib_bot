@@ -994,10 +994,26 @@ def main():
 
     # ── Regenerate plot_data.json so dashboard reflects new results ─────────
     success_count = sum(1 for r in results if r.status == "success")
+    if success_count != len(specs):
+        # A weekly run is only healthy when every selected strategy completed.
+        # This makes a partial run fail loud instead of updating a dashboard that
+        # looks current while silently omitting a strategy.
+        print(
+            f"[ERROR] backtest strategy completion {success_count}/{len(specs)} "
+            "— propagating failure."
+        )
+        sys.exit(1)
+
     if success_count > 0 and not args.report_only:
         print(f"\nRegenerating plot_data.json ({success_count} successful strategies)...")
         gen_script = ROOT_DIR / "generate_plot_data.py"
         if gen_script.exists():
+            # This hook exists solely for the systemd controlled-failure test.
+            # It exercises the same internal dashboard-step failure boundary
+            # without touching an IB session or corrupting the real artifact.
+            if os.getenv("IB_BACKTESTS_TEST_FORCE_PLOT_FAILURE") == "1":
+                print("[ERROR] TEST forced plot-data step failure — propagating failure.")
+                sys.exit(97)
             import subprocess as _sp
             # Always regenerate the dashboard from the CACHE the strategies just
             # populated (plus yfinance for the SPY benchmark) — never live IB.
@@ -1012,7 +1028,19 @@ def main():
                 env={**os.environ},
             )
             if ret.returncode == 0:
-                print("[OK] plot_data.json updated — dashboard is current.")
+                artifact = ROOT_DIR / ".cache" / "plot_data.json"
+                if not artifact.is_file():
+                    print("[ERROR] plot-data artifact missing after successful generator — propagating failure.")
+                    sys.exit(1)
+                # Stable, machine-readable end-of-run receipt.  The verifier
+                # delimits this marker within one timestamp-bounded systemd run;
+                # it names the artifact rather than inferring dashboard freshness
+                # from a prose log line.
+                print(
+                    "BACKTEST_COMPLETION "
+                    f"status=success strategies={success_count}/{len(specs)} "
+                    f"price_source={price_source} plot_data_artifact={artifact}"
+                )
             else:
                 # Do NOT swallow the failure. The weekly oneshot service used to
                 # print this WARN and still exit 0, so a broken dashboard looked

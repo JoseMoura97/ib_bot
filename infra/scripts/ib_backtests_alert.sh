@@ -34,7 +34,8 @@ rc=$?
 psql conductor -v ts="${TS}" -v st="${STATUS}" -v rc="${rc}" <<'SQL' 2>/dev/null || true
 INSERT INTO events (project_id, kind, payload)
 SELECT id, 'ib_backtests_failure_alert',
-       jsonb_build_object('ts', :'ts', 'exec_main_status', :'st', 'job_add_rc', :'rc',
+       jsonb_build_object('ts', :'ts', 'status', (:'st')::integer,
+                          'exec_main_status', :'st', 'job_add_rc', :'rc',
                           'source', 'ib-backtests-alert.service')
 FROM projects WHERE slug = 'ib_bot' LIMIT 1;
 SQL
