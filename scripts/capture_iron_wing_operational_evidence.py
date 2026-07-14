@@ -97,7 +97,7 @@ def main() -> int:
         "schema_version": 1,
         "captured_at_utc": datetime.now(timezone.utc).isoformat(),
         "daily_coverage_schedule": {
-            "primary": "Celery beat altdata_snapshot_daily at 05:00 UTC",
+            "primary": "Celery beat altdata_snapshot_daily at 06:00 UTC",
             "redundant_systemd_units_in_repo": duplicate_units,
             "redundant_systemd_timer_enabled": duplicate_timer["exit_code"] == 0,
             "celery_registered_exit_code": celery["exit_code"],
@@ -107,7 +107,7 @@ def main() -> int:
                 not duplicate_units
                 and duplicate_timer["exit_code"] != 0
                 and celery_schedule["exit_code"] == 0
-                and celery_schedule["stdout"].strip() == "1 [5] [0]"
+                and celery_schedule["stdout"].strip() == "1 [6] [0]"
             ),
         },
         "forward_systemd_timers": {

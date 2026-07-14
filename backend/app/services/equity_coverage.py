@@ -37,6 +37,9 @@ NASDAQ_URLS = (
     "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt",
     "https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt",
 )
+CFTC_DISAGGREGATED_FUTURES_URL = (
+    "https://publicreporting.cftc.gov/resource/72hh-3qpy.json"
+)
 FRED_SERIES = ("SP500", "VIXCLS", "DGS10", "DGS2", "BAMLH0A0HYM2", "DTWEXBGS")
 SEC_FORMS = {
     "4", "8-K", "8-K/A", "10-Q", "10-Q/A", "10-K", "10-K/A", "6-K",
@@ -274,6 +277,22 @@ def collect_house_disclosures(as_of: date) -> list[dict[str, Any]]:
     return json_safe([asdict(entry) for entry in entries])
 
 
+def collect_house_periodic_transaction_reports(as_of: date) -> list[dict[str, Any]]:
+    """Archive the official House index rows that identify disclosed trades.
+
+    Filing type ``P`` is a Periodic Transaction Report (PTR).  This is the
+    free, point-in-time congressional-trades source available in the current
+    codebase; the rows identify the official filings but do not pretend that
+    the individual PDF transaction lines have already been parsed.
+    """
+    from annual_fd_parser import fetch_index
+
+    # The full House index collector runs immediately before this source and
+    # refreshes the shared cache. Reuse it to avoid a duplicate download.
+    entries = fetch_index(as_of.year, force=False)
+    return json_safe([asdict(entry) for entry in entries if entry.filing_type == "P"])
+
+
 def _sec_master_cache_path(day: date) -> Path:
     return CACHE / "sec_daily_index" / f"master.{day:%Y%m%d}.idx"
 
@@ -421,14 +440,51 @@ def collect_usaspending_awards(as_of: date) -> list[dict[str, Any]]:
     return json_safe(response.json().get("results", []))
 
 
+def collect_cftc_disaggregated_cot(_: date) -> list[dict[str, Any]]:
+    """Fetch the latest free CFTC Disaggregated Futures-Only COT vintage.
+
+    The official Socrata dataset is queried twice: one aggregate request finds
+    the latest published report date, and one bounded request retrieves that
+    exact weekly vintage.  No application token or paid provider is used.
+    """
+    session = _session()
+    latest_response = session.get(
+        CFTC_DISAGGREGATED_FUTURES_URL,
+        params={"$select": "max(report_date_as_yyyy_mm_dd) as latest_report_date"},
+        timeout=(10, 30),
+    )
+    latest_response.raise_for_status()
+    latest_payload = latest_response.json()
+    latest = latest_payload[0].get("latest_report_date") if latest_payload else None
+    if not isinstance(latest, str) or not latest:
+        raise ValueError("CFTC COT latest report date is absent")
+
+    report_response = session.get(
+        CFTC_DISAGGREGATED_FUTURES_URL,
+        params={
+            "$where": f"report_date_as_yyyy_mm_dd='{latest}'",
+            "$order": "contract_market_name ASC",
+            "$limit": 5_000,
+        },
+        timeout=(10, 60),
+    )
+    report_response.raise_for_status()
+    rows = report_response.json()
+    if not isinstance(rows, list):
+        raise ValueError("CFTC COT response is not a record list")
+    return json_safe(rows)
+
+
 COLLECTORS: tuple[CollectorSpec, ...] = (
     CollectorSpec("nasdaq_symbol_directory", collect_nasdaq_directory),
     CollectorSpec("iron_wing_equity_daily_bars", collect_equity_daily_bars),
     CollectorSpec("finra_offexchange_short_volume", collect_finra_short),
     CollectorSpec("house_financial_disclosure_index", collect_house_disclosures),
+    CollectorSpec("house_periodic_transaction_report_index", collect_house_periodic_transaction_reports),
     CollectorSpec("sec_daily_material_filings", collect_sec_daily_filings, "optional"),
     CollectorSpec("fred_market_regime", collect_fred_regime),
     CollectorSpec("usaspending_recent_contract_awards", collect_usaspending_awards),
+    CollectorSpec("cftc_disaggregated_futures_cot", collect_cftc_disaggregated_cot),
 )
 
 
@@ -523,6 +579,7 @@ def capture_all(db: Session, as_of: date | None = None, audit_path: Path = AUDIT
         "source_notes": {
             "quiver_congress_trades": "excluded: bulk endpoint timed out and requires licensed/API-key access; no silent replacement",
             "house_financial_disclosure_index": "index metadata only; does not parse every filing attachment or holding",
+            "house_periodic_transaction_report_index": "official free PTR filing metadata; PDF transaction lines are not parsed",
         },
         "results": [asdict(r) for r in results],
     }

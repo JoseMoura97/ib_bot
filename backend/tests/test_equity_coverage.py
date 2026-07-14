@@ -110,6 +110,71 @@ def test_sec_daily_index_has_hard_request_budget(monkeypatch):
     assert len(requested) == coverage.SEC_DAILY_REQUEST_BUDGET
 
 
+def test_house_ptr_collector_keeps_only_periodic_transaction_reports(monkeypatch):
+    from annual_fd_parser import AnnualFDIndexEntry
+
+    def entry(doc_id, filing_type):
+        return AnnualFDIndexEntry(
+            doc_id=doc_id,
+            bioguide_id=None,
+            first_name="Test",
+            last_name="Member",
+            filing_year=2026,
+            filing_type=filing_type,
+        )
+
+    monkeypatch.setattr(
+        "annual_fd_parser.fetch_index",
+        lambda _year, force=False: [entry("ptr", "P"), entry("annual", "A")],
+    )
+
+    rows = coverage.collect_house_periodic_transaction_reports(date(2026, 7, 13))
+
+    assert [row["doc_id"] for row in rows] == ["ptr"]
+    assert rows[0]["filing_type"] == "P"
+
+
+def test_cftc_collector_fetches_exact_latest_official_vintage(monkeypatch):
+    class Response:
+        def __init__(self, payload):
+            self.payload = payload
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self.payload
+
+    class Session:
+        def __init__(self):
+            self.calls = []
+
+        def get(self, url, **kwargs):
+            self.calls.append((url, kwargs))
+            if len(self.calls) == 1:
+                return Response([{"latest_report_date": "2026-07-07T00:00:00.000"}])
+            return Response([
+                {
+                    "contract_market_name": "CORN - CHICAGO BOARD OF TRADE",
+                    "report_date_as_yyyy_mm_dd": "2026-07-07T00:00:00.000",
+                    "open_interest_all": "100",
+                }
+            ])
+
+    session = Session()
+    monkeypatch.setattr(coverage, "_session", lambda total_retries=3: session)
+
+    rows = coverage.collect_cftc_disaggregated_cot(date(2026, 7, 13))
+
+    assert rows[0]["open_interest_all"] == "100"
+    assert len(session.calls) == 2
+    assert session.calls[0][0] == coverage.CFTC_DISAGGREGATED_FUTURES_URL
+    assert session.calls[1][1]["params"]["$where"] == (
+        "report_date_as_yyyy_mm_dd='2026-07-07T00:00:00.000'"
+    )
+    assert session.calls[1][1]["params"]["$limit"] == 5_000
+
+
 def test_optional_failure_is_visible_but_overall_capture_is_green(db_session, monkeypatch, tmp_path):
     def good(_):
         return [{"ok": True}]
@@ -191,7 +256,7 @@ def test_equity_coverage_has_exactly_one_external_fetch_schedule():
     ]
     assert len(schedules) == 1
     assert set(schedules[0]["schedule"].minute) == {0}
-    assert set(schedules[0]["schedule"].hour) == {5}
+    assert set(schedules[0]["schedule"].hour) == {6}
 
     repo = Path(__file__).resolve().parents[2]
     assert not (repo / "infra" / "equity-coverage.service").exists()
