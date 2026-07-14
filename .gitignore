@@ -85,3 +85,6 @@ $LOG
 *.tsbuildinfo
 *.bak.*
 backtest_results_*.json
+
+# Conductor phase linked worktrees (internal git machinery)
+.worktrees/
