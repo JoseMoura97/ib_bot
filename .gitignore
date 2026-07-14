@@ -60,6 +60,9 @@ env/
 # Server credentials (never commit)
 infra/scripts/askpass.cmd
 
+# IBeam runtime daily logs (rotating runtime artifact — churn, keep on disk only)
+infra/ibeam/outputs/ibeam_log__*.txt
+
 # OS files
 .DS_Store
 Thumbs.db
