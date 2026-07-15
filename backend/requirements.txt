@@ -20,4 +20,5 @@ ib_insync
 quiverquant
 exchange-calendars
 scipy
+scikit-learn
 slowapi
