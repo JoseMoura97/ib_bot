@@ -14,6 +14,7 @@ import time
 import random
 import logging
 import asyncio
+from collections import OrderedDict
 warnings.filterwarnings('ignore')
 
 # Try to import yfinance, make it optional
@@ -60,7 +61,7 @@ except Exception:
 
 # Global cache for historical data to avoid repeated downloads
 _historical_data_cache = {}
-_yf_ticker_cache: Dict[str, pd.DataFrame] = {}
+_yf_ticker_cache: "OrderedDict[str, pd.DataFrame]" = OrderedDict()
 
 class BacktestEngine:
     def __init__(self, initial_capital: float = 100000, price_source: str = "yfinance"):
@@ -226,10 +227,26 @@ class BacktestEngine:
         safe = safe.replace(" ", "_")
         return os.path.join(self._yf_cache_dir, f"{safe}.pkl")
 
+    @staticmethod
+    def _remember_yf_cache(ticker: str, df: pd.DataFrame) -> None:
+        """Keep a bounded LRU of price frames instead of retaining every symbol."""
+        try:
+            max_tickers = max(0, int(os.getenv("YF_MEMORY_CACHE_MAX_TICKERS", "256")))
+        except ValueError:
+            max_tickers = 256
+
+        _yf_ticker_cache.pop(ticker, None)
+        if max_tickers == 0:
+            return
+        _yf_ticker_cache[ticker] = df
+        while len(_yf_ticker_cache) > max_tickers:
+            _yf_ticker_cache.popitem(last=False)
+
     def _load_yf_cache(self, ticker: str) -> Optional[pd.DataFrame]:
         try:
             if ticker in _yf_ticker_cache and isinstance(_yf_ticker_cache[ticker], pd.DataFrame):
-                df = _yf_ticker_cache[ticker]
+                df = _yf_ticker_cache.pop(ticker)
+                _yf_ticker_cache[ticker] = df
                 if not df.empty:
                     # Prefer adjusted pricing for backtests (splits/dividends).
                     if "Adj Close" in df.columns and "Close" in df.columns:
@@ -245,7 +262,7 @@ class BacktestEngine:
                     # Prefer adjusted pricing for backtests (splits/dividends).
                     if "Adj Close" in df.columns and "Close" in df.columns:
                         df["Close"] = df["Adj Close"]
-                    _yf_ticker_cache[ticker] = df
+                    self._remember_yf_cache(ticker, df)
                     return df
         except Exception:
             return None
@@ -256,9 +273,33 @@ class BacktestEngine:
             path = self._yf_cache_path(ticker)
             df = df.sort_index()
             df.to_pickle(path)
-            _yf_ticker_cache[ticker] = df
+            self._remember_yf_cache(ticker, df)
         except Exception:
             pass
+
+    def _load_complete_yf_cache_window(
+        self,
+        ticker: str,
+        start_date: str,
+        end_date: str,
+    ) -> Optional[pd.DataFrame]:
+        """Return a cached window only when it fully covers the request."""
+        start = pd.to_datetime(start_date)
+        end = pd.to_datetime(end_date)
+        if end <= start:
+            return None
+
+        cached = self._load_yf_cache(ticker)
+        if cached is None or cached.empty or "Close" not in cached.columns:
+            return None
+
+        cmin = cached.index.min()
+        cmax = cached.index.max()
+        if cmin <= start and cmax >= end - timedelta(days=1):
+            window = cached.loc[(cached.index >= start) & (cached.index <= end)].copy()
+            if len(window) > 1:
+                return window
+        return None
 
     def _fetch_yf_ticker_history(self, ticker: str, start_date: str, end_date: str) -> pd.DataFrame:
         """
@@ -273,12 +314,11 @@ class BacktestEngine:
         if end <= start:
             return pd.DataFrame()
 
+        cached_window = self._load_complete_yf_cache_window(ticker, start_date, end_date)
+        if cached_window is not None:
+            return cached_window
+
         cached = self._load_yf_cache(ticker)
-        if cached is not None and not cached.empty:
-            cmin = cached.index.min().to_pydatetime()
-            cmax = cached.index.max().to_pydatetime()
-            if cmin <= start and cmax >= end - timedelta(days=1):
-                return cached.loc[(cached.index >= start) & (cached.index <= end)].copy()
 
         # Download requested window (yfinance is inclusive-exclusive-ish; we tolerate overlap).
         # Add small retry/backoff for intermittent Yahoo rate limits.
@@ -617,8 +657,29 @@ class BacktestEngine:
             return data
 
         data: Dict[str, pd.DataFrame] = dict(ib_data)
-        # Fetch yfinance data with batching to reduce request count/rate limits.
-        yf_targets = [t for t in tickers if t not in ib_data]
+
+        # Resolve complete per-ticker cache windows before deciding whether to
+        # use Yahoo.  The old >10-ticker batch path skipped this check and
+        # re-downloaded every series for every strategy, even on a warm weekly
+        # run.  Besides needless API traffic, that retained thousands of large
+        # frames and made the service an easy systemd-oomd victim.
+        cache_first_data: Dict[str, pd.DataFrame] = {}
+        for ticker in tickers:
+            if ticker in ib_data:
+                continue
+            cached_window = self._load_complete_yf_cache_window(
+                ticker,
+                start_date,
+                end_date,
+            )
+            if cached_window is not None:
+                cache_first_data[ticker] = cached_window
+        data.update(cache_first_data)
+        fallback_counts["cache_hit"] += len(cache_first_data)
+
+        # Fetch only cache misses from yfinance, batching large miss sets to
+        # reduce request count/rate limits.
+        yf_targets = [t for t in tickers if t not in data]
         if yf_targets:
             # Reduce yfinance logging noise (errors are still visible in stderr)
             logging.getLogger("yfinance").setLevel(logging.ERROR)
@@ -685,8 +746,11 @@ class BacktestEngine:
         if progress_callback:
             progress_callback(1.0, "Data download complete.")
 
-        # Tally yfinance hits (tickers in data that weren't from IB).
-        fallback_counts["yfinance_hit"] = sum(1 for t in data if t not in ib_data)
+        # Tally only live yfinance hits; warm-cache hits have separate
+        # provenance and must not be double-counted.
+        fallback_counts["yfinance_hit"] = sum(
+            1 for t in data if t not in ib_data and t not in cache_first_data
+        )
 
         # ── 3) Disk-cache fallback for anything still missing ───────────────
         remaining = [t for t in tickers if t not in data]
