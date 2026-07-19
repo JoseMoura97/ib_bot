@@ -55,12 +55,17 @@ fi
 start_ts=$(date -Is)
 start_epoch=$(date +%s)
 start_offset=$(stat -c %s "$BACKTEST_LOG")
+# This script runs as root against a servidor-owned checkout.  Mark only this
+# fixed project path safe for the read-only revision lookup; otherwise Git 2.35+
+# emits "dubious ownership" and the inherited ERR trap writes a premature
+# failure receipt from inside the command substitution while the run continues.
+git_commit=$(git -c safe.directory="$PROJECT_ROOT" -C "$PROJECT_ROOT" rev-parse HEAD)
 {
   echo "status=running"
   echo "start_ts=$start_ts"
   echo "start_epoch=$start_epoch"
   echo "start_offset=$start_offset"
-  echo "git_commit=$(git -C "$PROJECT_ROOT" rev-parse HEAD)"
+  echo "git_commit=$git_commit"
   echo "effective_exec=$effective_exec"
 } >"$META"
 
