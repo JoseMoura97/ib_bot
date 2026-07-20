@@ -71,6 +71,7 @@ services:
       - redis
     volumes:
       - ./.cache:/app/.cache
+      - ./reports:/app/reports
     extra_hosts:
       - "host.docker.internal:host-gateway"
 

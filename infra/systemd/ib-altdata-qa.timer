@@ -1,0 +1,11 @@
+[Unit]
+Description=Run altdata_snapshots QA daily after the 06:00 UTC capture
+
+[Timer]
+OnCalendar=*-*-* 07:00:00 UTC
+Persistent=true
+RandomizedDelaySec=0
+Unit=ib-altdata-qa.service
+
+[Install]
+WantedBy=timers.target

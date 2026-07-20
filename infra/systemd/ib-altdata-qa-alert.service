@@ -1,0 +1,8 @@
+[Unit]
+Description=Alert ib_bot DM when daily alt-data QA persistence fails
+
+[Service]
+Type=oneshot
+User=servidor
+ExecStart=/usr/local/bin/conductor api-failure --project ib_bot --service altdata-qa --detail "Daily alt-data QA failed or its git receipt was not persisted" --hint "Inspect journalctl -u ib-altdata-qa.service and reports/altdata_qa_daily.jsonl" --cooldown-min 720
+TimeoutStartSec=120
