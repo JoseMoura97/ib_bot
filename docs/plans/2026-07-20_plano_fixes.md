@@ -52,8 +52,9 @@ corrigir gaps operacionais encontrados no audit `docs/audits/2026-07-20_audit_pr
 ## Passo 1 — Confirmar que o disparo NORMAL do backtest semanal (domingo 2026-07-26 04:15 UTC) sucede sem intervenção manual
 
 **Objetivo:** fechar o finding ALTO A1 — a única corrida bem-sucedida até
-agora (2026-07-19) foi uma remediação manual como root, depois de 5
-falhas seguidas por falta de memória. O fix de código já está em `main`
+agora (2026-07-19) foi uma remediação manual como root, depois de 6
+falhas seguidas por falta de memória (3× oom-kill, 3× signal, entre 06:34
+e 10:09). O fix de código já está em `main`
 (commits `8835568`, `b4358ae`, `6439026`), mas nunca foi provado num
 disparo automático e não-assistido do `ib-backtests.timer`.
 
@@ -68,13 +69,25 @@ que acorda nessa data e verifica.
 #     próximo disparo perto de 2026-07-26 04:15 UTC / 05:15 ou 05:16 WEST)
 systemctl list-timers ib-backtests.timer --all
 
-# 1b. Registar um job de verificação futura (ajusta a data/hora exatas
-#     devolvidas por 1a; exemplo de invocação — o teu ambiente pode ter um
-#     wrapper diferente para 'register_job', usa o disponível na tua sessão)
-# Objetivo do job: no dia seguinte ao disparo (>= 2026-07-26 06:00 UTC),
-# correr o comando do oráculo de aceitação abaixo e reportar o resultado
-# ao DM ib_bot no Conductor.
+# 1b. Registar um job de verificação futura via MCP do Conductor
+#     (ferramenta 'register_job', disponível na sessão de qualquer PM/DM
+#     do Conductor). Invocação exata (ajusta 'at' se 1a devolver uma hora
+#     diferente de 04:15 UTC):
 ```
+
+```
+register_job(
+  owner_slug="ib_bot",
+  title="Verificar disparo automático ib-backtests.timer de 2026-07-26",
+  wake_kind="time",
+  wake_spec={"at": "2026-07-26T06:00:00Z"},
+  resume_message="Verifica se ib-backtests.timer disparou sozinho às 2026-07-26 04:15 UTC: corre `systemctl show ib-backtests.service --property=Result,ExecMainStatus,MemoryPeak,InactiveEnterTimestamp` e confirma Result=success, ExecMainStatus=0, InactiveEnterTimestamp posterior a 2026-07-26 04:15:00 UTC. Depois corre os comandos de sanity (docker exec ib_bot-db-1 true, grep -c '\"' .cache/plot_data.json, o script python3 que conta estratégias em plot_data.json — esperado >=54) e o grep de 'No tickers found' no journal desse dia. Reporta o resultado ao DM ib_bot no Conductor. Se falhar, NÃO tentes corrigir sozinho: regista a falha como finding no próximo audit semanal e confirma que o OnFailure=ib-backtests-alert.service disparou (journalctl -u ib-backtests-alert.service --since '2026-07-26')."
+)
+```
+
+Objetivo do job: no dia seguinte ao disparo (>= 2026-07-26 06:00 UTC),
+correr o comando do oráculo de aceitação abaixo e reportar o resultado
+ao DM ib_bot no Conductor.
 
 **Oráculo de aceitação (correr depois de 2026-07-26 05:30 UTC / ~06:30 WEST):**
 
@@ -124,8 +137,9 @@ sistema.
 
 ## Passo 2 — Fechar o buraco de auditoria no endpoint de funding do paper trading
 
-**Objetivo:** corrigir o finding ALTO A2 — `POST /api/paper/accounts/{account_id}/fund`
-altera `paper_cash.balance` diretamente sem deixar rasto. Não é dinheiro
+**Objetivo:** corrigir o finding ALTO A2 — `POST /paper/accounts/{account_id}/fund`
+(rota real confirmada no `/openapi.json`, sem prefixo `/api`) altera
+`paper_cash.balance` diretamente sem deixar rasto. Não é dinheiro
 real, mas é um padrão de código perigoso a corrigir antes que seja
 copiado para algum caminho real.
 
@@ -189,9 +203,13 @@ docker exec ib_bot-db-1 psql -U ibbot -d ibbot -c "\d paper_funding_ledger"
 
 Esperado: tabela existe com as colunas `id, account_id, amount, reason, actor, created_at`.
 
+**NOTA — rota confirmada via `curl -s http://localhost:8001/openapi.json`:**
+o prefixo é `/paper/...`, **SEM** `/api` (executar o comando com `/api`
+devolve HTTP `404 Not Found` e não significa que o endpoint não existe).
+
 ```bash
 # Testar que um POST sem 'reason' é rejeitado (não deve mudar saldo nenhum)
-curl -sS -X POST http://localhost:8001/api/paper/accounts/1/fund \
+curl -sS -X POST http://localhost:8001/paper/accounts/1/fund \
   -H "Content-Type: application/json" -d '{"amount": 1}' -w "\n%{http_code}\n"
 ```
 
@@ -199,7 +217,7 @@ Esperado: código HTTP `4xx` (pedido inválido, falta `reason`/`actor`).
 
 ```bash
 # Testar que um POST válido cria a linha de ledger E atualiza o saldo
-curl -sS -X POST http://localhost:8001/api/paper/accounts/1/fund \
+curl -sS -X POST http://localhost:8001/paper/accounts/1/fund \
   -H "Content-Type: application/json" \
   -d '{"amount": 0.01, "reason": "oracle-test-2026-07-20", "actor": "audit-fix-verify"}' \
   -w "\n%{http_code}\n"

@@ -86,19 +86,27 @@ por dia, com um `DATASHEET.md` a documentar a origem e o schema.
 
 **Comandos exatos:**
 
+**NOTA — não existe nenhuma linha com `source='congress'` literal.** Os
+valores reais de `altdata_snapshots.source` para disclosures do congresso
+(confirmado com `SELECT DISTINCT source FROM altdata_snapshots`) são
+`house_financial_disclosure_index` e `house_periodic_transaction_report_index`.
+Um filtro literal por `congress` produz um export vazio sem erro visível.
+
 ```bash
 cd /home/servidor/Desktop/cursor-projects/ib_bot
 mkdir -p exports/congress_pit
 python3 scripts/export_congress_pit.py \
   --source-table altdata_snapshots \
-  --filter-source congress \
+  --filter-source house_financial_disclosure_index,house_periodic_transaction_report_index \
   --out exports/congress_pit/ \
   --partition-by captured_at
 ```
 
 (Se `scripts/export_congress_pit.py` não existir ainda, criar seguindo o
 padrão de outros scripts de export do repo — `grep -rln "to_parquet" scripts/`
-para achar um exemplo a copiar.)
+para achar um exemplo a copiar. `--filter-source` deve aceitar uma lista
+separada por vírgulas, ou equivalentemente `source IN (...)`/`source ILIKE
+'house_%'` no SQL interno do script.)
 
 **REGRA DURA (não negociável):** 100% das linhas exportadas têm de vir de
 fontes livres/gratuitas. Dados da Quiver (paga) estão **PROIBIDOS** neste
@@ -119,9 +127,13 @@ excluir explicitamente no filtro do export).
 ls /home/servidor/Desktop/cursor-projects/ib_bot/exports/congress_pit/ | grep -c "^date="
 ```
 
-Esperado: `>= 30` partições diárias (nota: não prometer histórico anterior
-a 2026-07 — o arquivo só começou nessa data, dizer isso explicitamente no
-`DATASHEET.md`).
+Esperado: `>= 12` partições diárias no momento em que o gate de arranque
+deste plano abre (14 dias de vintages, ~2026-07-26 — ver "Gate de arranque"
+no topo deste ficheiro; `>= 30` só é matematicamente atingível mais tarde,
+~2026-08-10, ao ritmo de +1 dia/dia — não bloquear este passo à espera de
+30 partições no primeiro export). Nota: não prometer histórico anterior a
+2026-07 — o arquivo só começou nessa data, dizer isso explicitamente no
+`DATASHEET.md`.
 
 ```bash
 python3 -c "

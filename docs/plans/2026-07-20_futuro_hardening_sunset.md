@@ -64,8 +64,9 @@ ls -la /home/servidor/Desktop/cursor-projects/ib_bot/archive/ibbot_final_*.dump
 pg_restore --list /home/servidor/Desktop/cursor-projects/ib_bot/archive/ibbot_final_*.dump | wc -l
 ```
 
-Esperado: ficheiro existe, `pg_restore --list` lista >= 21 tabelas (as 21
-confirmadas no audit de 2026-07-20).
+Esperado: ficheiro existe, `pg_restore --list` lista >= 21 tabelas (21
+tabelas confirmadas hoje via `SELECT count(*) FROM information_schema.tables
+WHERE table_schema='public'` — ver secção (c) de `docs/audits/2026-07-20_audit_profundo.md`).
 
 **Rollback:** apagar o ficheiro de dump não afeta a DB viva (é só uma
 cópia).

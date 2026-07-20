@@ -67,7 +67,7 @@ jun=14, jul=27 (`git log --format='%ad' --date=format:'%Y-%m' | sort | uniq -c`)
 | 2026-07-13 | Triagem do José sobre esse audit: projeto entra em **dormência seletiva** (fecha VNC, desliga gateway/ibeam, mas mantém o fetch diário de saldo para o lifeos e o `ib-backtests.timer`); plano `e36e04ec` criado e aprovado |
 | 2026-07-13 → 07-19 | Plano `e36e04ec` executa 7 das 8 fases: `f1` dormência ✅, `f2` corrige alerta do backtest semanal ✅, `f3` reconcilia o paper ledger ✅, `f4` limpa/funde o repo em `main` ✅, `f5` liga o arquivo diário alt-data ✅, `x1` reconcilia a contradição do estudo 0006 ✅, `x2` chega a 36 eventos forward e mata o estudo ✅ |
 | 2026-07-16 | Estudo **0006 (earnings-vol/iron-fly) KILLED** — critério pré-registado disparou nos dois lados (PF@mid 0,776, PF@touch 0,256 em 36 eventos reais) |
-| 2026-07-18/19 | `ib-backtests.service` falha 5× seguidas (oom-kill/signal) antes de um fix de prioridade de memória (`b4358ae`, `6439026`) resolver; corrida R3 bem-sucedida às 2026-07-19 10:15-11:15 (56/56 estratégias) |
+| 2026-07-18/19 | `ib-backtests.service` falha 6× seguidas (3× oom-kill, 3× signal) antes de um fix de prioridade de memória (`b4358ae`, `6439026`) resolver; corrida R3 bem-sucedida às 2026-07-19 10:15-11:15 (56/56 estratégias) |
 | **2026-07-20 (hoje)** | Este audit — re-verificação completa; ver secção (c) |
 
 ---
@@ -103,7 +103,7 @@ que liga este agente à conta real da Interactive Brokers do José)
 | Stack Docker `ib_bot-v2` (`:8092`) | — | **não existe nenhum container nem porta aberta** | Confirmado com `docker ps -a` e `ss -tlnp` — a "Plan B" duplicada do audit anterior foi desligada a sério |
 | `ib-bot-v2-frontend.service` (`:3001`) | service | **active/running** | HTTP `curl localhost:3001/` → `307` (redirect normal). Fala com a API v1 `:8001` (`curl .../health` → `200`). É o painel que o José usa |
 | `ib-backtests.timer` / `.service` | timer semanal (dom 04:15 UTC) | **timer active; último run OK** | Ver detalhe abaixo |
-| `ib-backtests-alert.service` | OnFailure | armado | Recebeu 5 disparos reais em 07-19 (prova de que funciona) |
+| `ib-backtests-alert.service` | OnFailure | armado | Recebeu 6 disparos reais em 07-19 (prova de que funciona) |
 | `lifeos-ib-refresh.timer/.service` | timer diário 03:15 UTC | **ok** | Journal de hoje: `pushed: {"status":"ok","net_liq":26785.99,"positions":1,"sheet_synced":true}` — independente do gateway, usa o MCP |
 | `theta-terminal.service` | service | **active, plano FREE** | Journal de hoje: `Bundle: STOCK.FREE, OPTION.FREE, INDEX.FREE` — **zero custo**, a subscrição paga de $80/mês nunca foi comprada (decisão do estudo 0006) |
 | `paper-ironfly.timer` (repo `trading`) | timer diário | **ok, vigília passiva** | Ledger tem 44 eventos (era 3 em 07-13); estudo já morto, mas o José decidiu manter isto ligado como monitor de custo zero |
@@ -114,11 +114,13 @@ que liga este agente à conta real da Interactive Brokers do José)
 - Última corrida bem-sucedida: início 2026-07-19 10:15:18 WEST, fim
   11:15:21 WEST (61 min), `Result=success`, `ExecMainStatus=0`,
   `MemoryPeak=1.625.137.152 bytes` (1,6 GiB — bem abaixo do teto de 24 GiB).
-- Antes dessa corrida: **5 falhas seguidas** entre 06:34 e 10:09 do mesmo
-  dia (3× `oom-kill`, 2× `signal`) — confirmado via `journalctl`. A causa
-  raiz (cache em memória sem limite + `OOMScoreAdjust` desproporcional)
-  foi corrigida pelos commits `8835568`, `b4358ae`, `6439026` horas antes
-  da corrida bem-sucedida.
+- Antes dessa corrida: **6 falhas seguidas** entre 06:34 e 10:09 do mesmo
+  dia — `oom-kill` às 06:34, 07:39 e 08:21 (3×) e `signal` às 07:58, 09:59
+  e 10:09 (3×) — confirmado via `journalctl -u ib-backtests.service
+  --since '2026-07-19 06:00' --until '2026-07-19 12:00'`. A causa raiz
+  (cache em memória sem limite + `OOMScoreAdjust` desproporcional) foi
+  corrigida pelos commits `8835568`, `b4358ae`, `6439026` horas antes da
+  corrida bem-sucedida.
 - `.cache/plot_data.json`: 54 estratégias com séries de preços completas
   (mtime 2026-07-20 04:08 — este ficheiro é também tocado pelo coletor
   diário de alt-data, não só pelo backtest semanal). O log completo
@@ -153,7 +155,8 @@ que liga este agente à conta real da Interactive Brokers do José)
 - Reconciliação de contabilidade (já feita em `docs/audits/2026-07-12_paper_ledger_reconciliacao.md`,
   re-verificada hoje): o saldo só fecha aritmeticamente com um
   **crédito de $70.000,00 sem lançamento de auditoria** — o endpoint
-  `POST /api/paper/accounts/{id}/fund` altera `paper_cash.balance`
+  `POST /paper/accounts/{id}/fund` (confirmado no `/openapi.json` — sem
+  prefixo `/api`) altera `paper_cash.balance`
   diretamente, sem escrever numa tabela de depósitos. As 138 trades em si
   são internamente consistentes (zero mismatches). **Portanto o nível
   absoluto da curva não é evidência de skill — só a FORMA da curva desde
@@ -199,6 +202,9 @@ que liga este agente à conta real da Interactive Brokers do José)
   sozinho — **não é preciso ação humana agora**.
 - Plano antigo `3702771c` ("Alt-Data Product / Unusual Whales
   competitor") está `superseded` — não é a direção atual.
+- Contagem de tabelas na base de dados do bot (`ib_bot-db-1`, schema
+  `public`): **21 tabelas**, confirmado hoje via
+  `SELECT count(*) FROM information_schema.tables WHERE table_schema='public'`.
 
 ---
 
@@ -215,24 +221,26 @@ o serviço nem está a correr).
 **A1 — O fix do backtest semanal ainda não foi provado num disparo normal
 e não assistido.**
 A corrida bem-sucedida de 56/56 estratégias (2026-07-19, 10:15-11:15) foi
-uma **remediação manual como root**, feita horas depois de 5 falhas
-seguidas (`oom-kill`×3, `signal`×2) na madrugada do mesmo dia. Os commits
-que corrigem a causa (`8835568` cache com limite, `b4358ae` prioridade de
-OOM proporcional, `6439026` deploy em produção) estão no `main`, mas o
+uma **remediação manual como root**, feita horas depois de 6 falhas
+seguidas (`oom-kill` às 06:34, 07:39, 08:21 — 3×; `signal` às 07:58,
+09:59, 10:09 — 3×) na madrugada do mesmo dia. Os commits que corrigem a
+causa (`8835568` cache com limite, `b4358ae` prioridade de OOM
+proporcional, `6439026` deploy em produção) estão no `main`, mas o
 **próximo disparo automático do `ib-backtests.timer` só acontece domingo
 2026-07-26 04:15 UTC** — ainda não aconteceu. Se falhar outra vez sem
-assistência, o `OnFailure` está armado (confirmado: 5 recibos reais em
+assistência, o `OnFailure` está armado (confirmado: 6 recibos reais em
 07-19) e acorda o Domain Manager do Conductor, mas ninguém verificou ainda
 que esse caminho completo (falha → alerta → DM resolve) funciona
 ponta-a-ponta num disparo *não manual*.
 **Evidência:** `systemctl show ib-backtests.service --property=Result,ExecMainStatus,MemoryPeak`
-→ `success/0/1625137152`; `journalctl -u ib-backtests.service --since "2026-07-19 06:00"`
-→ 5 falhas antes do sucesso.
+→ `success/0/1625137152`; `journalctl -u ib-backtests.service --since "2026-07-19 06:00" --until "2026-07-19 12:00"`
+→ 6 falhas antes do sucesso (06:34, 07:39, 07:58, 08:21, 09:59, 10:09).
 
 **A2 — O bug que causou o crédito de $70.000 sem auditoria continua no
 código, não só no passado.**
 A investigação de 07-13 (re-confirmada hoje) explica a origem mais
-provável (endpoint `POST /api/paper/accounts/{id}/fund` que escreve
+provável (endpoint `POST /paper/accounts/{id}/fund` — sem prefixo `/api`,
+confirmado no `/openapi.json` — que escreve
 `paper_cash.balance` diretamente) mas **não corrigiu o endpoint** — ele
 continua a aceitar um crédito positivo sem criar uma linha de ledger. Isto
 não é dinheiro real (é paper), mas é um padrão de código perigoso: se
