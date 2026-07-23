@@ -4,8 +4,8 @@
 #
 # MODES:
 #   shadow/dev (current):   IB_HOST=127.0.0.1, IB_PORT=4999 (unreachable stub)
-#   paper (pre-cutover):    IB_HOST=host.docker.internal, IB_PORT=4001, LIVE_DRY_RUN=true
-#   live (post-cutover):    IB_HOST=host.docker.internal, IB_PORT=4001, ENABLE_LIVE_TRADING=true, LIVE_DRY_RUN=false
+#   paper (pre-cutover):    IB_HOST=host.docker.internal, IB_PORT=4003, LIVE_DRY_RUN=true
+#   live (post-cutover):    IB_HOST=host.docker.internal, IB_PORT=4003, ENABLE_LIVE_TRADING=true, LIVE_DRY_RUN=false
 #
 # To switch modes: edit environment blocks below + `docker compose up -d --force-recreate api worker beat`
 services:
@@ -21,7 +21,7 @@ services:
     environment:
       # PAPER MODE — IB Gateway connected, testing before live
       IB_HOST: "host.docker.internal"
-      IB_PORT: "4001"
+      IB_PORT: "4003"
       ENABLE_LIVE_TRADING: "false"
       LIVE_DRY_RUN: "true"
       # SHADOW MODE (stub):
@@ -29,7 +29,7 @@ services:
       # IB_PORT: "4999"
       # LIVE MODE (uncomment + comment shadow block above — ONLY after paper confirmed):
       # IB_HOST: "host.docker.internal"
-      # IB_PORT: "4001"
+      # IB_PORT: "4003"
       # ENABLE_LIVE_TRADING: "true"
       # LIVE_DRY_RUN: "false"
   worker:
@@ -37,14 +37,14 @@ services:
       - "host.docker.internal:172.18.0.1"
     environment:
       IB_HOST: "host.docker.internal"
-      IB_PORT: "4001"
+      IB_PORT: "4003"
       LIVE_DRY_RUN: "true"
   beat:
     extra_hosts:
       - "host.docker.internal:172.18.0.1"
     environment:
       IB_HOST: "host.docker.internal"
-      IB_PORT: "4001"
+      IB_PORT: "4003"
   web:
     ports: !reset []                # avoid collision with Grafana on :3000
   nginx:
