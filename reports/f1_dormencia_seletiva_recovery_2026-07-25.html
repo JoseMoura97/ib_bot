@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8">
+  <title>ib_bot — F1 dormência seletiva recuperada</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0f1117; --panel:#171b24; --text:#e7eaf0; --muted:#aab4c3; --ok:#55d98a; }
+    html,body { background:var(--bg)!important; color:var(--text); font:16px/1.5 system-ui,sans-serif; margin:0; }
+    main { max-width:900px; margin:40px auto; padding:0 24px; }
+    section { background:var(--panel); border-radius:10px; padding:20px 24px; margin:16px 0; }
+    code { color:var(--ok); } .muted { color:var(--muted); }
+  </style>
+</head>
+<body><main>
+  <h1>F1 — dormência seletiva recuperada</h1>
+  <p class="muted">25-07-2026 07:35 ART · recuperação do false-green causado pelo EPYC recovery de 24-07.</p>
+  <section>
+    <h2>Oracle live</h2>
+    <p><code>bash scripts/verify_f1_dormencia_seletiva.sh</code> devolveu <code>RESULT PASS failures=0</code>.</p>
+    <ul>
+      <li><code>ibgateway</code>, <code>xvfb-ibgw</code>, <code>ib-socat</code> e <code>ibgw-watchdog</code>: inactive e disabled.</li>
+      <li><code>ibgw-vnc-loopback</code>: inactive e disabled.</li>
+      <li>Zero listeners em <code>4001</code>, <code>5900</code>, <code>8092</code> e <code>3002</code>.</li>
+      <li>Sem containers <code>ibeam</code> ou <code>ib_bot-v2</code>.</li>
+    </ul>
+  </section>
+  <section>
+    <h2>Serviços preservados</h2>
+    <p>Os timers <code>ib-backtests</code> e <code>lifeos-ib-refresh</code> mantêm-se activos. A stack v1 única continua saudável: os sete containers <code>ib_bot</code> estão Up e o frontend <code>:3001</code> responde 200 após o redirect esperado para <code>/dashboard</code>.</p>
+  </section>
+  <section>
+    <h2>Nota separada: LifeOS</h2>
+    <p>O timer mantém-se activo e é independente do gateway. O último run, às 03:15 WEST, falhou antes de produzir dados porque o cliente <code>claude</code> devolveu exit 1 sem stderr; o run anterior, em 24-07, publicou com sucesso. Não foi reiniciado nem foi feita qualquer alteração ao caminho MCP nesta recuperação F1.</p>
+  </section>
+</main></body></html>
