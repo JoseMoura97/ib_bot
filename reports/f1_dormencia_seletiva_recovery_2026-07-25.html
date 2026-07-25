@@ -31,5 +31,6 @@
   <section>
     <h2>Nota separada: LifeOS</h2>
     <p>O timer mantém-se activo e é independente do gateway. O último run, às 03:15 WEST, falhou antes de produzir dados porque o cliente <code>claude</code> devolveu exit 1 sem stderr; o run anterior, em 24-07, publicou com sucesso. Não foi reiniciado nem foi feita qualquer alteração ao caminho MCP nesta recuperação F1.</p>
+    <p>Diagnóstico posterior: a sessão OAuth da conta José continua autenticada e o conector IBKR continua configurado. O abort em cerca de dois segundos coincide com <code>cachedExtraUsageDisabledReason=out_of_credits</code> no perfil Claude usado por este timer. É um limite de uso do Claude, separado do Gateway; o refresh voltará a depender de crédito/subscrição disponível.</p>
   </section>
 </main></body></html>
