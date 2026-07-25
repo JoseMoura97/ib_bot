@@ -33,7 +33,10 @@ check_equal "user-vnc" "inactive" "$user_vnc_state"
 
 ibeam_count=$(docker ps --format '{{.Names}}' | grep -c ibeam || true)
 v2_count=$(docker ps --format '{{.Names}}' | grep -c 'ib_bot-v2' || true)
-target_port_count=$(ss -tlnp | grep -cE ':4001 |:5900 |:8092 |:3002 ' || true)
+# IB-owned listeners only. :5900 is EXCLUDED per Jarvis plan_revise_scope (2026-07-14):
+# 127.0.0.1:5900 is the unrelated libvirt betting VM ps3838-place-vm (qemu -vnc :0),
+# a money-path VM that must NOT be touched. IB VNC is ibgw-vnc-loopback (checked above).
+target_port_count=$(ss -tlnp | grep -cE ':4001 |:8092 |:3002 ' || true)
 check_equal "ibeam-containers" "0" "$ibeam_count"
 check_equal "v2-containers" "0" "$v2_count"
 check_equal "target-listeners" "0" "$target_port_count"
