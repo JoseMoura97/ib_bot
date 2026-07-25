@@ -27,6 +27,13 @@ for index in "${!system_states[@]}"; do
   check_equal "system-unit-$((index + 1))" "inactive" "${system_states[$index]}"
 done
 
+mapfile -t system_enabled_states < <(systemctl is-enabled \
+  ibgateway.service xvfb-ibgw.service ib-socat.service ibgw-watchdog.service || true)
+check_equal "system-enabled-count" "4" "${#system_enabled_states[@]}"
+for index in "${!system_enabled_states[@]}"; do
+  check_equal "system-enabled-$((index + 1))" "disabled" "${system_enabled_states[$index]}"
+done
+
 user_vnc_state=$(XDG_RUNTIME_DIR=/run/user/1000 systemctl --user is-active \
   ibgw-vnc-loopback.service || true)
 check_equal "user-vnc" "inactive" "$user_vnc_state"
