@@ -1,0 +1,158 @@
+{
+  "allowed_sources": [
+    "house_financial_disclosure_index",
+    "house_periodic_transaction_report_index"
+  ],
+  "dataset": "house_congressional_filing_index_point_in_time",
+  "metadata_only_policy": "repeat the most recent materialized source payload with payload_mode=carried_forward_unchanged",
+  "paid_sources_included": [],
+  "partition_count": 16,
+  "partitions": [
+    {
+      "captured_date": "2026-07-13",
+      "path": "date=2026-07-13/filing_index.parquet",
+      "rows": 1340,
+      "sources": [
+        "house_financial_disclosure_index"
+      ]
+    },
+    {
+      "captured_date": "2026-07-14",
+      "path": "date=2026-07-14/filing_index.parquet",
+      "rows": 1653,
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-07-15",
+      "path": "date=2026-07-15/filing_index.parquet",
+      "rows": 1659,
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-07-16",
+      "path": "date=2026-07-16/filing_index.parquet",
+      "rows": 1674,
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-07-17",
+      "path": "date=2026-07-17/filing_index.parquet",
+      "rows": 1690,
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-07-18",
+      "path": "date=2026-07-18/filing_index.parquet",
+      "rows": 1705,
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-07-19",
+      "path": "date=2026-07-19/filing_index.parquet",
+      "rows": 1705,
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-07-20",
+      "path": "date=2026-07-20/filing_index.parquet",
+      "rows": 1705,
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-07-21",
+      "path": "date=2026-07-21/filing_index.parquet",
+      "rows": 1727,
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-07-22",
+      "path": "date=2026-07-22/filing_index.parquet",
+      "rows": 1734,
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-07-23",
+      "path": "date=2026-07-23/filing_index.parquet",
+      "rows": 1735,
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-07-24",
+      "path": "date=2026-07-24/filing_index.parquet",
+      "rows": 1738,
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-07-25",
+      "path": "date=2026-07-25/filing_index.parquet",
+      "rows": 1740,
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-07-26",
+      "path": "date=2026-07-26/filing_index.parquet",
+      "rows": 1740,
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-07-27",
+      "path": "date=2026-07-27/filing_index.parquet",
+      "rows": 1740,
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-07-28",
+      "path": "date=2026-07-28/filing_index.parquet",
+      "rows": 1751,
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    }
+  ],
+  "record_granularity": "official House filing-index row, not an individual trade",
+  "row_count": 27036,
+  "schema_version": 1
+}
