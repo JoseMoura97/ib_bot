@@ -1,0 +1,75 @@
+{
+  "archived_document_count": 3,
+  "documents": [
+    {
+      "doc_id": "20035075",
+      "document_url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20035075.pdf",
+      "filing_year": "2026",
+      "first_name": "Max",
+      "last_name": "Miller",
+      "status": "no_qualifying_ticker_date_amount_line"
+    },
+    {
+      "doc_id": "20035068",
+      "document_url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20035068.pdf",
+      "filing_year": "2026",
+      "first_name": "Pete",
+      "last_name": "Sessions",
+      "page_count": 1,
+      "parsed_line_count": 1,
+      "pdf_file": "pdf/2026_20035068.pdf",
+      "pdf_sha256": "574377910dff2c2718df0f5ae65308b0f8977066d9814afc1bd52a45f74d23ab",
+      "status": "archived"
+    },
+    {
+      "doc_id": "20035067",
+      "document_url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20035067.pdf",
+      "filing_year": "2026",
+      "first_name": "Adrian",
+      "last_name": "Smith",
+      "status": "no_qualifying_ticker_date_amount_line"
+    },
+    {
+      "doc_id": "20035065",
+      "document_url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20035065.pdf",
+      "filing_year": "2026",
+      "first_name": "Robert E.",
+      "last_name": "Latta",
+      "page_count": 1,
+      "parsed_line_count": 1,
+      "pdf_file": "pdf/2026_20035065.pdf",
+      "pdf_sha256": "b11781dbfda9c81b463455b1eb4681576688aa426a6c2096b8a16159bf5235ba",
+      "status": "archived"
+    },
+    {
+      "doc_id": "20035048",
+      "document_url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20035048.pdf",
+      "filing_year": "2026",
+      "first_name": "Debbie",
+      "last_name": "Dingell",
+      "status": "no_qualifying_ticker_date_amount_line"
+    },
+    {
+      "doc_id": "20035047",
+      "document_url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20035047.pdf",
+      "filing_year": "2026",
+      "first_name": "James A.",
+      "last_name": "Himes",
+      "page_count": 2,
+      "parsed_line_count": 2,
+      "pdf_file": "pdf/2026_20035047.pdf",
+      "pdf_sha256": "f0357b28a94fe3978b0b137f24c3bfcfd769bce95c5f2bf2a7d1318765564f27",
+      "status": "archived"
+    }
+  ],
+  "generated_at_utc": "2026-07-29T01:55:54.495475+00:00",
+  "parsed_line_count": 4,
+  "provenance_required": [
+    "document_url",
+    "pdf_file",
+    "page"
+  ],
+  "schema_version": 1,
+  "source": "official U.S. House Clerk PTR PDFs only",
+  "trade_lines_file": "trade_lines.jsonl"
+}
