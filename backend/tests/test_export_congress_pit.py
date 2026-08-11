@@ -58,6 +58,7 @@ def test_export_writes_free_source_daily_partitions(tmp_path):
     assert manifest["partition_count"] == 2
     assert manifest["paid_sources_included"] == []
     assert manifest["record_granularity"] == "official House filing-index row, not an individual trade"
+    assert all(len(partition["sha256"]) == 64 for partition in manifest["partitions"])
     frame = pd.read_parquet(tmp_path / "congress_pit")
     assert set(frame.columns) == {*REQUIRED_COLUMNS, "date"}
     assert set(frame["date"].astype(str)) == {"2026-07-20", "2026-07-21"}

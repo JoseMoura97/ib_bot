@@ -6,12 +6,13 @@
   "dataset": "house_congressional_filing_index_point_in_time",
   "metadata_only_policy": "repeat the most recent materialized source payload with payload_mode=carried_forward_unchanged",
   "paid_sources_included": [],
-  "partition_count": 16,
+  "partition_count": 30,
   "partitions": [
     {
       "captured_date": "2026-07-13",
       "path": "date=2026-07-13/filing_index.parquet",
       "rows": 1340,
+      "sha256": "9448c1c35973c4fdf33b3f4cdf75b3c93cd91b4a93fdc3decd5f5973d2a71c6e",
       "sources": [
         "house_financial_disclosure_index"
       ]
@@ -20,6 +21,7 @@
       "captured_date": "2026-07-14",
       "path": "date=2026-07-14/filing_index.parquet",
       "rows": 1653,
+      "sha256": "426399031a72ee88c9ad81d36573c68200cd79f2896bee2268d944401b9f0290",
       "sources": [
         "house_financial_disclosure_index",
         "house_periodic_transaction_report_index"
@@ -29,6 +31,7 @@
       "captured_date": "2026-07-15",
       "path": "date=2026-07-15/filing_index.parquet",
       "rows": 1659,
+      "sha256": "af9ac57820c44214c6588107446bfccfcc6f953a0561df063eaa6a9bdd5777c1",
       "sources": [
         "house_financial_disclosure_index",
         "house_periodic_transaction_report_index"
@@ -38,6 +41,7 @@
       "captured_date": "2026-07-16",
       "path": "date=2026-07-16/filing_index.parquet",
       "rows": 1674,
+      "sha256": "1198880c8304a85955475eff2dc580ac5d0bb31b0482ac70293631517482e5a2",
       "sources": [
         "house_financial_disclosure_index",
         "house_periodic_transaction_report_index"
@@ -47,6 +51,7 @@
       "captured_date": "2026-07-17",
       "path": "date=2026-07-17/filing_index.parquet",
       "rows": 1690,
+      "sha256": "abc3a2f9d5f4c61d07cefcd2ca1fb0e608044dd53d105cc37a2c21bbf4a758e3",
       "sources": [
         "house_financial_disclosure_index",
         "house_periodic_transaction_report_index"
@@ -56,6 +61,7 @@
       "captured_date": "2026-07-18",
       "path": "date=2026-07-18/filing_index.parquet",
       "rows": 1705,
+      "sha256": "20cfb846addb1366a2960d6bea71542550bada0a1dc05ed41eac979ed3483560",
       "sources": [
         "house_financial_disclosure_index",
         "house_periodic_transaction_report_index"
@@ -65,6 +71,7 @@
       "captured_date": "2026-07-19",
       "path": "date=2026-07-19/filing_index.parquet",
       "rows": 1705,
+      "sha256": "5399ceec66b0372ffa6d7f81aac62d1b45227d208f1a435a62263bb84792372c",
       "sources": [
         "house_financial_disclosure_index",
         "house_periodic_transaction_report_index"
@@ -74,6 +81,7 @@
       "captured_date": "2026-07-20",
       "path": "date=2026-07-20/filing_index.parquet",
       "rows": 1705,
+      "sha256": "a8dc4b8f1f2a50c52ca9a7bb4c10c516da8e576c38e5015e27aa42851a77ee63",
       "sources": [
         "house_financial_disclosure_index",
         "house_periodic_transaction_report_index"
@@ -83,6 +91,7 @@
       "captured_date": "2026-07-21",
       "path": "date=2026-07-21/filing_index.parquet",
       "rows": 1727,
+      "sha256": "c82c2713e453687404d2fe2ab13c0e5b5469c2cca5fe32f1661044f1c49602ea",
       "sources": [
         "house_financial_disclosure_index",
         "house_periodic_transaction_report_index"
@@ -92,6 +101,7 @@
       "captured_date": "2026-07-22",
       "path": "date=2026-07-22/filing_index.parquet",
       "rows": 1734,
+      "sha256": "ba9a9a4529ebe31a165d452f9c04cdec75b0950c67bacf164d72b60fc1d84b70",
       "sources": [
         "house_financial_disclosure_index",
         "house_periodic_transaction_report_index"
@@ -101,6 +111,7 @@
       "captured_date": "2026-07-23",
       "path": "date=2026-07-23/filing_index.parquet",
       "rows": 1735,
+      "sha256": "5187ecd160e9ee0b0eb9dd6cde580961b0bf4225ff6e26026c959b2799f4f323",
       "sources": [
         "house_financial_disclosure_index",
         "house_periodic_transaction_report_index"
@@ -110,6 +121,7 @@
       "captured_date": "2026-07-24",
       "path": "date=2026-07-24/filing_index.parquet",
       "rows": 1738,
+      "sha256": "2a5e6cb3f270cbc7538d8f1588006b51df47283f81bc527d174420872a790676",
       "sources": [
         "house_financial_disclosure_index",
         "house_periodic_transaction_report_index"
@@ -119,6 +131,7 @@
       "captured_date": "2026-07-25",
       "path": "date=2026-07-25/filing_index.parquet",
       "rows": 1740,
+      "sha256": "032cb026b73a07523b3827b1c7593cbf70f3b6494a23490536fc25261f9ae510",
       "sources": [
         "house_financial_disclosure_index",
         "house_periodic_transaction_report_index"
@@ -128,6 +141,7 @@
       "captured_date": "2026-07-26",
       "path": "date=2026-07-26/filing_index.parquet",
       "rows": 1740,
+      "sha256": "fb406e323a28e481ccc4a3700dc00a5bec742afa8d7da2fb5f3eccfeb8c576a9",
       "sources": [
         "house_financial_disclosure_index",
         "house_periodic_transaction_report_index"
@@ -137,6 +151,7 @@
       "captured_date": "2026-07-27",
       "path": "date=2026-07-27/filing_index.parquet",
       "rows": 1740,
+      "sha256": "8ff64396510ab2fe1f6f73175d9b7b98a4b77f8d55ca6a8af5c358700757ef8f",
       "sources": [
         "house_financial_disclosure_index",
         "house_periodic_transaction_report_index"
@@ -146,6 +161,147 @@
       "captured_date": "2026-07-28",
       "path": "date=2026-07-28/filing_index.parquet",
       "rows": 1751,
+      "sha256": "d78cba1dbef2155dd3cc7409fe1d073a4a750a2383097fae2d113e15159caedf",
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-07-29",
+      "path": "date=2026-07-29/filing_index.parquet",
+      "rows": 1756,
+      "sha256": "694b7e46acfe9158517208026f34f6d3575aaa8ee835b0ccdcd7b7f9576acd0a",
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-07-30",
+      "path": "date=2026-07-30/filing_index.parquet",
+      "rows": 1760,
+      "sha256": "d16ababf2c85980c52137bfc579ea9974c46022197554f443d7d252723c4d7ca",
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-07-31",
+      "path": "date=2026-07-31/filing_index.parquet",
+      "rows": 1763,
+      "sha256": "27418aac967b29f464efff15e218cd1ce30effb2d87a00219cd70a1221801354",
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-08-01",
+      "path": "date=2026-08-01/filing_index.parquet",
+      "rows": 1772,
+      "sha256": "730d6c2d139779f03303fa5e440eff69f2348e2400a029c4d25bb1b3a76fe961",
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-08-02",
+      "path": "date=2026-08-02/filing_index.parquet",
+      "rows": 1772,
+      "sha256": "c9b51131a9e3de3f74034c64242187c3dd82f01b00fd361ed151886d6e64c038",
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-08-03",
+      "path": "date=2026-08-03/filing_index.parquet",
+      "rows": 1772,
+      "sha256": "bc79a8206f0b6a8cd59b8a265fcb473e01c2f69f3dd0bffb7703517ec100ad80",
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-08-04",
+      "path": "date=2026-08-04/filing_index.parquet",
+      "rows": 1780,
+      "sha256": "df444fccd1b85b79140abb00d1288afe137f6462f998d1cfc5ee62d3d57e2530",
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-08-05",
+      "path": "date=2026-08-05/filing_index.parquet",
+      "rows": 1783,
+      "sha256": "6b332ec7c387f5b4f397f3c3644b23ab6a4fdb7cb1fc22b55fc7c8b17cc42490",
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-08-06",
+      "path": "date=2026-08-06/filing_index.parquet",
+      "rows": 1784,
+      "sha256": "86a23d961ff581d50919a600232d26f568bbd710109f289af9c6b3451042008e",
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-08-07",
+      "path": "date=2026-08-07/filing_index.parquet",
+      "rows": 1791,
+      "sha256": "52c0fb7747bde77473daec67f58668c8672aa56648e86f248f34e3f7c500da2e",
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-08-08",
+      "path": "date=2026-08-08/filing_index.parquet",
+      "rows": 1794,
+      "sha256": "bccd51d0316093612d7c6321bc6fd0219672820038c8b0d87c6a1a50be422843",
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-08-09",
+      "path": "date=2026-08-09/filing_index.parquet",
+      "rows": 1794,
+      "sha256": "4fcabc1849775d3c25aca1aa306f7e4069d62dc06c871bed89d1729644a60b2b",
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-08-10",
+      "path": "date=2026-08-10/filing_index.parquet",
+      "rows": 1794,
+      "sha256": "489e85e0b20c9a6c3548e54144c0f90dd8d17313c42979a708898e5b82b556d6",
+      "sources": [
+        "house_financial_disclosure_index",
+        "house_periodic_transaction_report_index"
+      ]
+    },
+    {
+      "captured_date": "2026-08-11",
+      "path": "date=2026-08-11/filing_index.parquet",
+      "rows": 1816,
+      "sha256": "992be6e3545ba728637b0118e94e758a19922b8f73d1da9703812268767e3d8f",
       "sources": [
         "house_financial_disclosure_index",
         "house_periodic_transaction_report_index"
@@ -153,6 +309,6 @@
     }
   ],
   "record_granularity": "official House filing-index row, not an individual trade",
-  "row_count": 27036,
+  "row_count": 51967,
   "schema_version": 1
 }

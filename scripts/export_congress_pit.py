@@ -9,6 +9,7 @@ parse the transaction lines inside PTR PDFs.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import shutil
 import sys
@@ -150,11 +151,13 @@ def export_snapshots(
         frame = _typed_frame(by_date[captured_date])
         frame.to_parquet(temporary_path, index=False, engine="pyarrow")
         temporary_path.replace(final_path)
+        file_sha256 = hashlib.sha256(final_path.read_bytes()).hexdigest()
         partitions.append(
             {
                 "captured_date": captured_date,
                 "path": str(final_path.relative_to(output_dir)),
                 "rows": len(frame),
+                "sha256": file_sha256,
                 "sources": sorted(frame["source"].dropna().unique().tolist()),
             }
         )
