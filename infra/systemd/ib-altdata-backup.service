@@ -1,0 +1,18 @@
+[Unit]
+Description=IB Bot nightly offsite backup of altdata PIT snapshots
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=servidor
+Group=servidor
+WorkingDirectory=/home/servidor/Desktop/cursor-projects/ib_bot
+ExecStart=/home/servidor/Desktop/cursor-projects/ib_bot/infra/scripts/backup_altdata_snapshots.sh
+TimeoutStartSec=900
+Slice=workloads.slice
+MemoryMax=1G
+CPUQuota=200%
+IOSchedulingClass=idle
+Nice=10
+UMask=0002
