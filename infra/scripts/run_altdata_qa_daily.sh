@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Run the same-day QA in the worker image, then commit exactly its versioned log.
-set -uo pipefail
+set -euo pipefail
 
-project_root=/home/servidor/Desktop/cursor-projects/ib_bot
+project_root="${IB_ALTDATA_PROJECT_ROOT:-/home/servidor/Desktop/cursor-projects/ib_bot}"
 log_relative=reports/altdata_qa_daily.jsonl
 lock_path=/run/lock/ib-altdata-qa.lock
 
@@ -31,7 +31,15 @@ if [[ -n "$(git status --porcelain -- "$log_relative")" ]]; then
   git commit --only -m "qa(altdata): daily receipt $qa_date" -- "$log_relative"
 fi
 
-git push origin HEAD:main
+if git push origin HEAD:main; then
+  :
+else
+  push_status=$?
+  message="[altdata-qa] ERROR: git push origin HEAD:main failed (exit=$push_status); QA receipt is not offsite"
+  echo "$message" >&2
+  logger -p user.err -t ib-altdata-qa -- "$message" || true
+  exit "$push_status"
+fi
 
 if [[ -n "$(git status --porcelain -- "$log_relative")" ]]; then
   echo "QA log remains uncommitted after persistence attempt"
