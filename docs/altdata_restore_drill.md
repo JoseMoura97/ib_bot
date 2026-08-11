@@ -27,16 +27,20 @@ reversed to check the live copy has no extra row.
 ## Latest verified drill
 
 Executed 2026-08-11 from the committed offsite archive
-`backups/altdata_snapshots/altdata_snapshots_20260811T135555Z.dump` into the
-fresh scratch database `ibbot_altdata_restore_h1_20260811`.  `postgres_fdw` in
-the scratch database compared the restored table to the live database; both
-directions use the identity tuple `(source, as_of_date, n_rows, content_hash)`.
+`backups/altdata_snapshots/altdata_snapshots_20260811T234334Z.dump` into a
+fresh scratch database. `postgres_fdw` in the scratch database compared the
+restored table to the live database; both directions use the identity tuple
+`(source, as_of_date, n_rows, content_hash)`.
 
 ```text
-dump: backups/altdata_snapshots/altdata_snapshots_20260811T135555Z.dump
+dump: backups/altdata_snapshots/altdata_snapshots_20260811T234334Z.dump
 restored_rows: 328
 live_rows: 328
 restored_minus_live: 0
 live_minus_restored: 0
 diff_rows: 0
+days_outside_expected_counts: 0
+non_eleven_day_counts:
+2026-07-13|9
+2026-07-13 is the only day with 9 sources; missing sources: cftc_disaggregated_futures_cot, house_periodic_transaction_report_index
 ```
