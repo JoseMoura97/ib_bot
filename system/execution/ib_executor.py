@@ -2,6 +2,11 @@ import asyncio
 from ib_insync import *
 import logging
 
+try:  # Supports both package imports and the legacy ``system/app`` launcher.
+    from .order_preflight import OrderPreFlightPolicy, order_pre_flight_guard
+except ImportError:  # pragma: no cover - exercised by the legacy launcher only
+    from order_preflight import OrderPreFlightPolicy, order_pre_flight_guard
+
 
 class IBExecutor:
     def __init__(self, host='127.0.0.1', port=7497, client_id=1):
@@ -30,11 +35,37 @@ class IBExecutor:
                 return float(item.value)
         return 0
 
+    def _market_price(self, contract):
+        [ticker_data] = self.ib.reqTickers(contract)
+        price = ticker_data.marketPrice()
+        return float(price) if price and price > 0 else None
+
+    def _place_guarded_market_order(self, contract, side, quantity, account, price, aggregate_notional_usd):
+        """Guard immediately before the only IB API order submission in this class."""
+        order_notional = abs(float(quantity)) * float(price) if price is not None else None
+        aggregate_notional = (
+            float(aggregate_notional_usd) + float(order_notional)
+            if order_notional is not None
+            else None
+        )
+        order_pre_flight_guard(
+            account_id=account,
+            order_notional_usd=order_notional,
+            aggregate_notional_usd=aggregate_notional,
+            policy=OrderPreFlightPolicy.from_environment(),
+        )
+        order = MarketOrder(side, abs(quantity))
+        if account:
+            order.account = account
+        self.ib.placeOrder(contract, order)
+        return float(order_notional or 0.0)
+
     def rebalance(self, target_tickers, allocation_per_stock_usd=1000, account=None):
         """
         Simple rebalance - buys/sells to match target tickers.
         """
         current_positions = self.get_current_positions(account)
+        submitted_notional = 0.0
 
         # 1. Sell tickers not in target
         for ticker, qty in current_positions.items():
@@ -42,10 +73,10 @@ class IBExecutor:
                 logging.info(f"Selling {qty} shares of {ticker}")
                 contract = Stock(ticker, 'SMART', 'USD')
                 self.ib.qualifyContracts(contract)
-                order = MarketOrder('SELL', abs(qty))
-                if account:
-                    order.account = account
-                self.ib.placeOrder(contract, order)
+                price = self._market_price(contract)
+                submitted_notional += self._place_guarded_market_order(
+                    contract, 'SELL', qty, account, price, submitted_notional
+                )
 
         # 2. Buy tickers in target but not in current
         for ticker in target_tickers:
@@ -54,16 +85,14 @@ class IBExecutor:
                 contract = Stock(ticker, 'SMART', 'USD')
                 self.ib.qualifyContracts(contract)
 
-                [ticker_data] = self.ib.reqTickers(contract)
-                price = ticker_data.marketPrice()
+                price = self._market_price(contract)
 
                 if price and price > 0:
                     qty = int(allocation_per_stock_usd / price)
                     if qty > 0:
-                        order = MarketOrder('BUY', qty)
-                        if account:
-                            order.account = account
-                        self.ib.placeOrder(contract, order)
+                        submitted_notional += self._place_guarded_market_order(
+                            contract, 'BUY', qty, account, price, submitted_notional
+                        )
                     else:
                         logging.warning(f"Price for {ticker} too high for allocation.")
                 else:
@@ -89,6 +118,7 @@ class IBExecutor:
         logging.info(f"Total NLV: ${nlv:,.2f}, Allocating: ${total_to_allocate:,.2f}")
 
         current_positions = self.get_current_positions(account)
+        submitted_notional = 0.0
 
         # Calculate target allocation per ticker
         ticker_allocations = {}  # ticker -> target_usd_value
@@ -122,18 +152,17 @@ class IBExecutor:
                 logging.info(f"Selling all {qty} shares of {ticker} (not in target)")
                 contract = Stock(ticker, 'SMART', 'USD')
                 self.ib.qualifyContracts(contract)
-                order = MarketOrder('SELL', abs(qty))
-                if account:
-                    order.account = account
-                self.ib.placeOrder(contract, order)
+                price = self._market_price(contract)
+                submitted_notional += self._place_guarded_market_order(
+                    contract, 'SELL', qty, account, price, submitted_notional
+                )
 
         # 2. Adjust positions to match target allocations
         for ticker, target_value in ticker_allocations.items():
             contract = Stock(ticker, 'SMART', 'USD')
             self.ib.qualifyContracts(contract)
 
-            [ticker_data] = self.ib.reqTickers(contract)
-            price = ticker_data.marketPrice()
+            price = self._market_price(contract)
 
             if not price or price <= 0:
                 logging.warning(f"Could not get price for {ticker}, skipping")
@@ -151,15 +180,14 @@ class IBExecutor:
 
             if qty_diff > 0:
                 logging.info(f"{ticker}: Buying {qty_diff} shares (target: {target_qty}, current: {current_qty})")
-                order = MarketOrder('BUY', qty_diff)
+                side = 'BUY'
             else:
                 logging.info(f"{ticker}: Selling {abs(qty_diff)} shares (target: {target_qty}, current: {current_qty})")
-                order = MarketOrder('SELL', abs(qty_diff))
+                side = 'SELL'
 
-            if account:
-                order.account = account
-
-            self.ib.placeOrder(contract, order)
+            submitted_notional += self._place_guarded_market_order(
+                contract, side, qty_diff, account, price, submitted_notional
+            )
             self.ib.sleep(0.5)  # Small delay between orders
 
     def disconnect(self):

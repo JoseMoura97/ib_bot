@@ -17,10 +17,29 @@ from app.models.portfolio import Portfolio, PortfolioStrategy
 from app.services.ib_worker import call_ib
 from app.services.market_calendar import market_is_open
 from app.services.paper_trading import PriceQuote, fetch_last_close_price, fetch_prices
+from system.execution.order_preflight import OrderPreFlightGuardError, OrderPreFlightPolicy, order_pre_flight_guard
 
 router = APIRouter()
 
 TERMINAL_STATUSES = frozenset({"Filled", "Cancelled", "ApiCancelled", "Inactive", "Rejected"})
+
+
+def _order_pre_flight_guard(account_id: str, order_notional_usd: float, aggregate_notional_usd: float) -> None:
+    """Translate the shared broker-independent guard into the API's error type."""
+    try:
+        order_pre_flight_guard(
+            account_id=account_id,
+            order_notional_usd=order_notional_usd,
+            aggregate_notional_usd=aggregate_notional_usd,
+            policy=OrderPreFlightPolicy(
+                trading_halt=bool(settings.trading_halt),
+                live_allowed_accounts=settings.live_allowed_accounts,
+                max_order_notional_usd=float(settings.live_max_order_notional_usd),
+                max_aggregate_notional_usd=float(settings.live_max_aggregate_notional_usd),
+            ),
+        )
+    except OrderPreFlightGuardError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 # ---------------------------------------------------------------------------
 # IB account whitelist cache
@@ -895,6 +914,11 @@ def execute_live_rebalance_core(
                 pass
             order = MarketOrder(leg.side, _order_qty(leg.delta_quantity))
             order.account = body.account_id
+            _order_pre_flight_guard(
+                body.account_id,
+                abs(float(leg.delta_quantity)) * float(leg.price),
+                float(preview.estimated_notional),
+            )
             try:
                 trade = ib.placeOrder(contract, order)
                 placed_trades.append(trade)

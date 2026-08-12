@@ -48,6 +48,12 @@ class Settings(BaseSettings):
     live_fractional_decimals: int = Field(default=4, validation_alias="LIVE_FRACTIONAL_DECIMALS")
     live_min_leg_usd: float = Field(default=1.0, validation_alias="LIVE_MIN_LEG_USD")
     live_max_order_pct_nlv: float = Field(default=0.50, validation_alias="LIVE_MAX_ORDER_PCT_NLV")
+    # Absolute caps provide a common final fence for every IB order path.
+    # Zero keeps a cap disabled; an enabled cap fails closed if the order is unpriced.
+    live_max_order_notional_usd: float = Field(default=0.0, ge=0.0, validation_alias="LIVE_MAX_ORDER_NOTIONAL_USD")
+    live_max_aggregate_notional_usd: float = Field(
+        default=0.0, ge=0.0, validation_alias="LIVE_MAX_AGGREGATE_NOTIONAL_USD"
+    )
     live_per_leg_timeout_seconds: int = Field(default=60, validation_alias="LIVE_PER_LEG_TIMEOUT_SECONDS")
     live_allowed_accounts: str | None = Field(default=None, validation_alias="LIVE_ALLOWED_ACCOUNTS")
 
