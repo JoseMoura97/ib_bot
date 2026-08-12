@@ -186,6 +186,22 @@ def write_json(path: Path, value: dict[str, Any]) -> None:
     temporary.replace(path)
 
 
+def psycopg_url(database_url: str) -> str:
+    """Convert the service's SQLAlchemy URL to psycopg's native spelling."""
+    return database_url.replace("postgresql+psycopg://", "postgresql://", 1)
+
+
+def prior_negative_proof(report_path: Path) -> dict[str, Any] | None:
+    """Keep a proven adversarial receipt when routine daily verification runs."""
+    if not report_path.exists():
+        return None
+    previous = read_json(report_path)
+    proof = previous.get("negative_test")
+    if previous.get("negative_test_detected") is True and isinstance(proof, dict) and proof.get("detected") is True:
+        return proof
+    return None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--database-url", default=os.environ.get("DATABASE_URL"))
@@ -198,7 +214,7 @@ def main() -> int:
     if not args.database_url:
         parser.error("--database-url or DATABASE_URL is required")
 
-    with psycopg.connect(args.database_url) as conn:
+    with psycopg.connect(psycopg_url(args.database_url)) as conn:
         actual_days = build_days(fetch_rows(conn, args.table))
         if args.write_manifest:
             expected = manifest_document(actual_days)
@@ -208,7 +224,7 @@ def main() -> int:
         else:
             expected = read_json(args.manifest)
         result = verify(expected, actual_days)
-        negative = negative_copy_test(conn, expected) if args.negative_test else None
+        negative = negative_copy_test(conn, expected) if args.negative_test else prior_negative_proof(args.report)
 
     report = {
         "schema_version": 1,

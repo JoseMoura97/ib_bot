@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 import sys
 
@@ -43,3 +44,10 @@ def test_payload_hash_is_recomputed_not_trusted_from_column():
     result = chain.verify(expected, chain.build_days([rewritten]))
     assert result["chained_valid_days"] == 0
     assert result["days"][0]["source_hashes_ok"] is False
+
+
+def test_psycopg_url_and_prior_negative_proof(tmp_path):
+    assert chain.psycopg_url("postgresql+psycopg://user:pass@db/example") == "postgresql://user:pass@db/example"
+    report = tmp_path / "report.json"
+    report.write_text(json.dumps({"negative_test_detected": True, "negative_test": {"detected": True}}))
+    assert chain.prior_negative_proof(report) == {"detected": True}
