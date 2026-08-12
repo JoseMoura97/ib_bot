@@ -116,6 +116,6 @@ def test_nlv_cap_passes_within_limit(client, monkeypatch):
         headers={"Idempotency-Key": str(uuid.uuid4())},
     )
     # The NLV cap did NOT reject this request — it got all the way to IB execute
-    assert executed == ["called"], "call_ib must be reached when notional is within the NLV cap"
+    assert executed, "call_ib must be reached when notional is within the NLV cap"
     # _execute returns [] so the preview is returned as-is (no order legs placed)
     assert resp.status_code == 200

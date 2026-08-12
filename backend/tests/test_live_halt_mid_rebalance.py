@@ -110,7 +110,7 @@ def test_halt_blocks_new_execute(client, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# Halt mid-rebalance: reqGlobalCancel is called and remaining legs are skipped
+# Halt mid-rebalance: terminal fills are left intact and remaining legs are skipped
 # ---------------------------------------------------------------------------
 
 class _FakeOrderStatus:
@@ -161,12 +161,12 @@ class _HaltMidRunFakeIB:
             settings.trading_halt = True
         return _FakeTrade("Filled")
 
-    def reqGlobalCancel(self):
+    def cancelOrder(self, _order):
         self.cancel_calls += 1
 
 
 def test_halt_mid_rebalance_aborts_and_cancels(client, db_session, monkeypatch, _mock_ib_insync):
-    """After the first leg, a halt trips reqGlobalCancel and skips remaining legs."""
+    """After a filled first leg, a halt skips the remaining legs without cancelling the fill."""
     monkeypatch.setattr(settings, "live_per_leg_timeout_seconds", 5)
 
     fake_ib = _HaltMidRunFakeIB()
@@ -192,7 +192,7 @@ def test_halt_mid_rebalance_aborts_and_cancels(client, db_session, monkeypatch, 
 
     # Halt fires mid-basket → endpoint returns 409 (INCOMPLETE rebalance)
     assert resp.status_code in (200, 409)
-    assert fake_ib.cancel_calls >= 1, "reqGlobalCancel must be called when halt fires mid-rebalance"
+    assert fake_ib.cancel_calls == 0, "a terminal fill must not be cancelled when halt fires mid-rebalance"
     assert len(fake_ib.placed) == 1, "Only the first leg must be placed before halt fires"
 
     # Reset halt so it doesn't bleed into other tests

@@ -1274,6 +1274,8 @@ def pre_trade_checklist(
         checks.append({"check": "account_whitelisted", "pass": True, "detail": body.account_id})
     except HTTPException as e:
         checks.append({"check": "account_whitelisted", "pass": False, "detail": str(e.detail)})
+    except Exception as e:
+        checks.append({"check": "account_whitelisted", "pass": False, "detail": str(e)})
 
     # 7. Account NLV within range
     try:

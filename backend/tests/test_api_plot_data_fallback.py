@@ -4,8 +4,9 @@ import json
 from pathlib import Path
 
 
-def test_plot_data_falls_back_to_validation_when_empty(client, monkeypatch, tmp_path: Path):
-    # Arrange: an empty plot_data file + a validation file with strategies.
+def test_plot_data_keeps_empty_cache_real_only(client, monkeypatch, tmp_path: Path):
+    # Arrange: an empty plot-data cache plus validation data.  The dashboard
+    # must not turn validation metrics into synthetic curves.
     plot_path = tmp_path / "plot_data.json"
     plot_path.write_text(json.dumps({"generated_at": "t", "strategies": {}, "benchmark": None}), encoding="utf-8")
 
@@ -32,15 +33,14 @@ def test_plot_data_falls_back_to_validation_when_empty(client, monkeypatch, tmp_
     assert res.status_code == 200
     data = res.json()
 
-    # Assert: returns synthetic payload with at least one strategy curve.
-    assert data["synthetic"] is True
-    assert data["data_source"] == "sample_from_validation"
+    # Assert: the API returns the real (empty) cache unchanged apart from its
+    # documented metadata defaults; synthetic fallback generation is disabled.
+    assert data.get("synthetic") is not True
+    assert data["data_source"] == "unknown"
     assert data["price_source"] == "auto"
-    assert "Congress Buys" in (data.get("strategies") or {})
-    assert len(data["strategies"]["Congress Buys"]["dates"]) > 10
-    assert len(data["strategies"]["Congress Buys"]["values"]) == len(data["strategies"]["Congress Buys"]["dates"])
+    assert data["strategies"] == {}
 
-    # And it persists to disk (so future loads are fast).
+    # And it does not mutate the cache into a synthetic payload.
     persisted = json.loads(plot_path.read_text(encoding="utf-8"))
-    assert persisted.get("synthetic") is True
+    assert persisted.get("synthetic") is not True
 

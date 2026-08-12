@@ -169,7 +169,7 @@ def test_outer_basket_timeout_error_mentions_timeout(client, db_session, monkeyp
 
 
 # ---------------------------------------------------------------------------
-# 2. Per-leg 30s+ timeout — reqGlobalCancel is called, basket aborted
+# 2. Per-leg 30s+ timeout — placed order is cancelled, basket aborted
 # ---------------------------------------------------------------------------
 
 class _SlowSubmittedStatus:
@@ -206,16 +206,16 @@ class _SlowIB:
         self.placed.append(getattr(contract, "symbol", "?"))
         return _SlowTrade()
 
-    def reqGlobalCancel(self):
+    def cancelOrder(self, _order):
         self.cancel_calls += 1
 
 
-def test_per_leg_30s_timeout_calls_req_global_cancel(
+def test_per_leg_30s_timeout_cancels_placed_order(
     client, db_session, monkeypatch, _mock_ib_insync
 ):
     """
     When a leg stays Submitted past per_leg_timeout (emulating >30s stall),
-    reqGlobalCancel must be invoked and the remaining legs must be skipped.
+    the placed order must be cancelled and the remaining legs skipped.
     This mirrors the real-world scenario where IB Gateway hangs mid-basket.
     """
     monkeypatch.setattr(settings, "live_per_leg_timeout_seconds", 0.05)
@@ -241,7 +241,7 @@ def test_per_leg_30s_timeout_calls_req_global_cancel(
     )
 
     assert resp.status_code in (200, 409), f"Unexpected status {resp.status_code}: {resp.text}"
-    assert fake_ib.cancel_calls >= 1, "reqGlobalCancel must fire after per-leg timeout"
+    assert fake_ib.cancel_calls >= 1, "the placed order must be cancelled after per-leg timeout"
     assert len(fake_ib.placed) == 1, (
         f"Only the first leg should have been placed; got {fake_ib.placed}"
     )

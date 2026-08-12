@@ -113,14 +113,14 @@ class _PartialFillFakeIB:
         self.placed.append(getattr(contract, "symbol", "?"))
         return _SubmittedForeverTrade()
 
-    def reqGlobalCancel(self):
+    def cancelOrder(self, _order):
         self.cancel_calls += 1
 
 
 def test_partial_fill_timeout_aborts_basket(client, db_session, monkeypatch, _mock_ib_insync):
     """
     When an order stays in Submitted indefinitely the per-leg timeout fires,
-    reqGlobalCancel is called, and remaining legs are skipped.
+    the placed order is cancelled, and remaining legs are skipped.
     """
     # Very short timeout so the test does not actually wait 60 s
     monkeypatch.setattr(settings, "live_per_leg_timeout_seconds", 0.1)
@@ -146,7 +146,7 @@ def test_partial_fill_timeout_aborts_basket(client, db_session, monkeypatch, _mo
     )
 
     assert resp.status_code in (200, 409)
-    assert fake_ib.cancel_calls >= 1, "reqGlobalCancel must be called after fill timeout"
+    assert fake_ib.cancel_calls >= 1, "the placed order must be cancelled after fill timeout"
 
     # After the first leg times out the basket is aborted — second leg must not be placed
     assert len(fake_ib.placed) == 1, "Remaining legs must be skipped after first-leg timeout"

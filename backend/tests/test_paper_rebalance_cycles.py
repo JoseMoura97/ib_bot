@@ -27,6 +27,11 @@ def _seed_portfolio(db_session) -> str:
 
 
 def test_paper_rebalance_cycles(client, db_session, monkeypatch):
+    from app.core.config import settings
+
+    # This exercise covers the documented no-credentials SPY fallback rather
+    # than whichever local Quiver credential happens to be configured.
+    monkeypatch.setattr(settings, "quiver_api_key", None)
     portfolio_id = _seed_portfolio(db_session)
 
     def _fake_fetch_prices(tickers):

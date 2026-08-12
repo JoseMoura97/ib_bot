@@ -15,15 +15,19 @@ import numpy as np
 import pandas as pd
 import pytest
 
-# Add repo root to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-
-from generate_plot_data_from_cache import (
-    generate_plot_data_from_cache,
-    generate_synthetic_equity_curve,
-    load_cached_price,
-    load_validation_results,
-)
+# The cache generator was retired with synthetic plot-data fallback.  Keep this
+# historical test module from breaking collection when that optional script is
+# absent from the current product.
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+try:
+    from generate_plot_data_from_cache import (
+        generate_plot_data_from_cache,
+        generate_synthetic_equity_curve,
+        load_cached_price,
+        load_validation_results,
+    )
+except ModuleNotFoundError:
+    pytest.skip("generate_plot_data_from_cache was retired with synthetic fallback", allow_module_level=True)
 
 
 class TestValidationResults:

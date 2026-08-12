@@ -34,7 +34,7 @@ def mock_prices():
 class TestFullCycle:
     def test_portfolio_create_and_strategies(self, client, db_session):
         # 1. Create portfolio
-        resp = client.post("/api/portfolios", json={
+        resp = client.post("/portfolios", json={
             "name": "E2E Test Portfolio",
             "description": "Integration test",
             "default_cash": 100000,
@@ -50,20 +50,20 @@ class TestFullCycle:
             {"strategy_name": "Congress Buys", "enabled": True, "weight": 0.5, "overrides": {}},
             {"strategy_name": "Michael Burry", "enabled": True, "weight": 0.5, "overrides": {}},
         ]
-        resp = client.put(f"/api/portfolios/{pid}/strategies", json=strategies)
+        resp = client.put(f"/portfolios/{pid}/strategies", json=strategies)
         assert resp.status_code == 200
         data = resp.json()
         assert len(data["strategies"]) == 2
         assert abs(sum(s["weight"] for s in data["strategies"]) - 1.0) < 0.01
 
         # 3. Get portfolio with strategies
-        resp = client.get(f"/api/portfolios/{pid}")
+        resp = client.get(f"/portfolios/{pid}")
         assert resp.status_code == 200
         assert resp.json()["name"] == "E2E Test Portfolio"
 
     def test_paper_account_lifecycle(self, client, db_session):
         # 1. Create paper account
-        resp = client.post("/api/paper/accounts", json={
+        resp = client.post("/paper/accounts", json={
             "name": "E2E Paper Account",
             "initial_cash": 50000,
         })
@@ -73,18 +73,18 @@ class TestFullCycle:
         assert acct["balance"] == 50000
 
         # 2. Fund account
-        resp = client.post(f"/api/paper/accounts/{aid}/fund", json={"amount": 10000})
+        resp = client.post(f"/paper/accounts/{aid}/fund", json={"amount": 10000})
         assert resp.status_code == 200
         assert resp.json()["balance"] == 60000
 
         # 3. Get summary
-        resp = client.get(f"/api/paper/accounts/{aid}/summary")
+        resp = client.get(f"/paper/accounts/{aid}/summary")
         assert resp.status_code == 200
         summary = resp.json()
         assert summary["cash"] == 60000
 
         # 4. Place order
-        resp = client.post(f"/api/paper/accounts/{aid}/orders", json={
+        resp = client.post(f"/paper/accounts/{aid}/orders", json={
             "ticker": "AAPL",
             "side": "BUY",
             "quantity": 10,
@@ -96,24 +96,27 @@ class TestFullCycle:
         assert order["order"]["quantity"] == 10
 
         # 5. Check positions
-        resp = client.get(f"/api/paper/accounts/{aid}/positions")
+        resp = client.get(f"/paper/accounts/{aid}/positions")
         assert resp.status_code == 200
         positions = resp.json()
         assert any(p["ticker"] == "AAPL" for p in positions)
 
         # 6. Check P&L endpoints (should be empty since no snapshots yet)
-        resp = client.get(f"/api/paper/accounts/{aid}/snapshots")
+        resp = client.get(f"/paper/accounts/{aid}/snapshots")
         assert resp.status_code == 200
         assert resp.json() == []
 
-        resp = client.get(f"/api/paper/accounts/{aid}/pnl")
+        resp = client.get(f"/paper/accounts/{aid}/pnl")
         assert resp.status_code == 200
         pnl = resp.json()
         assert pnl["summary"]["days"] == 0
 
-    def test_paper_rebalance_with_portfolio(self, client, db_session):
+    def test_paper_rebalance_with_portfolio(self, client, db_session, monkeypatch):
         # Create portfolio with SPY fallback (no quiver key)
-        resp = client.post("/api/portfolios", json={
+        from app.core.config import settings
+
+        monkeypatch.setattr(settings, "quiver_api_key", None)
+        resp = client.post("/portfolios", json={
             "name": "Rebalance Test",
             "default_cash": 100000,
             "settings": {},
@@ -123,15 +126,15 @@ class TestFullCycle:
         strategies = [
             {"strategy_name": "Test Strategy", "enabled": True, "weight": 1.0, "overrides": {}},
         ]
-        resp = client.put(f"/api/portfolios/{pid}/strategies", json=strategies)
+        resp = client.put(f"/portfolios/{pid}/strategies", json=strategies)
         assert resp.status_code == 200
 
         # Create paper account
-        resp = client.post("/api/paper/accounts", json={"name": "Rebal Account", "initial_cash": 100000})
+        resp = client.post("/paper/accounts", json={"name": "Rebal Account", "initial_cash": 100000})
         aid = resp.json()["id"]
 
         # Preview rebalance (falls back to SPY when no quiver key)
-        resp = client.post("/api/paper/rebalance/preview", json={
+        resp = client.post("/paper/rebalance/preview", json={
             "portfolio_id": pid,
             "allocation_amount": 50000,
             "account_id": aid,
@@ -142,7 +145,7 @@ class TestFullCycle:
         assert len(preview["legs"]) > 0
 
         # Execute rebalance
-        resp = client.post("/api/paper/rebalance/execute", json={
+        resp = client.post("/paper/rebalance/execute", json={
             "portfolio_id": pid,
             "allocation_amount": 50000,
             "account_id": aid,
@@ -152,14 +155,14 @@ class TestFullCycle:
         assert len(result["orders"]) > 0
 
         # Verify positions exist
-        resp = client.get(f"/api/paper/accounts/{aid}/positions")
+        resp = client.get(f"/paper/accounts/{aid}/positions")
         assert resp.status_code == 200
         positions = resp.json()
         assert len(positions) > 0
 
     def test_live_status_and_safety(self, client):
         # Live status endpoint
-        resp = client.get("/api/live/status")
+        resp = client.get("/live/status")
         assert resp.status_code == 200
         status = resp.json()
         assert "enabled" in status
@@ -168,12 +171,12 @@ class TestFullCycle:
 
     def test_halt_and_resume(self, client):
         # Halt
-        resp = client.post("/api/live/halt")
+        resp = client.post("/live/halt")
         assert resp.status_code == 200
         assert resp.json()["halted"] is True
 
         # Resume (may fail if live trading not enabled, which is expected)
-        resp = client.post("/api/live/resume")
+        resp = client.post("/live/resume")
         # Accept either 200 (success) or 403 (live trading not enabled)
         assert resp.status_code in (200, 403)
 
@@ -240,11 +243,11 @@ class TestFullCycle:
 
     def test_allocations_ledger(self, client, db_session):
         # Create portfolio first
-        resp = client.post("/api/portfolios", json={"name": "Alloc Test", "default_cash": 50000})
+        resp = client.post("/portfolios", json={"name": "Alloc Test", "default_cash": 50000})
         pid = resp.json()["id"]
 
         # Create allocation
-        resp = client.post("/api/allocations", json={
+        resp = client.post("/allocations", json={
             "account_id": "1",
             "portfolio_id": pid,
             "amount": 25000,
@@ -254,7 +257,7 @@ class TestFullCycle:
         assert resp.status_code == 200
 
         # List allocations
-        resp = client.get(f"/api/allocations?portfolio_id={pid}")
+        resp = client.get(f"/allocations?portfolio_id={pid}")
         assert resp.status_code == 200
         allocs = resp.json()
         assert len(allocs) >= 1
