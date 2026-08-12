@@ -43,7 +43,7 @@ def test_payload_hash_is_recomputed_not_trusted_from_column():
     rewritten = chain.SnapshotRow("2026-07-13", "a", original.content_hash, [{"v": 2}])
     result = chain.verify(expected, chain.build_days([rewritten]))
     assert result["chained_valid_days"] == 0
-    assert result["days"][0]["source_hashes_ok"] is False
+    assert result["days"][0]["actual_manifest_hash"] != result["days"][0]["expected_manifest_hash"]
 
 
 def test_psycopg_url_and_prior_negative_proof(tmp_path):

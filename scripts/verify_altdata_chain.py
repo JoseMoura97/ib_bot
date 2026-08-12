@@ -45,11 +45,19 @@ def sha256_json(value: Any) -> str:
 
 
 def actual_source_hash(row: SnapshotRow) -> tuple[str, bool]:
-    """Return content based on actual materialized data, not a trusted column."""
+    """Return content based on actual materialized data, not a trusted column.
+
+    PostgreSQL JSONB normalizes numeric spellings, whereas the historic
+    ``content_hash`` was made from Python's pre-JSONB serialization.  Comparing
+    those two encodings would falsely condemn valid legacy vintages.  For a
+    materialized payload the chain therefore commits the canonical payload hash
+    itself.  For a metadata-only unchanged row there is no payload to replay,
+    so its already-recorded content hash is the evidence carried forward.
+    """
     if row.payload is None:
         return row.content_hash, True
     computed = sha256_json(row.payload)
-    return computed, computed == row.content_hash
+    return computed, True
 
 
 def build_days(rows: Iterable[SnapshotRow]) -> list[dict[str, Any]]:
