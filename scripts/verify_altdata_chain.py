@@ -154,8 +154,10 @@ def fetch_rows(conn: psycopg.Connection, table: str) -> list[SnapshotRow]:
 def negative_copy_test(conn: psycopg.Connection, expected: dict[str, Any]) -> dict[str, Any]:
     table = "altdata_snapshots_chain_negative"
     with conn.cursor() as cursor:
-        cursor.execute(f"DROP TABLE IF EXISTS {table}")
-        cursor.execute(f"CREATE TABLE {table} AS TABLE altdata_snapshots")
+        # This is deliberately temporary: the verifier runs as the restricted
+        # application role, which must not retain CREATE rights in public just
+        # to perform an adversarial proof.
+        cursor.execute(f"CREATE TEMPORARY TABLE {table} ON COMMIT DROP AS TABLE altdata_snapshots")
         cursor.execute(
             f"SELECT id, as_of_date::text FROM {table} WHERE payload IS NOT NULL "
             "ORDER BY as_of_date, source OFFSET (SELECT count(*) / 2 FROM altdata_snapshots) LIMIT 1"
@@ -169,8 +171,6 @@ def negative_copy_test(conn: psycopg.Connection, expected: dict[str, Any]) -> di
             (target_id,),
         )
     result = verify(expected, build_days(fetch_rows(conn, table)))
-    with conn.cursor() as cursor:
-        cursor.execute(f"DROP TABLE {table}")
     expected_invalid = [
         item["as_of_date"] for item in expected["days"] if item["as_of_date"] >= target_date
     ]
