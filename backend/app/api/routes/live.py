@@ -14,7 +14,7 @@ from app.core.limiter import limiter
 from app.db.session import get_db
 from app.models.ib_audit import IBOrder, IBTrade, LiveExecutionRequest, LiveRebalanceAudit, SystemState
 from app.models.portfolio import Portfolio, PortfolioStrategy
-from app.services.ib_worker import call_ib
+from app.services.ib_worker import call_ib, current_ib_connection
 from app.services.market_calendar import market_is_open
 from app.services.paper_trading import PriceQuote, fetch_last_close_price, fetch_prices
 from system.execution.order_preflight import OrderPreFlightGuardError, OrderPreFlightPolicy, order_pre_flight_guard
@@ -107,6 +107,7 @@ def _persist_halt(db: Session, halted: bool) -> None:
 
 @router.get("/status")
 def live_status():
+    connection = current_ib_connection()
     return {
         "enabled": bool(settings.enable_live_trading),
         "dry_run": bool(settings.live_dry_run),
@@ -114,6 +115,10 @@ def live_status():
         "halted": bool(settings.trading_halt),
         "ib_host": settings.ib_host,
         "ib_port": settings.ib_port,
+        "connected": bool(connection["connected"]),
+        "last_connect_ok_at": connection["last_connect_ok_at"],
+        "last_error": connection["last_error"],
+        "consecutive_failures": int(connection["consecutive_failures"]),
     }
 
 

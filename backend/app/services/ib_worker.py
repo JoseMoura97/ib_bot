@@ -25,7 +25,12 @@ class _IbWorker:
     all IB operations serially via a task queue.
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        clock: Callable[[], float] = time.time,
+        disconnect_alert_threshold_seconds: float | None = None,
+    ) -> None:
         self._lock = threading.Lock()
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
@@ -38,6 +43,18 @@ class _IbWorker:
         self._conn_host: str = settings.ib_host
         self._conn_port: int = int(settings.ib_port)
         self._conn_epoch: int = 0
+
+        # Connection health is written only by this worker and exposed as a
+        # snapshot. Keeping the clock injectable makes the outage policy fully
+        # testable without waiting for the production 30-second threshold.
+        self._clock = clock
+        self._disconnect_alert_threshold_seconds = disconnect_alert_threshold_seconds
+        self._connected = False
+        self._last_connect_ok_at: float | None = None
+        self._last_error: str | None = None
+        self._consecutive_failures = 0
+        self._outage_started_at: float | None = None
+        self._outage_alert_sent = False
 
     def start(self) -> None:
         with self._lock:
@@ -76,6 +93,49 @@ class _IbWorker:
         except Exception:
             return (os.getpid() % 1000) * 1000 + 1
 
+    def _alert_threshold_seconds(self) -> float:
+        if self._disconnect_alert_threshold_seconds is not None:
+            return float(self._disconnect_alert_threshold_seconds)
+        return float(settings.ib_gateway_disconnect_alert_seconds)
+
+    def _record_connect_success(self) -> None:
+        with self._lock:
+            self._connected = True
+            self._last_connect_ok_at = float(self._clock())
+            self._last_error = None
+            self._consecutive_failures = 0
+            self._outage_started_at = None
+            # A recovery starts a new outage episode, so the next prolonged
+            # outage is allowed one alert.
+            self._outage_alert_sent = False
+
+    def _record_connect_failure(self, error: BaseException) -> None:
+        now = float(self._clock())
+        error_text = str(error) or type(error).__name__
+        alert_payload: tuple[str, int, str] | None = None
+        with self._lock:
+            self._connected = False
+            self._last_error = error_text
+            self._consecutive_failures += 1
+            if self._outage_started_at is None:
+                self._outage_started_at = now
+            elapsed = now - self._outage_started_at
+            if not self._outage_alert_sent and elapsed >= self._alert_threshold_seconds():
+                self._outage_alert_sent = True
+                alert_payload = (self._conn_host, int(self._conn_port), error_text)
+
+        if alert_payload is not None:
+            from app.services.alerting import send_gateway_disconnected_alert
+
+            host, port, message = alert_payload
+            # Alert transport failures must never stop reconnecting. Marking the
+            # outage as alerted before the call intentionally limits volume to
+            # one attempt per outage episode.
+            try:
+                send_gateway_disconnected_alert(host=host, port=port, error=message)
+            except Exception:
+                pass
+
     def _ensure_connected(self) -> Any:
         # ib_insync expects an event loop to exist in this thread, even at import time.
         try:
@@ -84,55 +144,70 @@ class _IbWorker:
             asyncio.set_event_loop(asyncio.new_event_loop())
 
         try:
-            from ib_insync import IB  # optional dependency
-        except Exception as e:  # pragma: no cover
-            raise HTTPException(
-                status_code=503,
-                detail=f"ib_insync import failed: {type(e).__name__}: {e}",
-            ) from e
+            try:
+                from ib_insync import IB  # optional dependency
+            except Exception as e:  # pragma: no cover
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"ib_insync import failed: {type(e).__name__}: {e}",
+                ) from e
 
-        if self._ib is None:
-            self._ib = IB()
-        if self._client_id is None:
-            self._client_id = self._get_client_id()
+            if self._ib is None:
+                self._ib = IB()
+            if self._client_id is None:
+                self._client_id = self._get_client_id()
 
-        ib = self._ib
-        try:
-            connected = bool(getattr(ib, "isConnected")())
-        except Exception:
-            connected = False
+            ib = self._ib
+            try:
+                connected = bool(getattr(ib, "isConnected")())
+            except Exception:
+                connected = False
 
-        if connected:
+            if connected:
+                self._record_connect_success()
+                return ib
+
+            with self._lock:
+                host = self._conn_host
+                port = int(self._conn_port)
+
+            readonly = not bool(settings.enable_live_trading)
+            try:
+                ib.connect(host, port, clientId=int(self._client_id), readonly=readonly, timeout=5)
+            except Exception:
+                # Friendly fallback for Docker Desktop when people leave IB_HOST=127.0.0.1
+                if host in {"127.0.0.1", "localhost"}:
+                    try:
+                        ib.connect("host.docker.internal", port, clientId=int(self._client_id), readonly=readonly, timeout=5)
+                    except Exception:
+                        pass
+                    else:
+                        self._record_connect_success()
+                        return ib
+                raise HTTPException(
+                    status_code=503,
+                    detail=(
+                        f"Cannot connect to IB Gateway/TWS at {host}:{port}. "
+                        "Ensure IB Gateway/TWS is running and API is enabled. "
+                        "If IB runs on the host, set IB_HOST=host.docker.internal."
+                    ),
+                )
+            self._record_connect_success()
             return ib
-
-        with self._lock:
-            host = self._conn_host
-            port = int(self._conn_port)
-
-        readonly = not bool(settings.enable_live_trading)
-        try:
-            ib.connect(host, port, clientId=int(self._client_id), readonly=readonly, timeout=5)
-            return ib
-        except Exception:
-            # Friendly fallback for Docker Desktop when people leave IB_HOST=127.0.0.1
-            if host in {"127.0.0.1", "localhost"}:
-                try:
-                    ib.connect("host.docker.internal", port, clientId=int(self._client_id), readonly=readonly, timeout=5)
-                    return ib
-                except Exception:
-                    pass
-            raise HTTPException(
-                status_code=503,
-                detail=(
-                    f"Cannot connect to IB Gateway/TWS at {host}:{port}. "
-                    "Ensure IB Gateway/TWS is running and API is enabled. "
-                    "If IB runs on the host, set IB_HOST=host.docker.internal."
-                ),
-            )
+        except Exception as exc:
+            self._record_connect_failure(exc)
+            raise
 
     def get_connection_info(self) -> dict[str, Any]:
         with self._lock:
-            return {"host": self._conn_host, "port": int(self._conn_port)}
+            return {
+                "host": self._conn_host,
+                "port": int(self._conn_port),
+                "connected": self._connected,
+                "last_connect_ok_at": self._last_connect_ok_at,
+                "last_error": self._last_error,
+                "consecutive_failures": self._consecutive_failures,
+            }
 
     def configure_connection(self, *, host: str, port: int) -> None:
         """
@@ -171,8 +246,9 @@ class _IbWorker:
         try:
             # Pump the asyncio loop & network traffic (keeps socket alive)
             ib.sleep(0.05)
-        except Exception:
+        except Exception as exc:
             # If anything goes wrong during pump, we will reconnect on next iteration.
+            self._record_connect_failure(exc)
             try:
                 ib.disconnect()
             except Exception:

@@ -14,6 +14,11 @@ class Settings(BaseSettings):
 
     ib_host: str = Field(default="127.0.0.1", validation_alias="IB_HOST")
     ib_port: int = Field(default=4001, validation_alias="IB_PORT")
+    ib_gateway_disconnect_alert_seconds: float = Field(
+        default=30.0,
+        ge=0.0,
+        validation_alias="IB_GATEWAY_DISCONNECT_ALERT_SECONDS",
+    )
     # Optional comma-separated list of account ids to always show in the UI,
     # even if IB doesn't return them via managedAccounts().
     ib_extra_accounts: str | None = Field(default=None, validation_alias="IB_EXTRA_ACCOUNTS")

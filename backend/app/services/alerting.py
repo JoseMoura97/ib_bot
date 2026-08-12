@@ -93,3 +93,12 @@ def send_daily_pnl_alert(account_id: str, equity: float, daily_pnl: float) -> bo
 
 def send_error_alert(context: str, error: str) -> bool:
     return send_alert("error", f"<b>{context}:</b>\n{error}")
+
+
+def send_gateway_disconnected_alert(*, host: str, port: int, error: str) -> bool:
+    """Emit the single, worker-deduplicated IB Gateway outage alert."""
+    return send_error_alert(
+        "gateway_disconnected",
+        f"IB Gateway connection to {host}:{port} has been unavailable for the configured threshold. "
+        f"Latest error: {error}",
+    )
