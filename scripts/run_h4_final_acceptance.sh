@@ -24,3 +24,5 @@ docker compose exec -T worker python /app/scripts/verify_altdata_chain.py \
   --report /app/reports/altdata_chain_verify.json
 jq -e '.total_days==30 and .chained_valid_days==.total_days and .negative_test_detected==true' \
   reports/altdata_chain_verify.json >/dev/null
+
+printf '0 %s\n' "$(date -u +%FT%TZ)" > reports/h4_final_acceptance.success
