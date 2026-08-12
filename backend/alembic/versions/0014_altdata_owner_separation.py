@@ -47,7 +47,12 @@ def upgrade() -> None:
         REVOKE ALL ON TABLE altdata_snapshot_corrections FROM ibbot;
         REVOKE ALL ON SEQUENCE altdata_snapshots_id_seq FROM ibbot;
         REVOKE ALL ON SEQUENCE altdata_snapshot_corrections_id_seq FROM ibbot;
-        GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE altdata_snapshots TO ibbot;
+        -- The collector only appends.  Corrections must go through the
+        -- SECURITY DEFINER procedure below, which writes the immutable audit
+        -- row and snapshot update in one transaction.  Do not grant UPDATE or
+        -- DELETE directly: even though the trigger rejects them, withholding
+        -- the privilege makes the boundary independent of trigger state.
+        GRANT SELECT, INSERT ON TABLE altdata_snapshots TO ibbot;
         GRANT SELECT ON TABLE altdata_snapshot_corrections TO ibbot;
         GRANT USAGE, SELECT ON SEQUENCE altdata_snapshots_id_seq TO ibbot;
         GRANT EXECUTE ON FUNCTION apply_altdata_snapshot_correction(integer, integer, varchar, jsonb, text, varchar)
