@@ -20,18 +20,18 @@ def test_json_safe_removes_non_finite_values():
     json.dumps(records, allow_nan=False)
 
 
-def test_snapshot_is_idempotent_and_updates_same_day(db_session):
+def test_snapshot_is_idempotent_and_rejects_same_day_rewrite(db_session):
     day = date(2026, 7, 13)
     first = coverage.store_snapshot(db_session, "demo", [{"v": 1}], day)
     db_session.commit()
     second = coverage.store_snapshot(db_session, "demo", [{"v": 1}], day)
     db_session.commit()
-    changed = coverage.store_snapshot(db_session, "demo", [{"v": 2}], day)
-    db_session.commit()
+    with pytest.raises(ValueError, match="immutable snapshot"):
+        coverage.store_snapshot(db_session, "demo", [{"v": 2}], day)
 
-    assert (first.status, second.status, changed.status) == ("stored", "exists", "updated")
+    assert (first.status, second.status) == ("stored", "exists")
     assert db_session.query(AltDataSnapshot).count() == 1
-    assert db_session.query(AltDataSnapshot).one().payload == [{"v": 2}]
+    assert db_session.query(AltDataSnapshot).one().payload == [{"v": 1}]
 
 
 def test_capture_all_commits_good_source_when_another_fails(db_session, monkeypatch, tmp_path):

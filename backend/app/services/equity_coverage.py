@@ -75,7 +75,7 @@ class OptionalExternalSourceError(RuntimeError):
         self.code = code
 
 
-SUCCESS_STATUSES = frozenset(("stored", "exists", "updated", "unchanged"))
+SUCCESS_STATUSES = frozenset(("stored", "exists", "unchanged"))
 SEC_DAILY_REQUEST_BUDGET = 3
 SEC_CONNECT_TIMEOUT_SECONDS = 3
 SEC_READ_TIMEOUT_SECONDS = 8
@@ -129,7 +129,13 @@ def dataframe_records(df: pd.DataFrame | None, cap: int = 20_000) -> list[dict[s
 
 
 def store_snapshot(db: Session, source: str, records: list[dict[str, Any]], as_of: date) -> CaptureResult:
-    """Upsert one daily vintage; identical reruns are idempotent."""
+    """Store one daily vintage; identical reruns are idempotent.
+
+    A different payload for an existing ``(source, as_of_date)`` is never an
+    update.  It is an attempted rewrite of a point-in-time record and must be
+    surfaced for an explicit, audited correction rather than silently changing
+    the archive.
+    """
     records = json_safe(records)
     if not records:
         raise ValueError(f"{source}: empty payload is not a successful capture")
@@ -143,11 +149,10 @@ def store_snapshot(db: Session, source: str, records: list[dict[str, Any]], as_o
     if existing is not None:
         if existing.content_hash == content_hash:
             return CaptureResult(source, "exists", n_rows=len(records), content_hash=content_hash)
-        existing.n_rows = len(records)
-        existing.content_hash = content_hash
-        existing.payload = records
-        existing.captured_at = datetime.utcnow()
-        return CaptureResult(source, "updated", n_rows=len(records), content_hash=content_hash)
+        raise ValueError(
+            f"{source}: immutable snapshot already exists for {as_of.isoformat()} "
+            "with a different content hash; use the audited database correction path"
+        )
 
     previous = (
         db.query(AltDataSnapshot)

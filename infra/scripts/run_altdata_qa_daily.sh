@@ -25,10 +25,21 @@ docker compose exec -T worker \
   --backfill-existing \
   --log-path /app/reports/altdata_qa_daily.jsonl || qa_status=$?
 
-if [[ -n "$(git status --porcelain -- "$log_relative")" ]]; then
-  git add -- "$log_relative"
+# The manifest is the immutable baseline committed with the QA receipt.  It is
+# rebuilt from append-only rows before that commit, so its top hash gets the
+# same third-party Git timestamp as the day's QA evidence.
+docker compose exec -T worker \
+  python /app/scripts/verify_altdata_chain.py \
+  --write-manifest \
+  --manifest /app/reports/altdata_chain_manifest.json \
+  --report /app/reports/altdata_chain_verify.json
+
+chain_manifest_relative=reports/altdata_chain_manifest.json
+chain_verify_relative=reports/altdata_chain_verify.json
+if [[ -n "$(git status --porcelain -- "$log_relative" "$chain_manifest_relative" "$chain_verify_relative")" ]]; then
+  git add -- "$log_relative" "$chain_manifest_relative" "$chain_verify_relative"
   qa_date="$(date -u +%F)"
-  git commit --only -m "qa(altdata): daily receipt $qa_date" -- "$log_relative"
+  git commit --only -m "qa(altdata): daily receipt $qa_date" -- "$log_relative" "$chain_manifest_relative" "$chain_verify_relative"
 fi
 
 if git push origin HEAD:main; then
@@ -41,8 +52,8 @@ else
   exit "$push_status"
 fi
 
-if [[ -n "$(git status --porcelain -- "$log_relative")" ]]; then
-  echo "QA log remains uncommitted after persistence attempt"
+if [[ -n "$(git status --porcelain -- "$log_relative" "$chain_manifest_relative" "$chain_verify_relative")" ]]; then
+  echo "QA receipt or hash-chain evidence remains uncommitted after persistence attempt"
   exit 3
 fi
 
