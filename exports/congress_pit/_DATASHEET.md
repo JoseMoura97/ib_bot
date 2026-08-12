@@ -10,12 +10,24 @@ This release has **30 daily UTC vintages**, from **2026-07-13** through
 **2026-08-11**, containing **51,967** filing-index rows.  The authoritative
 inventory is [`_manifest.json`](_manifest.json): it lists every partition,
 its row count, allowed sources, and the SHA-256 of the exact Parquet file.
-The SHA-256 of this manifest is
-`ce0247a71f6a2ab0a73e5244892dbdd688d434c7a6f48b76395c854fa944d12b`.
 
 To verify a delivery, recompute each `date=*/filing_index.parquet` SHA-256
 and compare it to its corresponding `partitions[].sha256` value in the
 manifest.  The partition name is the capture date, not a filing date.
+
+## Full archive coverage disclosure
+
+The full `altdata_snapshots` PIT archive has **29 complete days out of 30**;
+the incomplete first day, **2026-07-13**, remains in the denominator.  It is
+missing exactly `cftc_disaggregated_futures_cot` and
+`house_periodic_transaction_report_index`.  These are point-in-time gaps and
+must not be backfilled with later observations.  The same measured 29/30
+coverage and named gaps are recorded in this release's
+[`_manifest.json`](_manifest.json) and in the repository-wide coverage audit
+[`reports/altdata_coverage_audit.json`](../../reports/altdata_coverage_audit.json).
+Recalculated with
+`sha256sum exports/congress_pit/_manifest.json`, the manifest SHA-256 is
+`18266628c0fdcf20dfb64771967f35ea5878029730be7797a3693f3ef74fa9f4`.
 
 ## What this is
 

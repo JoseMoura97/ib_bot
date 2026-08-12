@@ -1,4 +1,18 @@
 {
+  "archive_coverage": {
+    "coverage_ratio": "29/30",
+    "days_with_all_sources": 29,
+    "incomplete_days": [
+      {
+        "date": "2026-07-13",
+        "missing_sources": [
+          "cftc_disaggregated_futures_cot",
+          "house_periodic_transaction_report_index"
+        ]
+      }
+    ],
+    "total_days": 30
+  },
   "allowed_sources": [
     "house_financial_disclosure_index",
     "house_periodic_transaction_report_index"

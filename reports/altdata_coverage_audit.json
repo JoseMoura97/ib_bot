@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "generated_at_utc": "2026-08-12T05:39:56Z",
+  "measurement": {
+    "table": "altdata_snapshots",
+    "day_definition": "captured_at::date",
+    "expected_sources": [
+      "cftc_disaggregated_futures_cot",
+      "finra_offexchange_short_volume",
+      "fred_market_regime",
+      "house_financial_disclosure_index",
+      "house_periodic_transaction_report_index",
+      "iron_wing_equity_daily_bars",
+      "nasdaq_symbol_directory",
+      "sec_13f_berkshire_hathaway",
+      "sec_13f_scion_asset_management",
+      "sec_daily_material_filings",
+      "usaspending_recent_contract_awards"
+    ]
+  },
+  "total_days": 30,
+  "days_with_all_sources": 29,
+  "coverage_ratio": "29/30",
+  "incomplete_days": [
+    {
+      "date": "2026-07-13",
+      "missing_sources": [
+        "cftc_disaggregated_futures_cot",
+        "house_periodic_transaction_report_index"
+      ]
+    }
+  ]
+}
