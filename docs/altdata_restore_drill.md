@@ -24,6 +24,25 @@ The two `EXCEPT` directions must both be zero: the command above checks rows in
 the restored copy absent from the live copy; repeat with the SELECT sides
 reversed to check the live copy has no extra row.
 
+## Out-of-band correction path
+
+The running API, worker, and beat use `ibbot_app`, which intentionally cannot
+execute `apply_altdata_snapshot_correction` or write the correction ledger.
+Exceptional corrections are performed out-of-band by an operator using the
+`ibbot` migration/admin credential, with a non-empty actor and reason:
+
+```sql
+SELECT apply_altdata_snapshot_correction(
+  <snapshot_id>, <n_rows>, '<content_hash>', '<payload>'::jsonb,
+  '<reason>', '<operator>'
+);
+```
+
+Run this only through the controlled admin procedure, retain the psql/audit
+receipt, and verify the resulting correction row and hash-chain check. Never
+put the admin URL in a service container or change the application role to
+restore this capability.
+
 ## Latest verified drill
 
 Executed 2026-08-11 from the committed offsite archive
