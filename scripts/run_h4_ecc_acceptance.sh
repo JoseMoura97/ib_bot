@@ -134,8 +134,8 @@ receipt = {
             "exit_code": 1,
             "literal_error": tamper["error"],
             "tampered_days": tamper["tampered_days"],
-            "manifest_sha256_before": before,
-            "manifest_sha256_after": after,
+    "manifest_sha256_before": str(before),
+    "manifest_sha256_after": str(after),
             "baseline_preserved": True,
         },
         "live_chain": {
