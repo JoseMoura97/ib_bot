@@ -68,7 +68,7 @@ test "$scratch_baseline_before" = "$scratch_baseline_after"
 # The existing final runner performs the live service-credential gate and the
 # chain verification.  Keep its full output as the auditable source for the
 # literal PostgreSQL errors stored in the receipt below.
-./scripts/run_h4_final_acceptance.sh 2>&1 | tee "$RUN_LOG"
+bash ./scripts/run_h4_final_acceptance.sh 2>&1 | tee "$RUN_LOG"
 
 python3 - "$RECEIPT" "$RUN_LOG" "$scratch_report" "$tested_sha" \
   "$CRITICAL_FIX_SHA" "$scratch_baseline_before" "$scratch_baseline_after" <<'PY'
