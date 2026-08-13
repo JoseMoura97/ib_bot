@@ -1,7 +1,7 @@
 {
   "archive_coverage": {
-    "coverage_ratio": "30/31",
-    "days_with_all_sources": 30,
+    "coverage_ratio": "31/32",
+    "days_with_all_sources": 31,
     "incomplete_days": [
       {
         "date": "2026-07-13",
@@ -11,7 +11,7 @@
         ]
       }
     ],
-    "total_days": 31
+    "total_days": 32
   },
   "allowed_sources": [
     "house_financial_disclosure_index",

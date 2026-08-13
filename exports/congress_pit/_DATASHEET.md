@@ -17,17 +17,17 @@ manifest.  The partition name is the capture date, not a filing date.
 
 ## Full archive coverage disclosure
 
-The full `altdata_snapshots` PIT archive has **30 complete days out of 31**;
+The full `altdata_snapshots` PIT archive has **31 complete days out of 32**;
 the incomplete first day, **2026-07-13**, remains in the denominator.  It is
 missing exactly `cftc_disaggregated_futures_cot` and
 `house_periodic_transaction_report_index`.  These are point-in-time gaps and
-must not be backfilled with later observations.  The same measured 30/31
+must not be backfilled with later observations.  The same measured 31/32
 coverage and named gaps are recorded in this release's
 [`_manifest.json`](_manifest.json) and in the repository-wide coverage audit
 [`reports/altdata_coverage_audit.json`](../../reports/altdata_coverage_audit.json).
 Recalculated with
 `sha256sum exports/congress_pit/_manifest.json`, the manifest SHA-256 is
-`76f59c9b95f62c059c86b25f19f30f1595bfc9db5be949a2d05d5a55adbd14d2`.
+`3b63c268c464a35570de58917b074df90cbb86d7a35b9e2bcbf4bbf13abb3a81`.
 
 ## What this is
 

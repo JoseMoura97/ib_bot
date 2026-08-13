@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at_utc": "2026-08-12T07:10:49Z",
+  "generated_at_utc": "2026-08-13T07:18:14Z",
   "measurement": {
     "table": "altdata_snapshots",
     "day_definition": "captured_at::date",
@@ -18,9 +18,9 @@
       "usaspending_recent_contract_awards"
     ]
   },
-  "total_days": 31,
-  "days_with_all_sources": 30,
-  "coverage_ratio": "30/31",
+  "total_days": 32,
+  "days_with_all_sources": 31,
+  "coverage_ratio": "31/32",
   "incomplete_days": [
     {
       "date": "2026-07-13",
