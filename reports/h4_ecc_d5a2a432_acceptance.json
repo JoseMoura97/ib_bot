@@ -1,0 +1,70 @@
+{
+  "acceptance": "H4 ECC d5a2a432 fresh acceptance",
+  "completed_at_utc": "2026-08-13T12:03:53.605661+00:00",
+  "critical_fix_sha": "ff5ee6c49f007a6121a8bb5d95df750e600e3e4c",
+  "gates": {
+    "extend_tamper_refusal": {
+      "baseline_preserved": true,
+      "command": "verify_altdata_chain.py --extend against an altered disposable copy",
+      "exit_code": 1,
+      "literal_error": "refusing to extend/write manifest: previously-committed day(s) no longer verify against the baseline on disk: ['2026-07-13', '2026-07-14', '2026-07-15', '2026-07-16', '2026-07-17', '2026-07-18', '2026-07-19', '2026-07-20', '2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25', '2026-07-26', '2026-07-27', '2026-07-28', '2026-07-29', '2026-07-30', '2026-07-31', '2026-08-01', '2026-08-02', '2026-08-03', '2026-08-04', '2026-08-05', '2026-08-06', '2026-08-07', '2026-08-08', '2026-08-09', '2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13']",
+      "manifest_sha256_after": "b3e0a5c3dcda1176a77d26bf0d3d854c1df787160aa3031e770882489022d735",
+      "manifest_sha256_before": "b3e0a5c3dcda1176a77d26bf0d3d854c1df787160aa3031e770882489022d735",
+      "status": "pass",
+      "tampered_days": [
+        "2026-07-13",
+        "2026-07-14",
+        "2026-07-15",
+        "2026-07-16",
+        "2026-07-17",
+        "2026-07-18",
+        "2026-07-19",
+        "2026-07-20",
+        "2026-07-21",
+        "2026-07-22",
+        "2026-07-23",
+        "2026-07-24",
+        "2026-07-25",
+        "2026-07-26",
+        "2026-07-27",
+        "2026-07-28",
+        "2026-07-29",
+        "2026-07-30",
+        "2026-07-31",
+        "2026-08-01",
+        "2026-08-02",
+        "2026-08-03",
+        "2026-08-04",
+        "2026-08-05",
+        "2026-08-06",
+        "2026-08-07",
+        "2026-08-08",
+        "2026-08-09",
+        "2026-08-10",
+        "2026-08-11",
+        "2026-08-12",
+        "2026-08-13"
+      ]
+    },
+    "live_chain": {
+      "chained_valid_days": 32,
+      "negative_test_detected": true,
+      "report_sha256": "6fd28bf4a7c8df9d481989204816387b5df0c4a4973617c3697e541a635460ae",
+      "status": "pass",
+      "top_manifest_hash": "f173ec53623d160e18660e744266453c9b5eb56934d3edc143d569b9c0abfe6e",
+      "total_days": 32
+    },
+    "live_privilege_boundary": {
+      "raw_delete": "[neg] raw-delete: REJECTED :: psql:<stdin>:2: ERROR:  permission denied for table altdata_snapshots",
+      "raw_update": "[neg] raw-update: REJECTED :: psql:<stdin>:2: ERROR:  permission denied for table altdata_snapshots",
+      "status": "pass"
+    }
+  },
+  "source_sha256": {
+    "scripts/altdata_privilege_gate.py": "db74a7b801c85e01e9d376fe13f6d992c10f9e57a979dd3a9b2830c084a1b406",
+    "scripts/run_h4_ecc_acceptance.sh": "a9d446f3d28c0384ea2f422dfa755dfcaa9e1cd3fd7ae539b2dbb6b764e28d91",
+    "scripts/run_h4_final_acceptance.sh": "1bf203b7646c5d9fba681b03e9359b9b58dedaf59dd9c20f82a78f41f5a6b32d",
+    "scripts/verify_altdata_chain.py": "b4c6eca6eec5bbf49f4bb25d2d6d3103234dfd82f1bef84a2bc76bf16eece95b"
+  },
+  "tested_git_sha": "8355d92c3e726a0a2951a173b98e76aa3edf45e1"
+}
