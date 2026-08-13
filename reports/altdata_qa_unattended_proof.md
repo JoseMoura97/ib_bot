@@ -240,8 +240,8 @@ because no invocation outside the exact `08:00:00–08:00:59 WEST` window counts
 ```sh
 for day in 2026-08-14 2026-08-15 2026-08-16; do
   window="$(journalctl -u ib-altdata-qa.service --since "$day 08:00:00" --until "$day 08:01:00" --no-pager -o short-iso)"
-  grep -q 'Starting ib-altdata-qa.service - IB Bot daily versioned QA for altdata_snapshots' <<<"$window" &&
-  grep -q 'Finished ib-altdata-qa.service - IB Bot daily versioned QA for altdata_snapshots' <<<"$window" &&
+  [ "$(grep -c 'Starting ib-altdata-qa.service - IB Bot daily versioned QA for altdata_snapshots' <<<"$window")" -eq 1 ] &&
+  [ "$(grep -c 'Finished ib-altdata-qa.service - IB Bot daily versioned QA for altdata_snapshots' <<<"$window")" -eq 1 ] &&
   ! grep -qE 'Main process exited.*status=[1-9]|Failed with result' <<<"$window" || exit 1
 done
 ```
