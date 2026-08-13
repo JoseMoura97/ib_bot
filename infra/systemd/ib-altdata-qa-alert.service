@@ -12,5 +12,9 @@ User=servidor
 # event (cli.py:434-436); the DM still sees the alert in the notifications feed. Measured on the
 # 2026-08-12 00:03:41 WEST negative test: event delivered in 1s, unit then timed out at 00:05:42
 # having burned 24.9s CPU / 420MB. Never run an agent turn synchronously from an OnFailure unit.
-ExecStart=/usr/local/bin/conductor api-failure --project ib_bot --service altdata-qa --detail "Daily alt-data QA failed or its git receipt was not persisted" --hint "Inspect journalctl -u ib-altdata-qa.service and reports/altdata_qa_daily.jsonl" --cooldown-min 720 --notify-only
+# This is the sole systemd failure hook for a daily, stateful receipt.  Do not
+# coalesce it with a prior synthetic test or an earlier day's failure: doing so
+# hid the genuine 2026-08-13 08:00 UTC QA failure.  Systemd invokes OnFailure
+# once per failed unit activation, so no cooldown is needed for this path.
+ExecStart=/usr/local/bin/conductor api-failure --project ib_bot --service altdata-qa --detail "Daily alt-data QA failed or its git receipt was not persisted" --hint "Inspect journalctl -u ib-altdata-qa.service and reports/altdata_qa_daily.jsonl" --cooldown-min 0 --notify-only
 TimeoutStartSec=120

@@ -91,3 +91,59 @@ grep -q '^OnFailure=ib-altdata-qa-alert.service$' /etc/systemd/system/ib-altdata
 test -f /home/servidor/Desktop/cursor-projects/ib_bot/reports/altdata_qa_unattended_proof.md && \
 [ "$(journalctl -u ib-altdata-qa.service --since '-4 days' --no-pager | grep -c 'Finished ib-altdata-qa.service - IB Bot daily versioned QA for altdata_snapshots')" -ge 3 ]
 ```
+
+## Re-check live 2026-08-13 — fase ainda não concluída
+
+O anterior bloco de fecho não é suficiente. A unit e o timer continuam
+correctamente instalados, mas o primeiro disparo autónomo de 2026-08-13 falhou
+antes de um agente reconstruir a imagem Docker e o voltar a iniciar. Esse
+segundo arranque é deliberadamente excluído da métrica de operação sem agente.
+
+```text
+2026-08-13T08:00:00+01:00 Starting ib-altdata-qa.service
+2026-08-13T08:00:07+01:00 Main process exited, status=2/INVALIDARGUMENT
+verify_altdata_chain.py: error: unrecognized arguments: --extend
+
+2026-08-13T08:14:24+01:00 Starting ib-altdata-qa.service
+2026-08-13T08:14:35+01:00 [main eb2d6f9] qa(altdata): daily receipt 2026-08-13
+2026-08-13T08:14:38+01:00 Finished ib-altdata-qa.service
+```
+
+A causa foi a imagem `worker` ainda anterior ao parser `--extend`; a execução
+verde às 08:14 foi manual após o rebuild, pelo que o streak autónomo é **0** e
+tem de reiniciar nos disparos do timer de 2026-08-14, 2026-08-15 e
+2026-08-16 às 08:00 WEST.
+
+O `OnFailure` também revelou um defeito real: às 08:00 a service de alerta
+arrancou, mas a notificação foi suprimida porque o teste negativo das 02:17
+tinha ocupado a cooldown de 720 minutos:
+
+```text
+events: 2026-08-13 02:17:37 notify:api_failure ib_bot/altdata-qa
+events: 2026-08-13 08:00:08 notify:api_failure_suppressed ib_bot/altdata-qa
+```
+
+O ficheiro versionado `infra/systemd/ib-altdata-qa-alert.service` corrige a
+causa: usa `--cooldown-min 0 --notify-only`. Cada activação falhada do QA tem
+um único `OnFailure` do systemd, mas já não pode ser ocultada por um alerta de
+teste ou por uma falha de outro dia.
+
+O worker não tem privilégio para instalar essa alteração (a preflight devolve
+`sudo: The "no new privileges" flag is set`). O worktree já contém o commit
+versionado; o operador privilegiado deve executar exactamente a partir dele:
+
+```sh
+cd /home/servidor/Desktop/cursor-projects/ib_bot/.worktrees/phase-h3_unattended_operation-b331
+sudo install -m 0644 infra/systemd/ib-altdata-qa-alert.service /etc/systemd/system/ib-altdata-qa-alert.service
+sudo systemctl daemon-reload
+/usr/local/bin/conductor api-failure --project ib_bot --service altdata-qa --detail "h3 controlled cooldown seed" --hint "controlled test only" --cooldown-min 720 --notify-only
+sudo systemd-run --unit=ib-altdata-qa-negtest-cooldown-20260813 --property=OnFailure=ib-altdata-qa-alert.service --wait /bin/false || test $? -eq 1
+journalctl --since '2026-08-13 00:00:00' --no-pager -o short-iso | grep -E 'ib-altdata-qa-negtest-cooldown-20260813|ib-altdata-qa-alert|api-failure'
+sudo systemctl reset-failed ib-altdata-qa-negtest-cooldown-20260813
+```
+
+The required positive result is the controlled service exiting `1/FAILURE`,
+`Triggering OnFailure= dependencies`, a fresh `api-failure logged (notify-only)
+-> ib_bot: ib_bot/altdata-qa` after the cooldown seed, and
+`ib-altdata-qa-alert.service Result=success ExecMainStatus=0`. This test is
+not complete until those literal journal lines are pasted here.
