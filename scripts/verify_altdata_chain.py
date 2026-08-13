@@ -183,6 +183,42 @@ def negative_copy_test(conn: psycopg.Connection, expected: dict[str, Any]) -> di
     }
 
 
+class ChainTamperError(RuntimeError):
+    """Raised when a day already present in the committed baseline no longer matches.
+
+    This is the security-relevant failure mode: it means a retroactive rewrite
+    happened between two runs of this script.
+    """
+
+    def __init__(self, tampered_days: list[str], verify_result: dict[str, Any]) -> None:
+        super().__init__(
+            f"refusing to extend/write manifest: previously-committed day(s) no longer "
+            f"verify against the baseline on disk: {tampered_days}"
+        )
+        self.tampered_days = tampered_days
+        self.verify_result = verify_result
+
+
+def extend_manifest(old_baseline: dict[str, Any], actual_days: list[dict[str, Any]]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Verify every day already committed to ``old_baseline``, then extend it.
+
+    The committed manifest on disk -- never the just-recomputed data -- is the
+    source of truth for days it already covers.  Only after every one of those
+    days is confirmed unchanged is it safe to adopt the freshly rebuilt chain
+    (which now also includes any brand-new day(s)) as the new baseline.  A
+    caller must never write ``actual_days`` as the baseline before this check;
+    that would compare the database against itself and could never detect a
+    retroactive rewrite.
+    """
+    old_dates = {item["as_of_date"] for item in old_baseline.get("days", [])}
+    pre_result = verify(old_baseline, actual_days) if old_dates else {"invalid_days": []}
+    tampered = [day for day in pre_result["invalid_days"] if day in old_dates]
+    if tampered:
+        raise ChainTamperError(tampered, pre_result)
+    new_baseline = manifest_document(actual_days)
+    return new_baseline, pre_result
+
+
 def read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -216,23 +252,67 @@ def main() -> int:
     parser.add_argument("--table", default="altdata_snapshots")
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
     parser.add_argument("--report", type=Path, default=DEFAULT_REPORT)
-    parser.add_argument("--write-manifest", action="store_true")
+    parser.add_argument(
+        "--bootstrap",
+        action="store_true",
+        help="Create the manifest for the first time. Refuses if one already exists on disk.",
+    )
+    parser.add_argument(
+        "--extend",
+        action="store_true",
+        help=(
+            "Verify every day already committed to the manifest on disk against live data, "
+            "then append any new day(s) not yet chained. Refuses to write anything if a "
+            "previously-committed day no longer verifies -- this is the only supported way "
+            "new days are added; the manifest is never regenerated from current rows before "
+            "that check."
+        ),
+    )
     parser.add_argument("--negative-test", action="store_true")
     args = parser.parse_args()
     if not args.database_url:
         parser.error("--database-url or DATABASE_URL is required")
+    if args.bootstrap and args.extend:
+        parser.error("--bootstrap and --extend are mutually exclusive")
 
     with psycopg.connect(psycopg_url(args.database_url)) as conn:
         actual_days = build_days(fetch_rows(conn, args.table))
-        if args.write_manifest:
-            expected = manifest_document(actual_days)
-            write_json(args.manifest, expected)
+
+        if args.bootstrap:
+            if args.manifest.exists():
+                raise SystemExit(
+                    f"refusing --bootstrap: manifest already exists at {args.manifest} -- "
+                    "use --extend to add new days without regenerating the committed baseline"
+                )
+            baseline = manifest_document(actual_days)
+            write_json(args.manifest, baseline)
         elif not args.manifest.exists():
-            raise FileNotFoundError(f"baseline manifest does not exist: {args.manifest}")
+            raise FileNotFoundError(
+                f"baseline manifest does not exist: {args.manifest} -- run once with --bootstrap "
+                "to create it"
+            )
+        elif args.extend:
+            old_baseline = read_json(args.manifest)
+            try:
+                baseline, _pre_result = extend_manifest(old_baseline, actual_days)
+            except ChainTamperError as exc:
+                failure_report = {
+                    "schema_version": 1,
+                    "verified_at_utc": datetime.now(timezone.utc).isoformat(),
+                    "error": str(exc),
+                    "tampered_days": exc.tampered_days,
+                    **exc.verify_result,
+                }
+                write_json(args.report, failure_report)
+                print(json.dumps(failure_report, indent=2, sort_keys=True))
+                print(str(exc), file=sys.stderr)
+                return 1
+            write_json(args.manifest, baseline)
         else:
-            expected = read_json(args.manifest)
-        result = verify(expected, actual_days)
-        negative = negative_copy_test(conn, expected) if args.negative_test else prior_negative_proof(args.report)
+            baseline = read_json(args.manifest)
+
+        result = verify(baseline, actual_days)
+        negative = negative_copy_test(conn, baseline) if args.negative_test else prior_negative_proof(args.report)
 
     report = {
         "schema_version": 1,

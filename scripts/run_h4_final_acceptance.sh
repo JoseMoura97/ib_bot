@@ -23,11 +23,14 @@ docker compose up -d --no-deps beat
 sleep 5
 
 python3 scripts/altdata_privilege_gate.py
+# --extend verifies every day already committed to reports/altdata_chain_manifest.json
+# against live data FIRST, and only appends new day(s) if that check is clean.  It
+# never regenerates the baseline from current rows before verifying.
 docker compose exec -T worker python /app/scripts/verify_altdata_chain.py \
-  --write-manifest --negative-test \
+  --extend --negative-test \
   --manifest /app/reports/altdata_chain_manifest.json \
   --report /app/reports/altdata_chain_verify.json
-jq -e '.total_days==30 and .chained_valid_days==.total_days and .negative_test_detected==true' \
+jq -e '.total_days>=30 and .chained_valid_days==.total_days and .negative_test_detected==true' \
   reports/altdata_chain_verify.json >/dev/null
 
 printf '0 %s\n' "$(date -u +%FT%TZ)" > reports/h4_final_acceptance.success

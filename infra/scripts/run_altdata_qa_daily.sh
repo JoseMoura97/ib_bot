@@ -25,12 +25,16 @@ docker compose exec -T worker \
   --backfill-existing \
   --log-path /app/reports/altdata_qa_daily.jsonl || qa_status=$?
 
-# The manifest is the immutable baseline committed with the QA receipt.  It is
-# rebuilt from append-only rows before that commit, so its top hash gets the
-# same third-party Git timestamp as the day's QA evidence.
+# The manifest already committed on disk is the immutable baseline.  --extend
+# verifies every day it already covers against live data FIRST; only if that
+# passes does it append today's new day(s) and rewrite the manifest, so its top
+# hash gets the same third-party Git timestamp as the day's QA evidence.  A
+# retroactive rewrite of an already-committed day makes this step refuse to
+# write and exit non-zero instead of silently absorbing the change into a
+# freshly regenerated baseline.
 docker compose exec -T worker \
   python /app/scripts/verify_altdata_chain.py \
-  --write-manifest \
+  --extend \
   --manifest /app/reports/altdata_chain_manifest.json \
   --report /app/reports/altdata_chain_verify.json
 
