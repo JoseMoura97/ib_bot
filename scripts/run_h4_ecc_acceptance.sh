@@ -22,6 +22,9 @@ test "$(sha256sum scripts/altdata_privilege_gate.py | cut -d' ' -f1)" = "$PRIVIL
 scratch_manifest="$(mktemp reports/.h4_ecc_manifest.XXXXXX.json)"
 scratch_report="$(mktemp reports/.h4_ecc_report.XXXXXX.json)"
 scratch_baseline_before=""
+# --bootstrap deliberately refuses an existing file.  Reserve an unpredictable
+# name, then remove that empty placeholder before the verifier creates it.
+rm -f "$scratch_manifest"
 
 cleanup() {
   docker compose exec -T db psql -U ibbot -d ibbot -v ON_ERROR_STOP=1 -c \
