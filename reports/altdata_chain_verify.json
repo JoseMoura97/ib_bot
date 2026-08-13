@@ -1,6 +1,6 @@
 {
-  "baseline_top_manifest_hash": "18db25f55a60201e0002fac06bc559cae0afa5cc3c6d362085b165edba323dcb",
-  "chained_valid_days": 31,
+  "baseline_top_manifest_hash": "f173ec53623d160e18660e744266453c9b5eb56934d3edc143d569b9c0abfe6e",
+  "chained_valid_days": 32,
   "days": [
     {
       "actual_manifest_hash": "09f3d0cc89cff09ee2edd5e258b606cad42e3fe2e2a9b3afd57f47746f171eb9",
@@ -218,6 +218,13 @@
       "expected_manifest_hash": "18db25f55a60201e0002fac06bc559cae0afa5cc3c6d362085b165edba323dcb",
       "source_hashes_ok": true,
       "valid": true
+    },
+    {
+      "actual_manifest_hash": "f173ec53623d160e18660e744266453c9b5eb56934d3edc143d569b9c0abfe6e",
+      "as_of_date": "2026-08-13",
+      "expected_manifest_hash": "f173ec53623d160e18660e744266453c9b5eb56934d3edc143d569b9c0abfe6e",
+      "source_hashes_ok": true,
+      "valid": true
     }
   ],
   "invalid_days": [],
@@ -263,7 +270,7 @@
   },
   "negative_test_detected": true,
   "schema_version": 1,
-  "top_manifest_hash": "18db25f55a60201e0002fac06bc559cae0afa5cc3c6d362085b165edba323dcb",
-  "total_days": 31,
-  "verified_at_utc": "2026-08-13T03:51:11.408289+00:00"
+  "top_manifest_hash": "f173ec53623d160e18660e744266453c9b5eb56934d3edc143d569b9c0abfe6e",
+  "total_days": 32,
+  "verified_at_utc": "2026-08-13T07:14:35.627340+00:00"
 }
