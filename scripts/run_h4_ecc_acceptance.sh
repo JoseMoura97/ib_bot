@@ -25,6 +25,7 @@ scratch_baseline_before=""
 # --bootstrap deliberately refuses an existing file.  Reserve an unpredictable
 # name, then remove that empty placeholder before the verifier creates it.
 rm -f "$scratch_manifest"
+rm -f "$scratch_report"
 
 cleanup() {
   docker compose exec -T db psql -U ibbot -d ibbot -v ON_ERROR_STOP=1 -c \
