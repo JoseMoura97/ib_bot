@@ -75,6 +75,33 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  # The daily archive receipt must not silently inherit whatever image happens
+  # to be running as the Celery worker. This is intentionally content-addressed
+  # so the timer fails before QA if the proven image is absent or replaced.
+  altdata_qa:
+    image: ib_bot-worker@sha256:a83feb6b322714b5ed07b6eaa4e3407f543be70628948f25339baa27f1369f54
+    environment:
+      DATABASE_URL: postgresql+psycopg://ibbot_app:ibbot_app@db:5432/ibbot
+      REDIS_URL: redis://redis:6379/0
+      QUIVER_API_KEY: ${QUIVER_API_KEY-}
+      USE_13F_FILED_DATES: "1"
+      SEC_13F_OPTIONS_MODE: filter
+      IB_HOST: ${IB_HOST-host.docker.internal}
+      IB_PORT: ${IB_PORT-4001}
+      PRICE_SOURCE: ${PRICE_SOURCE-ib}
+      IB_WHAT_TO_SHOW: ${IB_WHAT_TO_SHOW-ADJUSTED_LAST}
+      LIVE_FRACTIONAL_SHARES: ${LIVE_FRACTIONAL_SHARES-false}
+      LIVE_FRACTIONAL_DECIMALS: ${LIVE_FRACTIONAL_DECIMALS-4}
+      LIVE_MIN_LEG_USD: ${LIVE_MIN_LEG_USD-1.0}
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./.cache:/app/.cache
+      - ./reports:/app/reports
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
   beat:
     restart: unless-stopped
     build:
