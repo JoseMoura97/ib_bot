@@ -35,3 +35,12 @@ def test_qa_entrypoint_requires_the_pinned_image_before_writing_a_receipt():
     assert "verify_altdata_chain.py --help" in script
     assert "GIT_TERMINAL_PROMPT=0 git ls-remote" in script
     assert "altdata_qa_runtime_receipts.jsonl" in script
+
+
+def test_h3_soak_restarts_from_the_first_pinned_image_timer_window():
+    soak = (REPO_ROOT / "infra/scripts/verify_h3_soak.sh").read_text()
+
+    assert 'DATES=("2026-08-16" "2026-08-17" "2026-08-18")' in soak
+    assert "altdata_qa_runtime_receipts.jsonl" in soak
+    assert "WRONG_IMAGE" in soak
+    assert "OUTSIDE_TIMER_WINDOW" in soak

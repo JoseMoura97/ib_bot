@@ -15,6 +15,7 @@ if ! flock -n 9; then
 fi
 
 cd "$project_root"
+run_started_at_utc="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 branch_name="$(git symbolic-ref --quiet --short HEAD || true)"
 if [[ "$branch_name" != "main" ]]; then
   echo "refusing QA receipt commit outside main (current=$branch_name)"
@@ -67,8 +68,8 @@ docker compose run --rm --no-deps "$qa_service" \
 chain_manifest_relative=reports/altdata_chain_manifest.json
 chain_verify_relative=reports/altdata_chain_verify.json
 qa_date="$(date -u +%F)"
-printf '{"qa_date":"%s","worker_image":"%s","worker_image_digest":"%s","extend_cli_verified":true,"noninteractive_origin_verified":true,"preflight_at_utc":"%s"}\n' \
-  "$qa_date" "$qa_image" "$qa_digest" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$runtime_receipt_relative"
+printf '{"qa_date":"%s","worker_image":"%s","worker_image_digest":"%s","extend_cli_verified":true,"noninteractive_origin_verified":true,"started_at_utc":"%s","preflight_at_utc":"%s"}\n' \
+  "$qa_date" "$qa_image" "$qa_digest" "$run_started_at_utc" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$runtime_receipt_relative"
 if [[ -n "$(git status --porcelain -- "$log_relative" "$chain_manifest_relative" "$chain_verify_relative" "$runtime_receipt_relative")" ]]; then
   git add -- "$log_relative" "$chain_manifest_relative" "$chain_verify_relative" "$runtime_receipt_relative"
   git commit --only -m "qa(altdata): daily receipt $qa_date" -- "$log_relative" "$chain_manifest_relative" "$chain_verify_relative" "$runtime_receipt_relative"
