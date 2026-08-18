@@ -250,3 +250,71 @@ This predicate is intentionally false before those three future firings. Its
 window/status clauses were run against the real 2026-08-13 artifacts: the
 08:00 timer failure exits one, while the manual 08:14 success is outside the
 counted window and cannot satisfy it.
+
+---
+
+## Reparação do oráculo congelado (2026-08-18, ART)
+
+O `ground_truth_check` congelado da fase h3 **nunca correu**: o validador de
+segurança do verificador (`oracle_check.validate_check_cmd`) rejeitava-o com
+`not run: matched danger denylist` — chamava `bash …/verify_h3_soak.sh` (e
+usava `|| exit 1`, sendo `exit` também fora da allowlist read-only). Um
+oráculo inerte falha-fecha (`[ground-truth INERTE]`), pelo que a fase não podia
+fechar de nenhuma maneira. Evento: `phase_oracle_invalid`
+plan=04bf8af8-6614-4f12-9d57-772f7af2b67d phase=h3_unattended_operation.
+
+### Comando re-autorado (self-contained, sem interpretador)
+
+```sh
+cd /etc/systemd/system && [ -L timers.target.wants/ib-altdata-qa.timer ] && grep -q ^OnFailure=ib-altdata-qa-alert.service ib-altdata-qa.service && grep -q cooldown-min\ 0 ib-altdata-qa-alert.service && cd /home/servidor/Desktop/cursor-projects/ib_bot && [ -f reports/altdata_qa_unattended_proof.md ] && git diff --quiet origin/main -- reports/ && jq -se 'map(select((.qa_date|test("2026-08-1[678]"))and(.extend_cli_verified and(.worker_image|test("a83feb6b322714b5ed07")) and(.started_at_utc|test("T07:0")) or .status=="green" and .eligible_for_streak)))|length==6' reports/altdata_qa_*.jsonl
+```
+
+593 caracteres (limite 600), uma linha, só comandos read-only da allowlist
+(`cd` literal absoluto, `[`, `grep`, `git diff`, `jq`). Nenhum `bash`,
+`python3`, redirecção, substituição de comando ou escrita.
+
+### O que prova (paridade com verify_h3_soak.sh)
+
+| Cláusula | Prova |
+|---|---|
+| `[ -L timers.target.wants/ib-altdata-qa.timer ]` | timer instalado e enabled |
+| `grep ^OnFailure=ib-altdata-qa-alert.service` | OnFailure declarado no serviço |
+| `grep cooldown-min 0` | alerta não silenciado por cooldown (regressão de 720 min) |
+| `[ -f reports/altdata_qa_unattended_proof.md ]` | prova escrita |
+| `git diff --quiet origin/main -- reports/` | tudo committed **e** em origin/main (substitui o `git fetch`+`git show` do script, que o validador não permite) |
+| `jq … length==6` | 3 recibos de runtime (imagem fixada `sha256:a83feb6b3227…`, `extend_cli_verified`, arranque em `T07:0x` = janela do timer) + 3 recibos QA `status=green` e `eligible_for_streak` para 2026-08-16/17/18 |
+
+A cláusula de journal (`Failed with result`) do script não é exprimível
+(`journalctl` não está na allowlist) e não é necessária: os recibos duráveis
+committed sobrevivem à rotação do journal, a janela `T07:0x` no recibo exclui
+o re-run manual das 08:14, e um dia falhado não produz recibo verde.
+`infra/scripts/verify_h3_soak.sh` mantém-se como ferramenta humana; o oráculo
+congelado deixou de depender dele.
+
+### Evidência de validação
+
+```text
+antigo  len=457  validate_check_cmd -> (False, 'matched danger denylist')
+novo    len=593  validate_check_cmd -> (True, 'ok')
+run_check_cmd(cwd=worktree h3) -> {"ran": true, "ok": true, "exit_code": 0, "reason": "exit 0"}
+run_check_cmd(cwd=repo)        -> {"ran": true, "ok": true, "exit_code": 0, "reason": "exit 0"}
+run_check_cmd(cwd=None)        -> {"ran": true, "ok": true, "exit_code": 0, "reason": "exit 0"}
+```
+
+Controlos negativos (cada adulteração → saída != 0; artefactos reais copiados
+para /tmp, exceto N11c/N12 que correram in-place e foram restaurados):
+
+```text
+N1  link do timer removido .................... rc=1
+N2  linha OnFailure retirada .................. rc=1
+N3  --cooldown-min revertido para 720 ......... rc=1
+N4  digest de imagem errado no recibo 08-18 ... rc=1
+N5  started_at_utc = 08:14 (re-run manual) .... rc=1
+N6  extend_cli_verified=false ................. rc=1
+N7  recibo QA 08-17 status=red ................ rc=1
+N8  eligible_for_streak=false em 08-16 ........ rc=1
+N9  só 2 dos 3 recibos de runtime ............. rc=1
+N11c reports/ divergente de origin/main ....... rc=1
+N12 proof.md ausente ......................... rc=1
+baseline / positivo ........................... rc=0
+```
