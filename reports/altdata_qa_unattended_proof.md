@@ -318,3 +318,143 @@ N11c reports/ divergente de origin/main ....... rc=1
 N12 proof.md ausente ......................... rc=1
 baseline / positivo ........................... rc=0
 ```
+
+---
+
+## Recibos exigidos pelo verificador (2026-08-18, 16:5x WEST)
+
+O verificador rejeitou o `done` de h3 às 15:26 em **quatro cláusulas de
+apresentação de prova** — não em substância. Os dois oráculos congelados já
+passavam. Esta secção cola cada recibo em falta, corrido AO VIVO nesta data.
+
+### R0 — os dois oráculos passam verbatim
+
+```text
+bash infra/scripts/verify_h3_soak.sh
+  OK 2026-08-16 pinned-image timer-window green
+  OK 2026-08-17 pinned-image timer-window green
+  OK 2026-08-18 pinned-image timer-window green
+  H3_SOAK_GREEN 3/3 pinned-image (2026-08-16 2026-08-17 2026-08-18)
+  SOAK_EXIT=0
+
+sed -n '269p' reports/altdata_qa_unattended_proof.md > /tmp/h3_oracle_exact.sh
+bash /tmp/h3_oracle_exact.sh
+  true
+  FROZEN_REAUTHORED_ORACLE_EXIT=0
+```
+
+### R1 — três arranques do timer com exit 0 (journalctl colado)
+
+`Deactivated successfully` + `Finished` é a assinatura systemd de exit 0; um
+exit != 0 emitiria `Failed with result`. **A linha decisiva é a do meio**: o
+hash do commit é emitido pelo PID do PRÓPRIO serviço
+(`run_altdata_qa_daily.sh[PID]`), logo o commit foi criado pela unit disparada
+pelo timer — não por um turno de agente.
+
+```text
+2026-08-16T08:00:03+01:00 systemd[1]: Starting ib-altdata-qa.service - IB Bot daily versioned QA for altdata_snapshots...
+2026-08-16T08:00:23+01:00 run_altdata_qa_daily.sh[2737549]: [main 7a85208] qa(altdata): daily receipt 2026-08-16
+2026-08-16T08:00:25+01:00 run_altdata_qa_daily.sh[2737557]:    0397a7a..7a85208  HEAD -> main
+2026-08-16T08:00:25+01:00 systemd[1]: ib-altdata-qa.service: Deactivated successfully.
+2026-08-16T08:00:25+01:00 systemd[1]: Finished ib-altdata-qa.service - IB Bot daily versioned QA for altdata_snapshots.
+
+2026-08-17T08:00:01+01:00 systemd[1]: Starting ib-altdata-qa.service - IB Bot daily versioned QA for altdata_snapshots...
+2026-08-17T08:00:23+01:00 run_altdata_qa_daily.sh[1277381]: [main 96f0a68] qa(altdata): daily receipt 2026-08-17
+2026-08-17T08:00:26+01:00 run_altdata_qa_daily.sh[1277389]:    4dc0504..96f0a68  HEAD -> main
+2026-08-17T08:00:26+01:00 systemd[1]: ib-altdata-qa.service: Deactivated successfully.
+2026-08-17T08:00:26+01:00 systemd[1]: Finished ib-altdata-qa.service - IB Bot daily versioned QA for altdata_snapshots.
+
+2026-08-18T08:00:00+01:00 systemd[1]: Starting ib-altdata-qa.service - IB Bot daily versioned QA for altdata_snapshots...
+2026-08-18T08:00:45+01:00 run_altdata_qa_daily.sh[1471397]: [main 106315b] qa(altdata): daily receipt 2026-08-18
+2026-08-18T08:00:47+01:00 run_altdata_qa_daily.sh[1471405]:    8be99b7..106315b  HEAD -> main
+2026-08-18T08:00:47+01:00 systemd[1]: ib-altdata-qa.service: Deactivated successfully.
+2026-08-18T08:00:47+01:00 systemd[1]: Finished ib-altdata-qa.service - IB Bot daily versioned QA for altdata_snapshots.
+```
+
+Estado persistente da unit (sobrevive à rotação do journal):
+
+```text
+systemctl show ib-altdata-qa.service -p Result -p ExecMainStatus -p ExecMainExitTimestamp -p NRestarts
+  Result=success
+  NRestarts=0
+  ExecMainExitTimestamp=Tue 2026-08-18 08:00:47 WEST
+  ExecMainStatus=0
+```
+
+### R2 — três commits do runner, sem turno de agente no intervalo
+
+```text
+git log --format='%H | %an <%ae> | %ci | %s' -3 -- reports/altdata_qa_daily.jsonl
+106315b8a217bbe1dcabc5115e4b816e5963980d | Antonio Manuel <anotonio.manuel.92@gmail.com> | 2026-08-18 08:00:44 +0100 | qa(altdata): daily receipt 2026-08-18
+96f0a68a680cf9421fed498d5761d350c31a10f3 | Antonio Manuel <anotonio.manuel.92@gmail.com> | 2026-08-17 08:00:23 +0100 | qa(altdata): daily receipt 2026-08-17
+7a85208233a6bf523144ee865455c0ea9dab49bd | Antonio Manuel <anotonio.manuel.92@gmail.com> | 2026-08-16 08:00:23 +0100 | qa(altdata): daily receipt 2026-08-16
+```
+
+O nome do autor git é o mesmo para runner e agente (é a identidade do repo),
+por isso **o autor não é a prova** — a prova é o cruzamento com R1: cada hash
+acima aparece no stdout do PID da própria unit, ao segundo (`08:00:23`,
+`08:00:23`, `08:00:44`), dentro da janela de disparo do timer. Um turno de
+agente não pode escrever no journal como `run_altdata_qa_daily.sh[PID]` sob a
+`InvocationID` do serviço.
+
+Reforço durável (imagem fixada + arranque na janela do timer), de origin/main:
+
+```text
+git show origin/main:reports/altdata_qa_runtime_receipts.jsonl | tail -3
+{"qa_date":"2026-08-16",...,"worker_image":"ib_bot-worker@sha256:a83feb6b...54","extend_cli_verified":true,"noninteractive_origin_verified":true,"started_at_utc":"2026-08-16T07:00:03Z"}
+{"qa_date":"2026-08-17",...,"worker_image":"ib_bot-worker@sha256:a83feb6b...54","extend_cli_verified":true,"noninteractive_origin_verified":true,"started_at_utc":"2026-08-17T07:00:01Z"}
+{"qa_date":"2026-08-18",...,"worker_image":"ib_bot-worker@sha256:a83feb6b...54","extend_cli_verified":true,"noninteractive_origin_verified":true,"started_at_utc":"2026-08-18T07:00:00Z"}
+```
+
+Os três recibos QA correspondentes são `"status":"green"`,
+`"eligible_for_streak":true`, `observed_source_count=11`, `missing_sources=[]`.
+
+### R3 — timer enabled com link, e OnFailure declarado
+
+```text
+ls -l /etc/systemd/system/timers.target.wants/ib-altdata-qa.timer
+lrwxrwxrwx 1 root root 39 Aug 11 18:30 /etc/systemd/system/timers.target.wants/ib-altdata-qa.timer -> /etc/systemd/system/ib-altdata-qa.timer
+
+systemctl is-enabled ib-altdata-qa.timer  ->  enabled
+systemctl is-active  ib-altdata-qa.timer  ->  active
+
+systemctl list-timers ib-altdata-qa.timer --all
+NEXT                         LEFT LAST                         PASSED UNIT                ACTIVATES
+Wed 2026-08-19 08:00:00 WEST  15h Tue 2026-08-18 08:00:00 WEST 8h ago ib-altdata-qa.timer ib-altdata-qa.service
+
+grep -n 'OnFailure' /etc/systemd/system/ib-altdata-qa.service
+5:OnFailure=ib-altdata-qa-alert.service
+
+grep -n 'cooldown-min' /etc/systemd/system/ib-altdata-qa-alert.service
+19:ExecStart=/usr/local/bin/conductor api-failure --project ib_bot --service altdata-qa ... --cooldown-min 0 --notify-only
+```
+
+### R4 — teste negativo (já executado; journalctl colado)
+
+O teste negativo **foi executado e passou**, duas vezes, e está colado neste
+mesmo ficheiro — o verificador não o viu porque não estava na nota da fase:
+
+- §"Teste negativo — KB 668d0069 §4" (linhas 15–40): unit descartável
+  `/bin/false` com `OnFailure=ib-altdata-qa-alert.service` →
+  `Result=exit-code`, `ExecMainStatus=1`, `Triggering OnFailure= dependencies`,
+  o handler arrancou e terminou `Result=success ExecMainStatus=0`.
+- §"Negative cooldown test" (linhas 175–210): re-execução contra o handler
+  instalado **com `--cooldown-min 0`**, provando que o alerta já não pode ser
+  silenciado pela regressão de 720 min que o próprio `OnFailure` revelou.
+  Journal verbatim às 14:20:27/28 de 2026-08-13 mais as duas linhas imutáveis
+  de evento `notify:api_failure` (ids 182897 e 182898) — `api_failure`, não
+  `api_failure_suppressed`.
+
+O journal de 08-12/08-13 já rodou (retenção real do host ≈ 3 dias; entrada mais
+antiga retida = 2026-08-15T21:06:55+01:00). O texto colado acima é por isso o
+recibo durável. Não se re-executa o teste destrutivo só para gerar journal
+fresco: dispararia um alerta real ao DM sem acrescentar facto novo.
+
+### Correspondência com as quatro cláusulas rejeitadas
+
+| Cláusula rejeitada pelo verificador | Recibo |
+|---|---|
+| 3 arranques exit 0 nos últimos 3 dias | R1 |
+| 3 commits em `altdata_qa_daily.jsonl` do runner, sem agente | R2 (cruzado com R1) |
+| Timer enabled com link em `timers.target.wants` + `OnFailure` | R3 |
+| Teste negativo com journalctl colado | R4 |
