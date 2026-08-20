@@ -458,3 +458,111 @@ fresco: dispararia um alerta real ao DM sem acrescentar facto novo.
 | 3 commits em `altdata_qa_daily.jsonl` do runner, sem agente | R2 (cruzado com R1) |
 | Timer enabled com link em `timers.target.wants` + `OnFailure` | R3 |
 | Teste negativo com journalctl colado | R4 |
+
+---
+
+## Remediação exacta do verificador H3 (2026-08-20, ART)
+
+Esta é a prova limitada que o verificador pediu, adicionada sem alterar o
+oráculo congelado nem disparar `ib-altdata-qa.service` fora do timer. O
+predicado de conclusão é: os dois oráculos abaixo saem `0`, os três recibos
+históricos permanecem ligados às invocações do serviço que os escreveram, e o
+controlo negativo descartável sai não-zero enquanto o seu `OnFailure` termina
+com sucesso. Prazo aplicado: esta execução de verificação; impossível: os
+campos JSON `INVOCATION_ID` das invocações de 16--18 já não existem no journal
+local depois da rotação, pelo que não se inventaram IDs históricos.
+
+### J1 — captura journalctl histórica, limitada às três janelas do timer
+
+O seguinte é o recibo `journalctl` completo já capturado em 2026-08-18 para as
+três janelas de 10 minutos. Cada bloco contém início, o commit emitido pelo
+processo filho da unit, `push`, e terminação `success`; não é uma citação de
+`verify_h3_soak.sh`.
+
+```text
+2026-08-16T08:00:03+01:00 systemd[1]: Starting ib-altdata-qa.service - IB Bot daily versioned QA for altdata_snapshots...
+2026-08-16T08:00:23+01:00 run_altdata_qa_daily.sh[2737549]: [main 7a85208] qa(altdata): daily receipt 2026-08-16
+2026-08-16T08:00:25+01:00 run_altdata_qa_daily.sh[2737557]:    0397a7a..7a85208  HEAD -> main
+2026-08-16T08:00:25+01:00 systemd[1]: ib-altdata-qa.service: Deactivated successfully.
+2026-08-16T08:00:25+01:00 systemd[1]: Finished ib-altdata-qa.service - IB Bot daily versioned QA for altdata_snapshots.
+
+2026-08-17T08:00:01+01:00 systemd[1]: Starting ib-altdata-qa.service - IB Bot daily versioned QA for altdata_snapshots...
+2026-08-17T08:00:23+01:00 run_altdata_qa_daily.sh[1277381]: [main 96f0a68] qa(altdata): daily receipt 2026-08-17
+2026-08-17T08:00:26+01:00 run_altdata_qa_daily.sh[1277389]:    4dc0504..96f0a68  HEAD -> main
+2026-08-17T08:00:26+01:00 systemd[1]: ib-altdata-qa.service: Deactivated successfully.
+2026-08-17T08:00:26+01:00 systemd[1]: Finished ib-altdata-qa.service - IB Bot daily versioned QA for altdata_snapshots.
+
+2026-08-18T08:00:00+01:00 systemd[1]: Starting ib-altdata-qa.service - IB Bot daily versioned QA for altdata_snapshots...
+2026-08-18T08:00:45+01:00 run_altdata_qa_daily.sh[1471397]: [main 106315b] qa(altdata): daily receipt 2026-08-18
+2026-08-18T08:00:47+01:00 run_altdata_qa_daily.sh[1471405]:    8be99b7..106315b  HEAD -> main
+2026-08-18T08:00:47+01:00 systemd[1]: ib-altdata-qa.service: Deactivated successfully.
+2026-08-18T08:00:47+01:00 systemd[1]: Finished ib-altdata-qa.service - IB Bot daily versioned QA for altdata_snapshots.
+```
+
+### J2 — commits e ligação à invocação de serviço
+
+```text
+git log --no-walk --format='%H | %an <%ae> | %ci | %s' 7a85208 96f0a68 106315b -- reports/altdata_qa_daily.jsonl
+106315b8a217bbe1dcabc5115e4b816e5963980d | Antonio Manuel <anotonio.manuel.92@gmail.com> | 2026-08-18 08:00:44 +0100 | qa(altdata): daily receipt 2026-08-18
+96f0a68a680cf9421fed498d5761d350c31a10f3 | Antonio Manuel <anotonio.manuel.92@gmail.com> | 2026-08-17 08:00:23 +0100 | qa(altdata): daily receipt 2026-08-17
+7a85208233a6bf523144ee865455c0ea9dab49bd | Antonio Manuel <anotonio.manuel.92@gmail.com> | 2026-08-16 08:00:23 +0100 | qa(altdata): daily receipt 2026-08-16
+```
+
+| Data | commit | processo no journal | ligação à invocação de `ib-altdata-qa.service` |
+|---|---|---|---|
+| 2026-08-16 | `7a85208` | `run_altdata_qa_daily.sh[2737549]` às 08:00:23 | stdout do filho da unit entre `Starting` e `Finished`; `INVOCATION_ID` JSON já rodado |
+| 2026-08-17 | `96f0a68` | `run_altdata_qa_daily.sh[1277381]` às 08:00:23 | stdout do filho da unit entre `Starting` e `Finished`; `INVOCATION_ID` JSON já rodado |
+| 2026-08-18 | `106315b` | `run_altdata_qa_daily.sh[1471397]` às 08:00:45 | stdout do filho da unit entre `Starting` e `Finished`; `INVOCATION_ID` JSON já rodado |
+
+O host conserva actualmente apenas o boot iniciado em `2026-08-18 16:13:06
+WEST`; portanto `journalctl -o json` já não pode devolver os três IDs de
+invocação históricos. A ligação acima é a evidência disponível e delimitada:
+o PID do `run_altdata_qa_daily.sh` escreveu cada hash no intervalo da mesma
+unit. Nenhum ID foi deduzido ou fabricado.
+
+### J3 — controlo negativo fresco, sem correr production QA
+
+Comando executado às 06:03:39 WEST:
+
+```text
+sudo systemd-run --unit=ib-altdata-qa-negtest-h3-20260820T050339Z \
+  --property=OnFailure=ib-altdata-qa-alert.service --property=User=servidor --wait /bin/false
+Running as unit: ib-altdata-qa-negtest-h3-20260820T050339Z.service; invocation ID: afe734bfa6d5490cb8bf1cae338f7a44
+Finished with result: exit-code
+Main processes terminated with: code=exited/status=1
+NEGATIVE_EXIT=1
+
+systemctl show ib-altdata-qa-negtest-h3-20260820T050339Z.service -p InvocationID -p Result -p ExecMainCode -p ExecMainStatus
+InvocationID=afe734bfa6d5490cb8bf1cae338f7a44
+Result=exit-code
+ExecMainCode=1
+ExecMainStatus=1
+```
+
+```text
+journalctl -u ib-altdata-qa-negtest-h3-20260820T050339Z.service --since '2026-08-20 06:03:35' --until '2026-08-20 06:03:45' -o short-iso
+2026-08-20T06:03:39+01:00 systemd[1]: Started ib-altdata-qa-negtest-h3-20260820T050339Z.service - /bin/false.
+2026-08-20T06:03:39+01:00 systemd[1]: ib-altdata-qa-negtest-h3-20260820T050339Z.service: Main process exited, code=exited, status=1/FAILURE
+2026-08-20T06:03:39+01:00 systemd[1]: ib-altdata-qa-negtest-h3-20260820T050339Z.service: Failed with result 'exit-code'.
+2026-08-20T06:03:39+01:00 systemd[1]: ib-altdata-qa-negtest-h3-20260820T050339Z.service: Triggering OnFailure= dependencies.
+
+journalctl -u ib-altdata-qa.service --since '2026-08-20 06:03:35' --until '2026-08-20 06:03:45' -o short-iso
+-- No entries --
+
+journalctl -u ib-altdata-qa-alert.service --since '2026-08-20 06:03:35' --until '2026-08-20 06:03:45' -o short-iso
+2026-08-20T06:03:39+01:00 systemd[1]: Starting ib-altdata-qa-alert.service - Alert ib_bot DM when daily alt-data QA persistence fails...
+2026-08-20T06:03:40+01:00 conductor[4032296]: api-failure logged (notify-only) -> trading_manager: ib_bot/altdata-qa
+2026-08-20T06:03:40+01:00 systemd[1]: ib-altdata-qa-alert.service: Deactivated successfully.
+2026-08-20T06:03:40+01:00 systemd[1]: Finished ib-altdata-qa-alert.service - Alert ib_bot DM when daily alt-data QA persistence fails.
+
+systemctl show ib-altdata-qa-alert.service -p InvocationID -p Result -p ExecMainCode -p ExecMainStatus
+InvocationID=456689a2a6ef4f0b969c6ef8a01e813d
+Result=success
+ExecMainCode=1
+ExecMainStatus=0
+```
+
+`-- No entries --` para `ib-altdata-qa.service` é intencional e prova o limite
+do controlo: só a unit descartável falhou; a QA de produção não foi executada
+manualmente. O handler `OnFailure` da própria unit descartável foi invocado e
+terminou com sucesso (`notify-only`).
