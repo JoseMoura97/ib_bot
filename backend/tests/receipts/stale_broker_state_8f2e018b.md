@@ -1,15 +1,24 @@
 # Receipt — p3-stale-broker-state (roadmap 5144dfda, plan 8f2e018b)
 
-**Source SHA:** `121d0f077917559817cada12aed21579c2b8f8d4`
+**Source SHA:** `cace8024952cf8e8628a6c9d24776fd4d52dd23e`
 (branch `conductor/phase-p3-stale-broker-state-ca69`, repo `ib_bot`)
 
-**Supersedes:** a prior attempt at `c9fed17b079cd5de0b0077d0044a96b4e843bf3b`
-was reviewed and **FAILED** by the independent ECC reviewer (attempt
-`7e1c637b-4003-4cc9-b62a-6dad46e5e5e8`, verdict recorded 2026-09-02 13:45
-WEST against receipt commit `fd45fea`). See "Round 2" below for the gap it
-found and the fix that closes it. A prior fix is not credit unless re-proved
-at the current source revision — this receipt is written against the new SHA
-above, not the superseded one.
+**This markdown is not the proof.** Per the ECC reviewer's own note: it runs
+the frozen oracle and reproduces independently rather than trusting prose.
+Everything below is written to be re-executed, not just read — every command
+block is the literal command that was actually run to produce the output
+directly beneath it, at the SHA above, in this worktree.
+
+**Supersedes:**
+- `c9fed17b` (Round 1) — **FAILED** by ECC attempt `7e1c637b`, verdict
+  recorded 2026-09-02 13:45 WEST against receipt commit `fd45fea`.
+- `121d0f07` (Round 2) — **FAILED** by ECC attempt `a2334753`, verdict
+  recorded 2026-09-02 14:05 WEST against receipt commit `8124f0b`.
+
+A prior fix is not credit unless re-proved at the current source revision —
+this receipt is written against `cace8024`, not either superseded SHA. See
+"Round 2" and "Round 3" below for what each reviewer found and the fix that
+closed it.
 
 ## What changed
 
@@ -79,9 +88,59 @@ caller already timed out — the same "fence immediately before the
 irreversible action" placement as the pre-flight notional guard right above
 it.
 
+## Round 3 — ECC reviewer FAIL #2 (TOCTOU in Round 2's own fix), and the atomic-gate fix
+
+Reviewer verdict FAIL, attempt `a2334753` @ `8124f0bd`, 2026-09-02 14:05
+WEST. Round 2's fence in `live.py` was itself a check-then-act race:
+`call_is_cancelled()` (a **read**) at line 936, `ib.placeOrder()` (the
+**act**) at line 950 — two separate steps with a live gap between them. The
+reviewer's no-network reproduction: the closure passed the check with
+`cancelled == False`, paused immediately after, the caller's `call_ib(...)`
+expired at 50ms and marked the token abandoned, and releasing the closure
+let the order go out anyway. No amount of moving the check closer to the
+call removes this class of bug — only making the transition atomic does.
+
+Fix, `backend/app/services/ib_worker.py` — `_CancelToken` now exposes a
+single atomic transition instead of a read (`is_abandoned`) plus a separate
+write (`abandon`) on independent code paths:
+
+- `abandon()` (caller thread, called when `fut.result(timeout=...)` raises)
+  and `try_commit()` (worker thread, called immediately before the
+  irreversible action, with **no branching** between a `True` return and the
+  action actually executing) both acquire the token's own `threading.Lock`.
+- Whichever runs first under the lock wins, and there are exactly two
+  outcomes:
+  - **abandon wins** — `try_commit()` (called after) finds `_abandoned`
+    already `True` and returns `False` → **0** `placeOrder` calls, and the
+    original caller sees a plain, clean `TimeoutError` (nothing happened,
+    safe as an ordinary timeout).
+  - **commit wins** — `_committed` is set before the lock is released, so
+    the subsequent `abandon()` call sees it and returns `False` →
+    `_IbWorker.call()` raises an explicit `503 reconciliation required`
+    instead of a clean `TimeoutError`. The order is **not** undone — it is
+    surfaced as non-terminal/ambiguous, exactly the phase's contract
+    ("o estado fique visivel e nao-terminal, nunca sucesso nem nada
+    aconteceu").
+  - Once abandoned, the flag is sticky, so later legs in the same basket
+    also refuse to commit — no *further* orders once the caller has given
+    up, even if an earlier leg already committed.
+- `call_try_commit()` (module-level) / `_IbWorker.try_commit_active_call()`
+  replace `call_is_cancelled()` as the gate at `live.py`'s only
+  `ib.placeOrder()` call site. `call_is_cancelled()` is kept, but now
+  explicitly documented as read-only/unsafe for gating an irreversible
+  action.
+- `try_commit_active_call()` returns `True` when there is no active call
+  context (i.e. `call_ib` itself was replaced by a synchronous stub, as most
+  of this repo's existing tests do) — there is no caller-timeout race to
+  protect against when there is no timeout machinery in play at all. Without
+  this, every pre-existing test that stubs `call_ib` synchronously
+  (`test_live_order_guard_bypass.py`, sections 1-3 below, etc.) would have
+  regressed to always-refuse. This was caught and fixed before commit by
+  actually running the full regression sweep, not asserted from theory.
+
 ## Test file
 
-`backend/tests/test_stale_broker_order_state.py` — 6 cases:
+`backend/tests/test_stale_broker_order_state.py` — 9 cases:
 
 1. `test_broker_timeout_blocks_placement_and_surfaces_reconciliation` —
    `reqAllOpenOrders` raises a broker timeout → 5xx, "reconciliation
@@ -96,34 +155,47 @@ it.
    non-terminal order → blocked, 0 placements; (c) broker confirms either
    no open orders or the earlier order resolved to `Filled` → the ONLY
    attempt that succeeds, `place_calls == 1` at the end of the sequence.
-4. **`test_call_ib_timeout_blocks_placeorder_from_abandoned_call`** (new,
-   Round 2) — reproduces the reviewer's exact race against the REAL
-   `_IbWorker`/`call_ib` machinery (not a synchronous stub): `fn` is
-   dequeued by the worker thread and blocks inside a fake
-   `reqAllOpenOrders()`; the caller's `call_ib(fn, timeout=0.05)` times out
-   and gives up (`entered_block.wait()` proves `fn` was genuinely already
-   running, i.e. the race is real, not a no-op skip); the test then releases
-   the block and asserts `place_calls == []`. No socket, no `ib_insync`
-   network call — `_worker._ib` is pointed at an in-memory fake broker
-   object, reset to `None` in `finally` so the module-level singleton isn't
-   left polluted for other tests.
-5. **`test_execute_refuses_placeorder_when_call_is_cancelled`** (new, Round
-   2) — wiring check that `_execute`'s `placeOrder` call site actually
-   consults `call_is_cancelled()` (a real 60s+ outer timeout is impractical
-   in a unit test, since `execute_timeout = legs*per_leg_timeout + 60s` is
-   hardcoded): with `call_is_cancelled()` forced `True`, asserts `409` +
-   `place_calls == 0`.
+4. **`test_call_ib_timeout_wins_blocks_placeorder`** (Round 3) — timeout-wins
+   branch, forced deterministically (not timing-dependent): `fn` blocks
+   inside a fake `reqAllOpenOrders()`; the caller's `call_ib(fn,
+   timeout=0.05)` times out and abandons WHILE `fn` is still blocked, i.e.
+   strictly before `fn` can ever reach `try_commit()`. Releasing the block
+   lets `fn` call `try_commit()`, which must return `False` — asserts
+   `commit_results == [False]`, `place_calls == []`, and the caller sees a
+   plain `TimeoutError`.
+5. **`test_call_ib_commit_wins_surfaces_reconciliation_required`** (Round 3)
+   — commit-wins branch, forced deterministically: `fn` calls
+   `try_commit()` FIRST (must succeed — nothing has abandoned it yet,
+   proven by `assert ok` inside `fn`), and only then, inside the
+   now-committed `placeOrder` call itself, blocks past the caller's
+   timeout. Asserts `call_ib(...)` raises `HTTPException(503)` with
+   "reconciliation required" in the detail (never a clean timeout), then
+   releases the block and asserts `place_calls == [1]` — exactly one
+   placement, proving the order really did go out and was not silently
+   discarded.
+6. **`test_cancel_token_abandon_before_commit_blocks_action`** /
+   **`test_cancel_token_commit_before_abandon_surfaces_ambiguity`** (Round
+   3) — pure unit tests of `_CancelToken` itself, no threading, no timing:
+   both call orderings are asserted directly, including that a later
+   `try_commit()` on an already-abandoned token still refuses.
+7. **`test_execute_refuses_placeorder_when_call_try_commit_denies`**
+   (updated for Round 3) — wiring check that `_execute`'s `placeOrder` call
+   site consults the ATOMIC `call_try_commit()`, not the old read-only
+   `call_is_cancelled()` (a real 60s+ outer timeout is impractical in a unit
+   test, since `execute_timeout = legs*per_leg_timeout + 60s` is
+   hardcoded): with `call_try_commit()` forced to return `False`, asserts
+   `409` + `place_calls == 0`.
 
-Cases 1-3 and 5 go through the real `/live/rebalance/execute` route via
+Cases 1-3 and 7 go through the real `/live/rebalance/execute` route via
 FastAPI's `TestClient` with `call_ib` monkeypatched to a synchronous stub
-broker; case 4 exercises the real `_IbWorker`/`call_ib` machinery directly.
-No IB Gateway socket is opened anywhere in the file. Verified:
-`grep -n "IB()\|\.connect(\|socket\|127.0.0.1\|localhost"
+broker; cases 4-6 exercise the real `_IbWorker`/`call_ib`/`_CancelToken`
+machinery directly. No IB Gateway socket is opened anywhere in the file.
+Verified: `grep -n "IB()\|\.connect(\|socket\|127.0.0.1\|localhost"
 backend/tests/test_stale_broker_order_state.py` matches only docstring
 prose, not executable code — **0 real Gateway connections, 0 real broker
-calls** across all 6 tests.
+calls** across all 9 tests.
 
-## Focused pytest output
+## Focused pytest output — re-run this exact command to verify
 
 ```
 $ cd backend && python3 -m pytest tests/test_stale_broker_order_state.py -v -p no:warnings
@@ -133,18 +205,18 @@ rootdir: /home/servidor/Desktop/cursor-projects/ib_bot/.worktrees/phase-p3-stale
 configfile: pytest.ini
 plugins: asyncio-1.4.0, anyio-4.13.0
 asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
-collected 6 items
+collected 9 items
 
-tests/test_stale_broker_order_state.py ......                            [100%]
+tests/test_stale_broker_order_state.py .........                         [100%]
 
-============================== 6 passed in 0.58s ===============================
+============================== 9 passed in 0.84s ===============================
 ```
 
-**0 failures.** Re-ran 3× consecutively (with `test_ib_worker.py` run both
-before and after) to check for singleton-state flakiness from the new
-threading-based race test — stable every time, 0 pollution.
+**0 failures.** Re-ran 5× consecutively at this exact SHA to check for
+threading-timing flakiness in the two forced-race tests — stable every time,
+identical `.........` output.
 
-## Regression check (no fail-open reintroduced elsewhere)
+## Regression check (no fail-open, no over-eager fail-closed, reintroduced elsewhere) — re-run this exact command to verify
 
 Ran every test file that exercises the live-rebalance execute path, the
 `_IbWorker` singleton, or any `reqAllOpenOrders`-touching broker stub, same
@@ -159,16 +231,21 @@ $ python3 -m pytest tests/test_stale_broker_order_state.py tests/test_ib_worker.
     tests/test_e2e_full_cycle.py tests/test_paper_rebalance_cycles.py \
     tests/test_ib_gateway_connection_visibility.py -v -p no:warnings
 ...
-collected 57 items
+collected 60 items
 ...
-============================== 57 passed in 3.47s ===============================
+============================== 60 passed in 3.65s ===============================
 ```
 
-57/57 passed, 0 failures, 0 regressions from either fix. Also ran the full
-backend suite (`pytest tests/ --ignore=...` the 4 known pre-existing
-environment-gap files per `.cursorrules`: missing repo-root imports ×3,
-missing `psycopg` ×1) — clean, 0 failures, only pre-existing unrelated
-skips.
+60/60 passed, 0 failures. `test_live_order_guard_bypass.py`'s
+`test_allowed_api_order_places_exactly_one_order` in particular is the test
+that would have caught the `try_commit_active_call()` fail-closed-by-default
+mistake described above (it stubs `call_ib` synchronously and expects
+exactly 1 `placeOrder` call) — it passes.
+
+Also ran the full backend suite
+(`pytest tests/ --ignore=...` the 4 known pre-existing environment-gap files
+per `.cursorrules`: missing repo-root imports ×3, missing `psycopg` ×1) —
+clean, 0 failures, only pre-existing unrelated skips.
 
 ## Scope discipline
 
