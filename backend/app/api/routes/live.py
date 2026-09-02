@@ -14,7 +14,7 @@ from app.core.limiter import limiter
 from app.db.session import get_db
 from app.models.ib_audit import IBOrder, IBTrade, LiveExecutionRequest, LiveRebalanceAudit, SystemState
 from app.models.portfolio import Portfolio, PortfolioStrategy
-from app.services.ib_worker import call_ib, call_is_cancelled, current_ib_connection
+from app.services.ib_worker import call_ib, call_try_commit, current_ib_connection
 from app.services.market_calendar import market_is_open
 from app.services.paper_trading import PriceQuote, fetch_last_close_price, fetch_prices
 from system.execution.order_preflight import OrderPreFlightGuardError, OrderPreFlightPolicy, order_pre_flight_guard
@@ -933,14 +933,17 @@ def execute_live_rebalance_core(
                 abs(float(leg.delta_quantity)) * float(leg.price),
                 float(preview.estimated_notional),
             )
-            if call_is_cancelled():
-                # The HTTP caller of this execution already timed out (e.g. an
-                # earlier broker call in this basket -- reqAllOpenOrders,
+            if not call_try_commit():
+                # The HTTP caller of this execution already timed out (e.g.
+                # an earlier broker call in this basket -- reqAllOpenOrders,
                 # qualifyContracts -- hung past call_ib's timeout). This
                 # closure keeps running on the ib-worker thread after being
                 # abandoned; it must never place an order nobody is waiting
-                # on. Fence immediately before the only ib.placeOrder call
-                # site in this loop, mirroring the pre-flight notional guard.
+                # on. call_try_commit() resolves "may I place this order" and
+                # the caller's abandonment on the SAME lock inside call_ib --
+                # a plain read-then-act check here would itself be a TOCTOU
+                # race (an independent ECC reviewer forced a timeout into
+                # exactly that gap in the prior version of this fence).
                 raise HTTPException(
                     status_code=409,
                     detail="reconciliation required: the calling request already timed out; "

@@ -17,27 +17,87 @@ T = TypeVar("T")
 
 
 class _CancelToken:
-    """Thread-safe "the caller gave up" flag for one call_ib() invocation.
+    """Thread-safe abandon/commit gate for ONE call_ib() invocation.
 
-    concurrent.futures.Future.cancel() deliberately refuses to cancel a Future
-    once it is RUNNING, so it cannot signal abandonment for a task that is
-    already mid-execution on the worker thread (e.g. blocked inside a broker
-    call that outlives the caller's timeout) -- exactly the case that let an
-    abandoned closure reach ib.placeOrder() after its caller timed out waiting
-    on reqAllOpenOrders(). This token is independent of the Future's state
-    machine and can be set at any point, from any thread.
+    concurrent.futures.Future.cancel() deliberately refuses to cancel a
+    Future once it is RUNNING, so it cannot signal "the caller gave up" for a
+    task already mid-execution on the worker thread (e.g. blocked inside a
+    broker call that outlives the caller's timeout) -- exactly the case that
+    let an abandoned closure reach ib.placeOrder() after its caller timed out
+    waiting on reqAllOpenOrders(). A first version of this token fixed that
+    with a plain is_abandoned() flag checked immediately before placeOrder --
+    but "check, then act" is itself a TOCTOU race: the caller's timeout can
+    mark the token abandoned in the gap between the check and the actual
+    ib.placeOrder() call, so the check can read False and the order still go
+    out for an already-abandoned caller (an independent ECC reviewer
+    reproduced this without any network I/O, forcing the timeout into that
+    exact gap).
+
+    The fix is to make "may I proceed" and "the caller gave up" resolve on
+    the SAME lock, as a single atomic transition with only two possible
+    winners:
+
+    - abandon() (called by the caller's thread on timeout) and try_commit()
+      (called by the worker thread immediately before the irreversible
+      action, with the action executed unconditionally right after a True
+      return -- no further branching in between) both acquire ``_lock``.
+    - Whichever runs first under the lock wins. If abandon() wins, it sets
+      ``_abandoned`` while ``_committed`` is still False, so a subsequent
+      try_commit() sees ``_abandoned`` and refuses (returns False) -- 0
+      irreversible actions happen, ever, for that caller.
+    - If try_commit() wins, it sets ``_committed`` before releasing the lock.
+      A subsequent abandon() then sees ``_committed`` already True and
+      returns False -- telling the caller its timeout raced an action that
+      is now guaranteed to execute. That caller MUST treat the outcome as
+      unknown/ambiguous (reconciliation required), never as a clean, side-
+      effect-free timeout.
+
+    Once abandoned, ``_abandoned`` stays True forever, so later legs in a
+    multi-order basket also refuse to commit -- an abandoned caller gets no
+    *further* orders placed even if an earlier one already went out before
+    the abandonment was registered.
     """
 
-    __slots__ = ("_event",)
+    __slots__ = ("_lock", "_abandoned", "_committed")
 
     def __init__(self) -> None:
-        self._event = threading.Event()
+        self._lock = threading.Lock()
+        self._abandoned = False
+        self._committed = False
 
-    def abandon(self) -> None:
-        self._event.set()
+    def abandon(self) -> bool:
+        """Called by the caller's thread when call_ib(..., timeout=X) times
+        out. Returns True iff this call is now guaranteed side-effect-free:
+        no guarded irreversible action has committed and none ever will.
+        Returns False iff a guarded action already committed under the lock
+        -- its outcome is unknown to the caller and MUST be surfaced as an
+        ambiguous, non-terminal, reconciliation-required failure, never
+        treated as a clean/no-op timeout."""
+        with self._lock:
+            self._abandoned = True
+            return not self._committed
+
+    def try_commit(self) -> bool:
+        """Called by the worker thread immediately before an irreversible
+        broker action (e.g. placeOrder), with the action executed
+        unconditionally right after a True return -- no read-then-act gap.
+        Returns True iff the action may proceed (not yet abandoned).
+        Returns False iff the caller already abandoned this call -- the
+        action MUST be skipped."""
+        with self._lock:
+            if self._abandoned:
+                return False
+            self._committed = True
+            return True
 
     def is_abandoned(self) -> bool:
-        return self._event.is_set()
+        """Read-only snapshot. Safe for a cheap early-exit (e.g. skipping a
+        still-queued task before it starts running) but NOT a substitute for
+        try_commit() when gating an irreversible action -- reading this and
+        then separately performing the action is exactly the TOCTOU this
+        class exists to close."""
+        with self._lock:
+            return self._abandoned
 
 
 class _IbWorker:
@@ -109,13 +169,28 @@ class _IbWorker:
         try:
             return fut.result(timeout=timeout)  # type: ignore[return-value]
         except FuturesTimeoutError:
-            # The caller gave up waiting. fn may still be sitting in the queue
-            # (skip it entirely) or already mid-execution on the worker thread
-            # (e.g. blocked inside a broker call) -- either way it must never
-            # be allowed to reach the broker on this caller's behalf. Abandon
-            # the token so _run()'s pre-dequeue check and any in-closure
-            # call_is_cancelled() check both refuse to proceed.
-            cancel_token.abandon()
+            # The caller gave up waiting. fn may still be sitting in the
+            # queue (skip it entirely), already mid-execution but not yet at
+            # its irreversible action, or -- the race an ECC reviewer forced
+            # -- may have ALREADY committed to that action a moment earlier.
+            # abandon() and the guarded try_commit() contend on the same
+            # lock, so exactly one of them wins:
+            if not cancel_token.abandon():
+                # try_commit() already won: an irreversible broker action
+                # (e.g. placeOrder) is guaranteed to execute (or already has)
+                # for a caller that is no longer waiting. This is NOT a
+                # clean, side-effect-free timeout -- surface it as an
+                # explicit, non-terminal, reconciliation-required failure so
+                # nothing downstream can mistake it for "nothing happened".
+                raise HTTPException(
+                    status_code=503,
+                    detail=(
+                        "reconciliation required: this call timed out AFTER an "
+                        "irreversible broker action was already committed to "
+                        "execute; its outcome is unknown and must be reconciled "
+                        "against live broker state before any further action"
+                    ),
+                ) from None
             raise
         except Exception as e:
             # Preserve HTTPException raised within tasks
@@ -239,15 +314,35 @@ class _IbWorker:
             raise
 
     def is_active_call_abandoned(self) -> bool:
-        """True if the caller of the call_ib() invocation currently executing
-        on the worker thread has already timed out and given up.
-
-        Any code running inside a call_ib()-dispatched closure must check this
-        immediately before an irreversible broker action (e.g. placeOrder) so
-        an abandoned caller can never have an order placed on its behalf.
+        """Read-only: True if the caller of the call_ib() invocation
+        currently executing on the worker thread has already timed out and
+        given up. INFORMATIONAL ONLY -- do not use this to gate an
+        irreversible broker action (e.g. placeOrder); reading this and then
+        separately performing the action is a TOCTOU race. Use
+        try_commit_active_call() instead, which is atomic.
         """
         token = self._active_cancel_token
         return bool(token is not None and token.is_abandoned())
+
+    def try_commit_active_call(self) -> bool:
+        """Atomically claim permission to perform ONE irreversible broker
+        action (e.g. placeOrder) for the call_ib() invocation currently
+        running on the worker thread, with the action executed
+        unconditionally right after a True return -- no read-then-act gap.
+
+        Returns True iff the action may proceed. Returns False iff the
+        caller already abandoned this call (its timeout raced ahead) -- the
+        action MUST be skipped. If there is no active call context (this was
+        invoked outside any call_ib()-dispatched closure -- e.g. call_ib
+        itself was replaced with a synchronous stub, as many tests do, so
+        there is no cancellation-token machinery in play at all), there is
+        no caller-timeout race to protect against: allow the action. This
+        matches how a synchronously-stubbed call_ib can never time out.
+        """
+        token = self._active_cancel_token
+        if token is None:
+            return True
+        return token.try_commit()
 
     def get_connection_info(self) -> dict[str, Any]:
         with self._lock:
@@ -368,11 +463,27 @@ def call_ib(fn: Callable[[Any], T], *, timeout: float = 10.0) -> T:
 
 
 def call_is_cancelled() -> bool:
-    """True if the calling call_ib() invocation currently running on the
-    worker thread has already timed out on its caller. See
-    _IbWorker.is_active_call_abandoned for why this cannot be expressed via
-    the Future's own cancel() state machine."""
+    """Read-only: True if the calling call_ib() invocation currently running
+    on the worker thread has already timed out on its caller. INFORMATIONAL
+    ONLY -- never use this to gate an irreversible broker action (e.g.
+    placeOrder); reading this and then separately performing the action is a
+    TOCTOU race (an independent ECC reviewer reproduced exactly this without
+    any network I/O by forcing a timeout into that gap). Use
+    call_try_commit() instead, which is atomic."""
     return _worker.is_active_call_abandoned()
+
+
+def call_try_commit() -> bool:
+    """Atomically claim permission to perform ONE irreversible broker action
+    (e.g. placeOrder) for the call_ib() invocation currently running on the
+    worker thread. Call this immediately before the action, with the action
+    executed unconditionally right after a True return -- no read-then-act
+    gap. Returns True iff the action may proceed. Returns False iff the
+    caller already abandoned this call -- the action MUST be skipped; a
+    caller that times out after this call committed will see its
+    call_ib(...) raise an explicit reconciliation-required error instead of
+    a clean timeout, so the ambiguity is never silently discarded."""
+    return _worker.try_commit_active_call()
 
 
 def configure_ib_connection(*, host: str, port: int) -> None:
