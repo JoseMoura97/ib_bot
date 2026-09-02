@@ -6,6 +6,7 @@ import queue
 import threading
 import time
 from concurrent.futures import Future
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from typing import Any, Callable, TypeVar
 
 from fastapi import HTTPException
@@ -13,6 +14,30 @@ from fastapi import HTTPException
 from app.core.config import settings
 
 T = TypeVar("T")
+
+
+class _CancelToken:
+    """Thread-safe "the caller gave up" flag for one call_ib() invocation.
+
+    concurrent.futures.Future.cancel() deliberately refuses to cancel a Future
+    once it is RUNNING, so it cannot signal abandonment for a task that is
+    already mid-execution on the worker thread (e.g. blocked inside a broker
+    call that outlives the caller's timeout) -- exactly the case that let an
+    abandoned closure reach ib.placeOrder() after its caller timed out waiting
+    on reqAllOpenOrders(). This token is independent of the Future's state
+    machine and can be set at any point, from any thread.
+    """
+
+    __slots__ = ("_event",)
+
+    def __init__(self) -> None:
+        self._event = threading.Event()
+
+    def abandon(self) -> None:
+        self._event.set()
+
+    def is_abandoned(self) -> bool:
+        return self._event.is_set()
 
 
 class _IbWorker:
@@ -34,7 +59,12 @@ class _IbWorker:
         self._lock = threading.Lock()
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
-        self._q: queue.Queue[tuple[Callable[[Any], Any], Future[Any]]] = queue.Queue()
+        self._q: queue.Queue[tuple[Callable[[Any], Any], "Future[Any]", _CancelToken]] = queue.Queue()
+        # Set by _run() only, for the duration of the currently-executing task,
+        # so a closure running on the worker thread can consult
+        # is_active_call_abandoned() / call_is_cancelled() immediately before an
+        # irreversible broker action (e.g. placeOrder).
+        self._active_cancel_token: _CancelToken | None = None
 
         self._ib: Any | None = None
         self._client_id: int | None = None
@@ -74,9 +104,19 @@ class _IbWorker:
     def call(self, fn: Callable[[Any], T], *, timeout: float = 10.0) -> T:
         self.start()
         fut: Future[Any] = Future()
-        self._q.put((fn, fut))
+        cancel_token = _CancelToken()
+        self._q.put((fn, fut, cancel_token))
         try:
             return fut.result(timeout=timeout)  # type: ignore[return-value]
+        except FuturesTimeoutError:
+            # The caller gave up waiting. fn may still be sitting in the queue
+            # (skip it entirely) or already mid-execution on the worker thread
+            # (e.g. blocked inside a broker call) -- either way it must never
+            # be allowed to reach the broker on this caller's behalf. Abandon
+            # the token so _run()'s pre-dequeue check and any in-closure
+            # call_is_cancelled() check both refuse to proceed.
+            cancel_token.abandon()
+            raise
         except Exception as e:
             # Preserve HTTPException raised within tasks
             if isinstance(e, HTTPException):
@@ -198,6 +238,17 @@ class _IbWorker:
             self._record_connect_failure(exc)
             raise
 
+    def is_active_call_abandoned(self) -> bool:
+        """True if the caller of the call_ib() invocation currently executing
+        on the worker thread has already timed out and given up.
+
+        Any code running inside a call_ib()-dispatched closure must check this
+        immediately before an irreversible broker action (e.g. placeOrder) so
+        an abandoned caller can never have an order placed on its behalf.
+        """
+        token = self._active_cancel_token
+        return bool(token is not None and token.is_abandoned())
+
     def get_connection_info(self) -> dict[str, Any]:
         with self._lock:
             return {
@@ -283,11 +334,18 @@ class _IbWorker:
 
             # Process at most one task per loop so we pump frequently.
             try:
-                fn, fut = self._q.get(timeout=0.05)
+                fn, fut, cancel_token = self._q.get(timeout=0.05)
             except queue.Empty:
                 self._pump()
                 continue
 
+            if cancel_token.is_abandoned():
+                # The caller already timed out before we even dequeued this
+                # task -- never execute it against the broker.
+                self._pump()
+                continue
+
+            self._active_cancel_token = cancel_token
             try:
                 ib = self._ensure_connected()
                 res = fn(ib)
@@ -295,6 +353,7 @@ class _IbWorker:
             except Exception as e:
                 fut.set_exception(e)
             finally:
+                self._active_cancel_token = None
                 self._pump()
 
         # Graceful shutdown
@@ -306,6 +365,14 @@ _worker = _IbWorker()
 
 def call_ib(fn: Callable[[Any], T], *, timeout: float = 10.0) -> T:
     return _worker.call(fn, timeout=timeout)
+
+
+def call_is_cancelled() -> bool:
+    """True if the calling call_ib() invocation currently running on the
+    worker thread has already timed out on its caller. See
+    _IbWorker.is_active_call_abandoned for why this cannot be expressed via
+    the Future's own cancel() state machine."""
+    return _worker.is_active_call_abandoned()
 
 
 def configure_ib_connection(*, host: str, port: int) -> None:

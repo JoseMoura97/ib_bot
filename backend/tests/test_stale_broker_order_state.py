@@ -19,13 +19,39 @@ one. This suite proves the fixed fail-closed behaviour:
 3. Only after reconciliation (the broker confirms a terminal/matching
    state) does exactly 1 controlled placement path proceed.
 
+An independent ECC reviewer (2026-09-02 13:45 WEST, attempt 7e1c637b) found
+that (1)-(3) alone were insufficient: ``backend/app/services/ib_worker.py``'s
+``_IbWorker.call()`` enqueues ``(fn, fut)`` and waits on
+``fut.result(timeout=timeout)``. When THAT wait times out, the caller gives
+up and moves on -- but the queued closure is still sitting in the queue, or
+already mid-execution on the worker thread (e.g. blocked inside
+``reqAllOpenOrders()``), and nothing stopped it from running to completion
+and reaching ``ib.placeOrder()`` for a caller that had already abandoned it.
+Sections 4-5 below close that race: a caller-side ``call_ib(..., timeout=X)``
+timeout now abandons a ``_CancelToken`` that (a) makes ``_run()`` skip a
+still-queued task outright, and (b) is consulted via
+``call_is_cancelled()`` immediately before the ``ib.placeOrder`` call site in
+``_execute``, so an already-running closure also refuses to place an order
+once its caller has given up.
+
+4. ``_IbWorker``-level race: fn is dequeued and blocks inside a broker call
+   past the caller's timeout; only after the caller abandons the call does
+   the blocking call return -- 0 ``placeOrder`` calls afterward.
+5. Route-level wiring check: ``_execute``'s ``placeOrder`` call site actually
+   consults ``call_is_cancelled()`` -- when it reports abandoned, the route
+   refuses to place, 0 ``placeOrder`` calls.
+
 No IB Gateway socket is opened and no real broker call is made anywhere in
 this file — ``call_ib`` is monkeypatched to invoke a synchronous stub broker
-that counts ``placeOrder`` invocations.
+that counts ``placeOrder`` invocations (sections 1-3, 5); section 4 exercises
+the real ``_IbWorker``/``call_ib`` machinery against an in-memory fake
+broker object, with no socket and no ``ib_insync`` network calls.
 """
 from __future__ import annotations
 
 import sys
+import threading
+import time
 import types
 import uuid
 from concurrent.futures import TimeoutError as FuturesTimeout
@@ -240,3 +266,121 @@ def test_reconciled_broker_state_permits_exactly_one_placement(client, monkeypat
     # No attempt before reconciliation ever reached the broker, and the
     # reconciled attempt reached it exactly once across the whole sequence.
     assert broker.open_orders_calls == 3
+
+
+# ---------------------------------------------------------------------------
+# 4. _IbWorker-level race: caller times out while fn is already running,
+#    blocked inside a broker call -- the closure must not reach placeOrder
+#    once it unblocks and the caller has abandoned it.
+# ---------------------------------------------------------------------------
+
+def test_call_ib_timeout_blocks_placeorder_from_abandoned_call(monkeypatch):
+    """
+    Reproduces the ECC reviewer's exact finding (ib_worker.py:74-84, verdict
+    FAIL on attempt 7e1c637b @ fd45fea5): a caller that abandons call_ib() via
+    timeout must never let the still-running closure reach the broker
+    afterwards.
+
+    fn is dequeued by the worker thread and starts executing -- it calls a
+    broker method that blocks past the caller's timeout (simulating a hung
+    reqAllOpenOrders()). The caller's call_ib(..., timeout=...) expires and
+    gives up. Only THEN does the blocking call inside fn return. Before the
+    fix, fn kept running to completion on the worker thread and reached
+    ib.placeOrder() for a caller that had already abandoned it.
+    """
+    fake_mod = types.ModuleType("ib_insync")
+
+    class _FakeIBClass:
+        def isConnected(self):
+            return True
+
+    fake_mod.IB = _FakeIBClass
+    monkeypatch.setitem(sys.modules, "ib_insync", fake_mod)
+
+    from app.services import ib_worker
+
+    ib_worker.stop_ib_worker()
+
+    entered_block = threading.Event()
+    release_block = threading.Event()
+    place_calls: list[int] = []
+
+    class _Broker:
+        def isConnected(self):
+            return True
+
+        def disconnect(self):
+            pass
+
+        def sleep(self, _seconds):
+            pass
+
+        def reqAllOpenOrders(self):
+            entered_block.set()
+            release_block.wait(timeout=2.0)
+            return []
+
+        def placeOrder(self, *_a, **_kw):
+            place_calls.append(1)
+            return object()
+
+    def fn(ib):
+        ib.reqAllOpenOrders()  # blocks past the caller's timeout, then returns
+        if not ib_worker.call_is_cancelled():
+            ib.placeOrder()
+        return "reached end"
+
+    # Point the singleton worker's IB handle directly at our fake broker so
+    # _ensure_connected()'s isConnected() short-circuits without a real socket.
+    # Reset it in `finally` so this test never leaks broker state into the
+    # module-level singleton for other tests (e.g. test_ib_worker.py) that
+    # run against it afterward.
+    ib_worker._worker._ib = _Broker()
+    ib_worker._worker._client_id = 1
+    try:
+        with pytest.raises(FuturesTimeout):
+            ib_worker.call_ib(fn, timeout=0.05)
+
+        # The blocking call must actually have been entered -- proves the
+        # race is real (fn was already running when the caller gave up), not
+        # a no-op skip.
+        assert entered_block.wait(timeout=2.0), "fn never started -- race not exercised"
+
+        # Now let the abandoned closure resume.
+        release_block.set()
+
+        # Give the worker thread time to finish processing fn to completion.
+        time.sleep(0.3)
+
+        assert place_calls == [], "an abandoned call must never reach ib.placeOrder()"
+    finally:
+        release_block.set()  # never leave the worker thread blocked on teardown
+        ib_worker.stop_ib_worker()
+        ib_worker._worker._ib = None
+        ib_worker._worker._client_id = None
+
+
+# ---------------------------------------------------------------------------
+# 5. Route-level wiring check: _execute's placeOrder call site consults
+#    call_is_cancelled() before every ib.placeOrder() call.
+# ---------------------------------------------------------------------------
+
+def test_execute_refuses_placeorder_when_call_is_cancelled(client, monkeypatch):
+    """
+    Complements section 4: proves live.py's _execute actually wires the
+    call_is_cancelled() fence into the only placeOrder call site in the
+    route, not just that the primitive exists in ib_worker.py. Simulates
+    "already abandoned" directly (a real 60s+ outer timeout is impractical in
+    a unit test — the outer execute_timeout is legs*per_leg_timeout + 60s).
+    """
+    import app.api.routes.live as live
+
+    broker = _StaleBrokerStub(open_orders_mode="clear")
+    _wire_common(monkeypatch, broker)
+    monkeypatch.setattr(live, "call_is_cancelled", lambda: True)
+
+    resp = _post(client)
+
+    assert resp.status_code == 409, f"expected 409, got {resp.status_code}: {resp.text}"
+    assert "already timed out" in resp.json()["detail"].lower()
+    assert broker.place_calls == 0, "placeOrder must never be reached once call_is_cancelled() is true"
