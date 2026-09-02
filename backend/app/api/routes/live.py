@@ -851,20 +851,29 @@ def execute_live_rebalance_core(
         results: list[dict[str, Any]] = []
         placed_trades: list[Any] = []  # orders we placed this rebalance (for scoped cancel)
 
-        # Anti-duplicate guard: if this account already has open orders at IB, do not
-        # stack a new rebalance on top (protects against the crash-to-retry duplicate path).
+        # Anti-duplicate / stale-state guard: if this account already has open orders
+        # at IB, or the broker cannot even confirm its order state (timeout, stale
+        # snapshot), do not stack a new rebalance on top. A broker timeout here must
+        # fail CLOSED — silently treating "could not verify" as "no open orders" would
+        # let a new basket race an in-flight/duplicate one at the broker.
         try:
-            existing_open = [
-                o for o in (ib.reqAllOpenOrders() or [])
-                if getattr(getattr(o, "order", None), "account", None) in (None, body.account_id)
-            ]
-        except Exception:
-            existing_open = []
+            raw_open_orders = ib.reqAllOpenOrders()
+        except Exception as e:
+            raise HTTPException(
+                status_code=503,
+                detail=f"reconciliation required: could not verify broker order state for account "
+                       f"{body.account_id} ({type(e).__name__}: {e}); retry once broker state is confirmed",
+            ) from e
+        existing_open = [
+            o for o in (raw_open_orders or [])
+            if getattr(getattr(o, "order", None), "account", None) in (None, body.account_id)
+            and getattr(getattr(o, "orderStatus", None), "status", None) not in TERMINAL_STATUSES
+        ]
         if existing_open:
             raise HTTPException(
                 status_code=409,
-                detail=f"account {body.account_id} has {len(existing_open)} open order(s) at IB; "
-                       "clear or reconcile them before executing a new rebalance",
+                detail=f"reconciliation required: account {body.account_id} has {len(existing_open)} "
+                       "non-terminal order(s) at IB; reconcile broker state before executing a new rebalance",
             )
 
         def _cancel_placed(ib_: Any) -> None:

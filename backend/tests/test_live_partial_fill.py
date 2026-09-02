@@ -116,6 +116,9 @@ class _PartialFillFakeIB:
     def cancelOrder(self, _order):
         self.cancel_calls += 1
 
+    def reqAllOpenOrders(self):
+        return []
+
 
 def test_partial_fill_timeout_aborts_basket(client, db_session, monkeypatch, _mock_ib_insync):
     """

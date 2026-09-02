@@ -164,6 +164,9 @@ class _HaltMidRunFakeIB:
     def cancelOrder(self, _order):
         self.cancel_calls += 1
 
+    def reqAllOpenOrders(self):
+        return []
+
 
 def test_halt_mid_rebalance_aborts_and_cancels(client, db_session, monkeypatch, _mock_ib_insync):
     """After a filled first leg, a halt skips the remaining legs without cancelling the fill."""

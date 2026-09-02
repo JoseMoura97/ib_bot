@@ -209,6 +209,9 @@ class _SlowIB:
     def cancelOrder(self, _order):
         self.cancel_calls += 1
 
+    def reqAllOpenOrders(self):
+        return []
+
 
 def test_per_leg_30s_timeout_cancels_placed_order(
     client, db_session, monkeypatch, _mock_ib_insync
