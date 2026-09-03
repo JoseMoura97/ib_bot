@@ -3213,10 +3213,72 @@
           "stored_hash_matches_payload": true
         }
       ]
+    },
+    {
+      "as_of_date": "2026-09-03",
+      "manifest_hash": "291944788d2e5c9c770fbb4be0e9d67644f9b7ca649e52cf23a3c21db921f7b7",
+      "previous_manifest_hash": "e08b64dfb3768a96b1b8b3dcde068fe101399f9dbb429669e67e72ebe6cb08b4",
+      "sources": [
+        {
+          "content_hash": "93906c936ec73af4cef4ee17e8b7e25849a6df1f57fcdfbfc6f433d0d72aeafc",
+          "source": "cftc_disaggregated_futures_cot",
+          "stored_hash_matches_payload": true
+        },
+        {
+          "content_hash": "3568faf332645ee357850ac13f124aff6a7e167e4afac85929f60df481e268cd",
+          "source": "finra_offexchange_short_volume",
+          "stored_hash_matches_payload": true
+        },
+        {
+          "content_hash": "d82a7c527e945a30df7f26132c630b2ae1ad1a910c2679f6565a765f6b29784f",
+          "source": "fred_market_regime",
+          "stored_hash_matches_payload": true
+        },
+        {
+          "content_hash": "af8ce388687f84c7b0a06b3ae112095fe39c359fd2026af21ef51df6adec1ecc",
+          "source": "house_financial_disclosure_index",
+          "stored_hash_matches_payload": true
+        },
+        {
+          "content_hash": "36a14e8361b14069fda098a1d16c92027219c192bea1a40b1193284fc365f3f7",
+          "source": "house_periodic_transaction_report_index",
+          "stored_hash_matches_payload": true
+        },
+        {
+          "content_hash": "b7745e73056b15f3fe35ec25f3895baf3e49a94678a55bfdcf89eddce2f17cab",
+          "source": "iron_wing_equity_daily_bars",
+          "stored_hash_matches_payload": true
+        },
+        {
+          "content_hash": "4ab9d38c1c2756c79720b7af6f02b8caa73a948b440f219d9c093cb6ab9fdc4c",
+          "source": "nasdaq_symbol_directory",
+          "stored_hash_matches_payload": true
+        },
+        {
+          "content_hash": "295aad54cf22862c9ccebe116051c89ea9b1a7a913ec00b7bf171d0b7af7b5db",
+          "source": "sec_13f_berkshire_hathaway",
+          "stored_hash_matches_payload": true
+        },
+        {
+          "content_hash": "09926a32b5bcffdf01a62fdc42b212a8eff46fc8a3ff53ad77af04b0cc8a8a6a",
+          "source": "sec_13f_scion_asset_management",
+          "stored_hash_matches_payload": true
+        },
+        {
+          "content_hash": "d6064fdabf7c441df4dfe59fe5ba36e0e5edcda354651f268bbe27312a3dabd5",
+          "source": "sec_daily_material_filings",
+          "stored_hash_matches_payload": true
+        },
+        {
+          "content_hash": "2954fd7fe5764d604ad02c676fdda10b185f0e1ec580d005ddd5a0004491fe30",
+          "source": "usaspending_recent_contract_awards",
+          "stored_hash_matches_payload": true
+        }
+      ]
     }
   ],
-  "generated_at_utc": "2026-09-02T07:00:25.080763+00:00",
+  "generated_at_utc": "2026-09-03T07:00:26.713775+00:00",
   "schema_version": 1,
-  "top_manifest_hash": "e08b64dfb3768a96b1b8b3dcde068fe101399f9dbb429669e67e72ebe6cb08b4",
-  "total_days": 52
+  "top_manifest_hash": "291944788d2e5c9c770fbb4be0e9d67644f9b7ca649e52cf23a3c21db921f7b7",
+  "total_days": 53
 }
