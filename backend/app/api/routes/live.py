@@ -14,10 +14,11 @@ from app.core.limiter import limiter
 from app.db.session import get_db
 from app.models.ib_audit import IBOrder, IBTrade, LiveExecutionRequest, LiveRebalanceAudit, SystemState
 from app.models.portfolio import Portfolio, PortfolioStrategy
-from app.services.ib_worker import call_ib, call_try_commit, current_ib_connection
+from app.services.ib_worker import call_ib, call_try_commit, current_ib_gateway_state
 from app.services.market_calendar import market_is_open
 from app.services.paper_trading import PriceQuote, fetch_last_close_price, fetch_prices
 from system.execution.order_preflight import OrderPreFlightGuardError, OrderPreFlightPolicy, order_pre_flight_guard
+from system.execution.gateway_state import GatewayStateGuardError, assert_gateway_execution_ready
 
 router = APIRouter()
 
@@ -107,7 +108,7 @@ def _persist_halt(db: Session, halted: bool) -> None:
 
 @router.get("/status")
 def live_status():
-    connection = current_ib_connection()
+    gateway = current_ib_gateway_state()
     return {
         "enabled": bool(settings.enable_live_trading),
         "dry_run": bool(settings.live_dry_run),
@@ -115,10 +116,13 @@ def live_status():
         "halted": bool(settings.trading_halt),
         "ib_host": settings.ib_host,
         "ib_port": settings.ib_port,
-        "connected": bool(connection["connected"]),
-        "last_connect_ok_at": connection["last_connect_ok_at"],
-        "last_error": connection["last_error"],
-        "consecutive_failures": int(connection["consecutive_failures"]),
+        "connected": gateway.connected,
+        "last_success": gateway.last_success,
+        "last_connect_ok_at": gateway.last_success,
+        "last_error": gateway.last_error,
+        "dormant": gateway.dormant,
+        "gateway_health": gateway.health,
+        "consecutive_failures": gateway.consecutive_failures,
     }
 
 
@@ -761,6 +765,13 @@ def execute_live_rebalance_core(
     if not body.confirm:
         raise HTTPException(status_code=400, detail="confirm must be true to execute live rebalance")
 
+    # This is the first Gateway-aware execution fence.  It reads the worker's
+    # existing state only; it must never wake a dormant Gateway to check it.
+    try:
+        assert_gateway_execution_ready(current_ib_gateway_state())
+    except GatewayStateGuardError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
     # Phase 1: Mandatory idempotency key
     key = _normalize_idempotency_key(idempotency_key)
     if not key:
@@ -933,6 +944,18 @@ def execute_live_rebalance_core(
                 abs(float(leg.delta_quantity)) * float(leg.price),
                 float(preview.estimated_notional),
             )
+            # The request-entry snapshot is deliberately not sufficient here:
+            # preview construction, reconciliation, qualification and the
+            # pre-flight guard can all take long enough for the observed
+            # Gateway state to change.  Re-evaluate the same socket-free,
+            # canonical predicate at the final submission boundary.  This
+            # must stay ahead of call_try_commit(): a rejected Gateway state
+            # is not an irreversible action and therefore must not consume
+            # the caller's atomic commit token.
+            try:
+                assert_gateway_execution_ready(current_ib_gateway_state())
+            except GatewayStateGuardError as exc:
+                raise HTTPException(status_code=503, detail=str(exc)) from exc
             if not call_try_commit():
                 # The HTTP caller of this execution already timed out (e.g.
                 # an earlier broker call in this basket -- reqAllOpenOrders,

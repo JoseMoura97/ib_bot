@@ -1,6 +1,8 @@
 import sys
 import types
 
+from app.core.config import settings
+
 
 class _FakeIB:
     def __init__(self):
@@ -52,6 +54,9 @@ def test_ib_worker_calls_and_stays_connected(monkeypatch):
     fake_mod = types.ModuleType("ib_insync")
     fake_mod.IB = _FakeIB
     monkeypatch.setitem(sys.modules, "ib_insync", fake_mod)
+    # This test owns an in-memory Gateway and explicitly exercises the
+    # non-dormant worker path.  The production default remains dormant.
+    monkeypatch.setattr(settings, "ib_gateway_dormant", False)
 
     from app.services import ib_worker
 

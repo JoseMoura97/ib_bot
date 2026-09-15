@@ -12,6 +12,7 @@ from typing import Any, Callable, TypeVar
 from fastapi import HTTPException
 
 from app.core.config import settings
+from system.execution.gateway_state import GatewayState, GatewayStatePolicy, gateway_state_from_connection
 
 T = TypeVar("T")
 
@@ -147,6 +148,11 @@ class _IbWorker:
         self._outage_alert_sent = False
 
     def start(self) -> None:
+        if settings.ib_gateway_dormant:
+            # Do not start a reconnecting thread while the host's explicit
+            # dormancy contract is in force.  This is intentionally before
+            # any optional ib_insync import or connection attempt.
+            return
         with self._lock:
             if self._thread and self._thread.is_alive():
                 return
@@ -162,6 +168,8 @@ class _IbWorker:
             t.join(timeout=timeout)
 
     def call(self, fn: Callable[[Any], T], *, timeout: float = 10.0) -> T:
+        if settings.ib_gateway_dormant:
+            raise HTTPException(status_code=503, detail="IB Gateway is dormant; refusing broker call")
         self.start()
         fut: Future[Any] = Future()
         cancel_token = _CancelToken()
@@ -252,6 +260,8 @@ class _IbWorker:
                 pass
 
     def _ensure_connected(self) -> Any:
+        if settings.ib_gateway_dormant:
+            raise HTTPException(status_code=503, detail="IB Gateway is dormant; refusing connection")
         # ib_insync expects an event loop to exist in this thread, even at import time.
         try:
             asyncio.get_event_loop()
@@ -351,9 +361,23 @@ class _IbWorker:
                 "port": int(self._conn_port),
                 "connected": self._connected,
                 "last_connect_ok_at": self._last_connect_ok_at,
+                # ``last_success`` is the stable public contract.  Retain
+                # the older key above for existing read-only consumers.
+                "last_success": self._last_connect_ok_at,
                 "last_error": self._last_error,
                 "consecutive_failures": self._consecutive_failures,
             }
+
+    def get_gateway_state(self) -> GatewayState:
+        """Return a snapshot only; never reconnect just to report health."""
+        return gateway_state_from_connection(
+            self.get_connection_info(),
+            policy=GatewayStatePolicy(
+                dormant=bool(settings.ib_gateway_dormant),
+                max_success_age_seconds=float(settings.ib_gateway_state_max_age_seconds),
+            ),
+            now=float(self._clock()),
+        )
 
     def configure_connection(self, *, host: str, port: int) -> None:
         """
@@ -410,6 +434,13 @@ class _IbWorker:
         last_epoch = -1
         _retry_delay = 0.5  # exponential backoff state for failed connections
         while not self._stop.is_set():
+            if settings.ib_gateway_dormant:
+                # A runtime transition to dormancy terminates the worker
+                # rather than leaving a background reconnect loop alive.
+                self._disconnect()
+                with self._lock:
+                    self._connected = False
+                break
             # If connection settings changed, force a reconnect.
             with self._lock:
                 epoch = self._conn_epoch
@@ -492,6 +523,11 @@ def configure_ib_connection(*, host: str, port: int) -> None:
 
 def current_ib_connection() -> dict[str, Any]:
     return _worker.get_connection_info()
+
+
+def current_ib_gateway_state() -> GatewayState:
+    """Canonical, socket-free state snapshot used by execution and health."""
+    return _worker.get_gateway_state()
 
 
 def stop_ib_worker() -> None:
