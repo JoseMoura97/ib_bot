@@ -1,6 +1,7 @@
 """Broker-stub proof that Gateway state is a fail-closed execution fence."""
 from __future__ import annotations
 
+import importlib
 import sys
 import types
 import uuid
@@ -151,4 +152,100 @@ def test_healthy_gateway_state_allows_exactly_one_broker_order(client, monkeypat
     response = _post(client)
 
     assert response.status_code == 200
+    assert broker.place_calls == 1
+
+
+# --- Legacy executor boundary (system/execution/ib_executor.py) -------------
+#
+# ECC attempt 6 (2026-09-15) rejected p1 because this second production
+# boundary observed the Gateway state at function entry and then ran the
+# notional computation, the pre-flight guard and the MarketOrder construction
+# before its only irreversible ``placeOrder``.  A state transition inside that
+# window could still submit.  These tests pin the recheck that closes it.
+
+
+def _install_legacy_ib_insync(monkeypatch):
+    module = types.ModuleType("ib_insync")
+    module.IB = object
+    module.Stock = lambda symbol, *_args: types.SimpleNamespace(symbol=symbol)
+
+    class _MarketOrder:
+        def __init__(self, action, quantity):
+            self.action = action
+            self.totalQuantity = quantity
+            self.account = ""
+
+    module.MarketOrder = _MarketOrder
+    monkeypatch.setitem(sys.modules, "ib_insync", module)
+
+
+class _LegacyBrokerStub(_BrokerStub):
+    """``_BrokerStub`` plus the quote call the legacy executor makes."""
+
+    def reqTickers(self, _contract):
+        return [types.SimpleNamespace(marketPrice=lambda: 100.0)]
+
+
+def _legacy_executor(monkeypatch, broker):
+    _install_legacy_ib_insync(monkeypatch)
+    sys.modules.pop("system.execution.ib_executor", None)
+    module = importlib.import_module("system.execution.ib_executor")
+    # Isolate the Gateway-state fence: the notional/allowlist fence has its own
+    # coverage in test_live_order_guard_bypass.py and must not mask this one.
+    monkeypatch.setattr(module, "order_pre_flight_guard", lambda **_kwargs: None)
+    executor = module.IBExecutor.__new__(module.IBExecutor)
+    executor.ib = broker
+    monkeypatch.setattr(executor, "get_current_positions", lambda _account: {})
+    return module, executor
+
+
+@pytest.mark.parametrize(
+    "late_state, expected_detail",
+    [
+        (GatewayState(False, 1_000.0, "connection refused", False, "disconnected"), "disconnected"),
+        (GatewayState(True, 900.0, None, False, "stale"), "stale"),
+        (GatewayState(True, 1_000.0, None, True, "dormant"), "dormant"),
+    ],
+)
+def test_legacy_executor_transition_before_submission_reaches_zero_broker_orders(
+    monkeypatch, late_state, expected_detail
+):
+    """A healthy entry snapshot cannot authorize a later failed Gateway state."""
+    from system.execution.gateway_state import GatewayStateGuardError
+
+    broker = _LegacyBrokerStub()
+    _module, executor = _legacy_executor(monkeypatch, broker)
+    snapshots = iter([_healthy_state(), late_state])
+    monkeypatch.setattr(executor, "_observe_gateway_state", lambda: next(snapshots))
+
+    with pytest.raises(GatewayStateGuardError) as excinfo:
+        executor.rebalance(["AAPL"], allocation_per_stock_usd=1_000.0, account=_ACCOUNT)
+
+    assert expected_detail in str(excinfo.value)
+    assert broker.place_calls == 0
+
+
+def test_legacy_executor_unhealthy_entry_state_reaches_zero_broker_orders(monkeypatch):
+    """The entry check itself still fails closed — it was not merely moved."""
+    from system.execution.gateway_state import GatewayStateGuardError
+
+    broker = _LegacyBrokerStub()
+    _module, executor = _legacy_executor(monkeypatch, broker)
+    unhealthy = GatewayState(False, 1_000.0, "connection refused", False, "disconnected")
+    monkeypatch.setattr(executor, "_observe_gateway_state", lambda: unhealthy)
+
+    with pytest.raises(GatewayStateGuardError):
+        executor.rebalance(["AAPL"], allocation_per_stock_usd=1_000.0, account=_ACCOUNT)
+
+    assert broker.place_calls == 0
+
+
+def test_legacy_executor_healthy_state_allows_exactly_one_broker_order(monkeypatch):
+    """A Gateway that stays healthy across both checks still submits exactly once."""
+    broker = _LegacyBrokerStub()
+    _module, executor = _legacy_executor(monkeypatch, broker)
+    monkeypatch.setattr(executor, "_observe_gateway_state", _healthy_state)
+
+    executor.rebalance(["AAPL"], allocation_per_stock_usd=1_000.0, account=_ACCOUNT)
+
     assert broker.place_calls == 1

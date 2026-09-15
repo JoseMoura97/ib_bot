@@ -81,14 +81,44 @@ $ cd backend && python3 -m pytest tests/ -p no:warnings \
 258 passed, 17 skipped in 5.36s
 ```
 
-(`test_edgar_13f_fallback.py`, `test_plot_data_cache.py`,
-`test_rebalancing_engine_regressions.py` have pre-existing repo-root import errors per
-`.cursorrules`; `test_altdata_chain.py` has a pre-existing unrelated collection error,
-confirmed on the commit this branch is based on — untouched by this phase.)
+**Correction (DM, 2026-09-15, WEST):** the four `--ignore` exclusions above are NOT
+justified at the merged `main` SHA.  `.cursorrules` covered only three of them and that
+note is stale — run from `backend/` with the repository venv, all four collect and PASS.
+The un-ignored integrated result is in the "Integrated `main` regression" section below
+and supersedes this exclusion list.
 
 ## Commit
 
-Worktree branch `conductor/phase-p2-43e6`, based on commit `08028c32ffac85e4ba1b361676041fd189dbc4bb`.
+**Implementation commit:** `3579a8677a5884ab4737cfa1e36bd6b143c8401b` — the
+non-finite (NaN/+Inf/-Inf) rejection fix that closed the ECC attempt-2 defect; it is
+the tip of `conductor/phase-p2-43e6` and a verified ancestor of `main`.
+
+Earlier commits on the same phase branch: `405b32f2c223de84bf7869f7598765074295bc39`
+(the original 60 malformed-fixture cases, ECC attempt 1 PASS) and
+`e66cd051c5b0686268e3763436441977c284f3d4` (re-verification on the p1-integrated
+tree).  Branch base was `08028c32ffac85e4ba1b361676041fd189dbc4bb`; the branch was
+merged into `main` as merge commit `e3e7422`.
+
+## Valid-fixture expected results (positive control)
+
+Malformed rejection is only half the acceptance — these are the concrete parsed
+values the valid fixtures are asserted to produce, so a parser that rejected
+*everything* would fail this receipt:
+
+- `_normalize_accounts` valid fixture → the exact ordered account-ID list, with
+  separators split and blanks dropped (no silent truncation).
+- `_managed_accounts` valid fixture → the same list resolved from each of
+  `managedAccounts()`, `wrapper.accounts` and the account-summary fallback.
+- `_account_values_for_account` / `_positions_for_account` valid fixtures → the
+  expected tag/value pairs and position rows, typed as floats.
+- NLV / unrealized-PnL extractors valid fixtures → the exact float value for the
+  requested tag (not `None`, not a string).
+- `_to_float` valid inputs → the exact float, including the percent-string branch;
+  `NaN`/`+Inf`/`-Inf` and their string forms → `None`.
+- `_fetch_live_quotes` valid fixture → one quote at the expected price, with an
+  unknown extra vendor field ignored rather than rejected.
+- Broker-stub end-to-end valid fixture → **exactly 1** order, asserted field by
+  field: `BADTICK BUY 100.0` shares for a $10,000 allocation at $100/share.
 
 ## Re-verification after integrating p1 into this branch (2026-09-15, ART)
 

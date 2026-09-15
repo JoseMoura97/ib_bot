@@ -60,6 +60,69 @@ exited `0` after 1m09.317s (22.376 CPU seconds; 1.5 MiB peak) and recorded
 `reports/ib_gateway_top3_p1_full_suite_b42dd16.log`.  The final durable log
 ends in `systemd-run_rc=0 Result=success ExecMainStatus=0`.
 
+## ECC attempt-6 defect: the legacy executor's pre-`placeOrder` recheck
+
+**Defect (reviewer `auto-review-p1-...-fe54`, verdict FAIL, pinned `5b82116`):** the API
+route `live.py` correctly re-evaluated the canonical predicate immediately before its
+`placeOrder`, but the *second* production boundary,
+`system/execution/ib_executor.py::_place_guarded_market_order`, observed the Gateway
+state at function entry and then ran the notional computation,
+`order_pre_flight_guard` and the `MarketOrder` construction before its only
+irreversible `self.ib.placeOrder`.  Its docstring — and an earlier version of this
+receipt — claimed an immediate pre-submission guard that did not exist.  An execution
+state / dormancy transition inside that window could still submit, and no regression
+test covered the legacy boundary.  The reviewer was right; the earlier DM note
+asserting "`ib_executor.py:79` asserts the same predicate immediately before its only
+`placeOrder`" was wrong.
+
+**Fix.** The state observation was extracted into `IBExecutor._observe_gateway_state()`
+(socket-free, same `GatewayStatePolicy`, same 30s freshness bound) and
+`assert_gateway_execution_ready(self._observe_gateway_state())` is now called **twice**:
+once at function entry, and again immediately before `self.ib.placeOrder` with nothing
+in between — mirroring `live.py`.
+
+**New regression tests (5 cases added to
+`backend/tests/test_ib_gateway_state_guard.py`):**
+
+- `test_legacy_executor_transition_before_submission_reaches_zero_broker_orders` —
+  parametrized over a healthy entry snapshot followed by `disconnected`, `stale` and
+  `dormant`: each raises `GatewayStateGuardError` and reaches **0 broker**
+  `placeOrder()` calls.
+- `test_legacy_executor_unhealthy_entry_state_reaches_zero_broker_orders` — the entry
+  check itself still fails closed (the guard was added, not merely moved).
+- `test_legacy_executor_healthy_state_allows_exactly_one_broker_order` — a Gateway that
+  stays healthy across both checks still submits **exactly 1** order.
+
+**Proof the tests are not tautological.** With only the new pre-`placeOrder` recheck
+removed (source file only, the test file untouched, then restored), the three
+transition cases FAIL with `DID NOT RAISE GatewayStateGuardError` — i.e. the order
+reached the broker stub on the vulnerable code — and all three pass with the fix.
+
+**Acceptance evidence at this commit**, from `backend/`:
+
+```sh
+/home/servidor/Desktop/cursor-projects/ib_bot/.venv/bin/python -m pytest \
+  tests/test_ib_gateway_state_guard.py tests/test_ib_gateway_health_check.py \
+  tests/test_ib_gateway_dormancy_enforcement.py -p no:warnings
+```
+
+Result: **15 passed** (exit 0) — was 10 before these 5 cases.
+
+Full backend suite, **no `--ignore` exclusions**:
+
+```sh
+/home/servidor/Desktop/cursor-projects/ib_bot/.venv/bin/python -m pytest tests/ -p no:warnings
+```
+
+Result: **313 passed, 17 skipped, 0 failed** in 109.94s (exit 0) — was 308 before these
+5 cases; no regressions.  `ibgateway` and `xvfb-ibgw` were `inactive` and IB API ports
+4001/4002 unbound for every run above; no live socket, broker call, order, capital
+movement or deployment.
+
+Both irreversible order-submission boundaries now recheck the same canonical predicate
+immediately before submitting: `backend/app/api/routes/live.py` and
+`system/execution/ib_executor.py`.
+
 **Counted full-suite re-verification (DM, 2026-09-15, WEST).**  The durable-job
 paragraph above records only the producer's exit status, not a pass/fail count.
 The Domain Manager re-ran the whole backend suite with **no `--ignore`

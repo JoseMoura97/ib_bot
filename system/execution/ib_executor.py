@@ -44,23 +44,28 @@ class IBExecutor:
         price = ticker_data.marketPrice()
         return float(price) if price and price > 0 else None
 
-    def _place_guarded_market_order(self, contract, side, quantity, account, price, aggregate_notional_usd):
-        """Guard immediately before the only IB API order submission in this class."""
-        # The legacy executor has no worker heartbeat, so missing freshness is
-        # deliberately stale.  It must not invent a successful connection or
-        # bypass the same state predicate used by the API execution route.
+    def _observe_gateway_state(self):
+        """Re-observe the canonical Gateway execution state, socket-free.
+
+        The legacy executor has no worker heartbeat, so missing freshness is
+        deliberately stale.  It must not invent a successful connection or
+        bypass the same state predicate used by the API execution route.
+        """
         connected = False
         try:
             connected = bool(self.ib.isConnected())
         except Exception:
             pass
         dormant = os.getenv("IB_GATEWAY_DORMANT", "1").strip().lower() in {"1", "true", "yes", "on"}
-        state = gateway_state_from_connection(
+        return gateway_state_from_connection(
             {"connected": connected, "last_success": getattr(self.ib, "last_success", None)},
             policy=GatewayStatePolicy(dormant=dormant, max_success_age_seconds=30.0),
             now=time.time(),
         )
-        assert_gateway_execution_ready(state)
+
+    def _place_guarded_market_order(self, contract, side, quantity, account, price, aggregate_notional_usd):
+        """Guard immediately before the only IB API order submission in this class."""
+        assert_gateway_execution_ready(self._observe_gateway_state())
         order_notional = abs(float(quantity)) * float(price) if price is not None else None
         aggregate_notional = (
             float(aggregate_notional_usd) + float(order_notional)
@@ -76,6 +81,14 @@ class IBExecutor:
         order = MarketOrder(side, abs(quantity))
         if account:
             order.account = account
+        # The entry snapshot above is deliberately NOT sufficient: the notional
+        # computation, the pre-flight guard and the MarketOrder construction all
+        # run between it and the only irreversible submission in this class, and
+        # an execution-state / dormancy transition inside that window would
+        # otherwise reach the broker.  Mirror the API route (live.py) and
+        # re-evaluate the same canonical predicate immediately before
+        # placeOrder, with nothing in between.
+        assert_gateway_execution_ready(self._observe_gateway_state())
         self.ib.placeOrder(contract, order)
         return float(order_notional or 0.0)
 
