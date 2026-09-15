@@ -42,8 +42,18 @@ an `ib_insync` module stub; the dormancy test proves `connect_calls == 0`.
 The related stale-order, timeout, halt, partial-fill, and end-to-end suites
 were also run offline: `26 passed`.
 
-The attempted full `backend/tests` run is preserved at
-`reports/ib_gateway_top3_p1_full_suite.log`: it stopped during collection with
-an unrelated `ModuleNotFoundError: psycopg` in `test_altdata_chain.py` before
-running tests. This p1 receipt therefore claims only the named acceptance and
-adjacent money-path suites above, not a full-suite green result.
+After repairing the affected worker test's explicit fake-Gateway precondition,
+the repository venv also completed the full backend regression command offline:
+
+```sh
+./.venv/bin/python -m pytest backend/tests -q
+```
+
+Its contained producer exited `0` after 1m06.714s (23.918 CPU seconds; 307.5
+MiB peak) and recorded `Result=success ExecMainStatus=0` in
+`reports/ib_gateway_top3_p1_full_suite_venv.log`.  That persistent log retains
+the earlier failed attempt for audit history; the succeeding run is the final
+block, ending in `systemd-run_rc=0 Result=success ExecMainStatus=0`.
+
+The regression repair and this updated receipt are committed at
+`PENDING_COMMIT_SHA`.
