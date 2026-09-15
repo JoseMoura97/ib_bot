@@ -15,6 +15,7 @@ from threading import Lock
 import pytest
 
 from app.core.config import settings
+from system.execution.gateway_state import GatewayState
 
 
 _ACCOUNT = "U-ALLOWED"
@@ -182,10 +183,14 @@ def test_web_client_guard_blocks_before_place_order(monkeypatch, condition):
     client = web_module.IBWebClient.__new__(web_module.IBWebClient)
     client.client = broker
     client._submitted_notional_usd = 0.0
+    client._submitted_idempotency_keys = set()
     client._notional_lock = Lock()
+    client._gateway_state_provider = lambda: GatewayState(True, 1_000.0, None, False, "healthy")
 
     with pytest.raises(RuntimeError):
-        client.place_market_order(account, "AAPL", "BUY", 10, estimated_price=100.0)
+        client.place_market_order(
+            account, "AAPL", "BUY", 10, estimated_price=100.0, idempotency_key=f"legacy-{condition}"
+        )
     assert broker.place_calls == 0
 
 
