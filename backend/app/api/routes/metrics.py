@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -17,23 +18,27 @@ def _cache_path(name: str) -> Path:
 
 
 def _to_float(v: Any) -> float | None:
+    """Parse v to a finite float, or None. NaN/+Inf/-Inf are rejected."""
     if v is None:
         return None
     if isinstance(v, (int, float)):
-        return float(v)
+        f = float(v)
+        return f if math.isfinite(f) else None
     s = str(v).strip()
     if not s:
         return None
     # Percent strings
     if s.endswith("%"):
         try:
-            return float(s[:-1])
+            f = float(s[:-1])
         except Exception:
             return None
+        return f if math.isfinite(f) else None
     try:
-        return float(s)
+        f = float(s)
     except Exception:
         return None
+    return f if math.isfinite(f) else None
 
 
 def _load_last_validation_results() -> dict[str, Any] | None:

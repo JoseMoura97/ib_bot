@@ -5,6 +5,7 @@ executors and the API route cannot drift into separate safety policies.
 """
 from __future__ import annotations
 
+import math
 import os
 from dataclasses import dataclass
 
@@ -63,6 +64,14 @@ def order_pre_flight_guard(
         raise OrderPreFlightGuardError(
             f"account_id {account_id!r} not in LIVE_ALLOWED_ACCOUNTS allowlist"
         )
+
+    # A non-finite notional (NaN/+Inf/-Inf) must fail closed unconditionally:
+    # `notional > cap` is False for NaN, so the cap checks below would silently
+    # pass a malformed order through rather than reject it.
+    if order_notional_usd is not None and not math.isfinite(float(order_notional_usd)):
+        raise OrderPreFlightGuardError("order_notional_usd is not a finite number")
+    if aggregate_notional_usd is not None and not math.isfinite(float(aggregate_notional_usd)):
+        raise OrderPreFlightGuardError("aggregate_notional_usd is not a finite number")
 
     order_cap = float(policy.max_order_notional_usd)
     aggregate_cap = float(policy.max_aggregate_notional_usd)
