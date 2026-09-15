@@ -4,6 +4,8 @@ import types
 import pytest
 from fastapi import HTTPException
 
+from app.core.config import settings
+
 
 class _FakeGateway:
     def __init__(self) -> None:
@@ -29,6 +31,7 @@ def _worker(monkeypatch, now, gateway):
 
     from app.services.ib_worker import _IbWorker
 
+    monkeypatch.setattr(settings, "ib_gateway_dormant", False)
     return _IbWorker(clock=lambda: now[0], disconnect_alert_threshold_seconds=30.0)
 
 
@@ -39,11 +42,12 @@ def test_healthy_gateway_state_is_exposed_by_live_status(client, monkeypatch):
 
     import app.api.routes.live as live
 
-    monkeypatch.setattr(live, "current_ib_connection", worker.get_connection_info)
+    monkeypatch.setattr(live, "current_ib_gateway_state", worker.get_gateway_state)
     response = client.get("/live/status")
 
     assert response.status_code == 200
     assert response.json()["connected"] is True
+    assert response.json()["last_success"] == 100.0
     assert response.json()["last_connect_ok_at"] == 100.0
     assert response.json()["last_error"] is None
     assert response.json()["consecutive_failures"] == 0

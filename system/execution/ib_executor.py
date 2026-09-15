@@ -1,11 +1,15 @@
 import asyncio
 from ib_insync import *
 import logging
+import os
+import time
 
 try:  # Supports both package imports and the legacy ``system/app`` launcher.
     from .order_preflight import OrderPreFlightPolicy, order_pre_flight_guard
+    from .gateway_state import GatewayStatePolicy, assert_gateway_execution_ready, gateway_state_from_connection
 except ImportError:  # pragma: no cover - exercised by the legacy launcher only
     from order_preflight import OrderPreFlightPolicy, order_pre_flight_guard
+    from gateway_state import GatewayStatePolicy, assert_gateway_execution_ready, gateway_state_from_connection
 
 
 class IBExecutor:
@@ -42,6 +46,21 @@ class IBExecutor:
 
     def _place_guarded_market_order(self, contract, side, quantity, account, price, aggregate_notional_usd):
         """Guard immediately before the only IB API order submission in this class."""
+        # The legacy executor has no worker heartbeat, so missing freshness is
+        # deliberately stale.  It must not invent a successful connection or
+        # bypass the same state predicate used by the API execution route.
+        connected = False
+        try:
+            connected = bool(self.ib.isConnected())
+        except Exception:
+            pass
+        dormant = os.getenv("IB_GATEWAY_DORMANT", "1").strip().lower() in {"1", "true", "yes", "on"}
+        state = gateway_state_from_connection(
+            {"connected": connected, "last_success": getattr(self.ib, "last_success", None)},
+            policy=GatewayStatePolicy(dormant=dormant, max_success_age_seconds=30.0),
+            now=time.time(),
+        )
+        assert_gateway_execution_ready(state)
         order_notional = abs(float(quantity)) * float(price) if price is not None else None
         aggregate_notional = (
             float(aggregate_notional_usd) + float(order_notional)

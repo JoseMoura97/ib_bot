@@ -49,6 +49,17 @@ def client(db_session, monkeypatch):
     from app.core.limiter import limiter
     limiter.enabled = False
 
+    # Route tests use in-memory broker stubs.  Give those stubs an explicit
+    # healthy observed state so they do not rely on, or wake, the deliberately
+    # dormant real Gateway.  State-guard tests override this fixture directly.
+    from app.api.routes import live
+    from system.execution.gateway_state import GatewayState
+    monkeypatch.setattr(
+        live,
+        "current_ib_gateway_state",
+        lambda: GatewayState(True, 1_000.0, None, False, "healthy"),
+    )
+
     with TestClient(app) as c:
         yield c
 

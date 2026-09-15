@@ -19,6 +19,14 @@ class Settings(BaseSettings):
         ge=0.0,
         validation_alias="IB_GATEWAY_DISCONNECT_ALERT_SECONDS",
     )
+    # The verified host posture is dormant by default: no Gateway socket may
+    # be opened merely because an HTTP request reaches the application.
+    ib_gateway_dormant: bool = Field(default=True, validation_alias="IB_GATEWAY_DORMANT")
+    ib_gateway_state_max_age_seconds: float = Field(
+        default=30.0,
+        ge=0.0,
+        validation_alias="IB_GATEWAY_STATE_MAX_AGE_SECONDS",
+    )
     # Optional comma-separated list of account ids to always show in the UI,
     # even if IB doesn't return them via managedAccounts().
     ib_extra_accounts: str | None = Field(default=None, validation_alias="IB_EXTRA_ACCOUNTS")

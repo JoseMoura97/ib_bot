@@ -319,6 +319,10 @@ def _fresh_worker_fake_ib(monkeypatch):
 
     from app.services import ib_worker
 
+    # This fixture owns an in-memory connected broker specifically to exercise
+    # the timeout/commit race.  It cannot and must not consult the dormant
+    # real Gateway policy while doing so.
+    monkeypatch.setattr(settings, "ib_gateway_dormant", False)
     ib_worker.stop_ib_worker()
     return ib_worker
 
