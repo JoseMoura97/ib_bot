@@ -1,16 +1,16 @@
 # IB Gateway top-3 p1 receipt
 
-Implementation commit: `b42dd16693352ddff7577005f393bf2113c3e004`
+Verified implementation commit: `3d54a3a563597a74d8bfecfe52c70cad72e820c7`
 
 ## Deterministic acceptance proof
 
 Exact command run from the repository root:
 
 ```sh
-python3 -m pytest backend/tests/test_ib_gateway_state_guard.py backend/tests/test_ib_gateway_health_check.py backend/tests/test_ib_gateway_dormancy_enforcement.py -q
+./.venv/bin/python -m pytest backend/tests/test_ib_gateway_state_guard.py backend/tests/test_ib_gateway_health_check.py backend/tests/test_ib_gateway_dormancy_enforcement.py -q -p no:warnings
 ```
 
-Result: `10 passed` (exit 0).
+Result at the verified commit: `10 passed` (exit 0).
 
 The broker stub assertions are independent of HTTP status assertions:
 
@@ -60,6 +60,7 @@ exited `0` after 1m09.317s (22.376 CPU seconds; 1.5 MiB peak) and recorded
 `reports/ib_gateway_top3_p1_full_suite_b42dd16.log`.  The final durable log
 ends in `systemd-run_rc=0 Result=success ExecMainStatus=0`.
 
-The worker-test precondition repair is committed at
-`967acf5543e70c1ab6e9945949868e4177458a27`; this receipt follows that repair
-and retains the final durable producer's exact success markers.
+The verified commit contains the worker-test precondition repair and the
+integrated p1/p2/p3 main-tree regression evidence.  The final p1 check was
+performed with `ibgateway` and `xvfb-ibgw` inactive and TCP ports 4001/4002
+unbound; no real Gateway socket or broker connection was opened.
