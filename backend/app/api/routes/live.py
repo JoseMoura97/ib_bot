@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+import math
 import time
 from typing import Any, Iterable
 from uuid import UUID
@@ -175,17 +176,23 @@ class LiveRebalancePreviewOut(BaseModel):
 
 
 def _to_float(v: Any) -> float | None:
+    """Parse v to a finite float, or None. NaN/+Inf/-Inf are rejected (never
+    returned) -- a non-finite IB field must never silently reach a price,
+    quantity, or notional comparison downstream, since every such comparison
+    (`x > cap`) is False for NaN and would fail OPEN instead of closed."""
     if v is None:
         return None
     if isinstance(v, (int, float)):
-        return float(v)
+        f = float(v)
+        return f if math.isfinite(f) else None
     s = str(v).strip()
     if not s:
         return None
     try:
-        return float(s)
+        f = float(s)
     except Exception:
         return None
+    return f if math.isfinite(f) else None
 
 
 def _quantize_qty(qty: float) -> float:
@@ -466,8 +473,11 @@ def _fetch_live_quotes(tickers: Iterable[str]) -> dict[str, PriceQuote]:
                 continue
             price = None
             try:
-                price = float(t.marketPrice())
+                mp = float(t.marketPrice())
+                price = mp if math.isfinite(mp) else None
             except Exception:
+                price = None
+            if price is None:
                 price = _to_float(getattr(t, "last", None)) or _to_float(getattr(t, "close", None))
             out[str(sym).upper()] = {
                 "price": price,

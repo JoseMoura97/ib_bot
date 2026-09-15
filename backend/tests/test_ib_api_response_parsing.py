@@ -383,9 +383,11 @@ class TestTagExtractors:
 
 
 class TestToFloat:
-    """_to_float is duplicated verbatim in both ib.py and live.py; test both."""
+    """_to_float is duplicated verbatim in ib.py, live.py, and metrics.py; test all three."""
 
-    @pytest.mark.parametrize("module_name", ["app.api.routes.ib", "app.api.routes.live"])
+    _MODULES = ["app.api.routes.ib", "app.api.routes.live", "app.api.routes.metrics"]
+
+    @pytest.mark.parametrize("module_name", _MODULES)
     def test_missing_null_wrong_type_and_valid(self, module_name):
         import importlib
 
@@ -403,6 +405,26 @@ class TestToFloat:
         assert to_float(5.5) == 5.5
         assert to_float("5.5") == 5.5
         assert to_float("  5.5  ") == 5.5
+
+    @pytest.mark.parametrize("module_name", _MODULES)
+    def test_non_finite_wrong_type_is_rejected_not_passed_through(self, module_name):
+        """ECC attempt-2 regression: a raw NaN/Inf float (as ib_insync/ibapi can
+        return for a malformed tick) or its string form must be rejected, not
+        returned unchanged -- every downstream `value > cap` comparison is False
+        for NaN, so passing it through means a cap silently fails open."""
+        import importlib
+
+        mod = importlib.import_module(module_name)
+        to_float = mod._to_float
+
+        assert to_float(float("nan")) is None
+        assert to_float(float("inf")) is None
+        assert to_float(float("-inf")) is None
+        assert to_float("nan") is None
+        assert to_float("NaN") is None
+        assert to_float("inf") is None
+        assert to_float("-inf") is None
+        assert to_float("Infinity") is None
 
 
 # ===========================================================================
@@ -552,6 +574,18 @@ class TestFetchLiveQuotes:
         with pytest.raises(TypeError):
             self._run(monkeypatch, 12345)
 
+    @pytest.mark.parametrize(
+        "label,bad_price",
+        [("nan", float("nan")), ("pos_inf", float("inf")), ("neg_inf", float("-inf"))],
+    )
+    def test_wrong_type_non_finite_market_price_excluded_not_passed_through(self, monkeypatch, _stub_ib_insync, label, bad_price):
+        """ECC attempt-2 regression: marketPrice() returning NaN/+Inf/-Inf must
+        never surface as a quote -- pre-fix, float(nan) parsed unchanged and
+        every downstream `price <= 0` / `price > max_abs_price` sanity check is
+        False for NaN, so a non-finite price sailed straight through them."""
+        ticks = [_Ticker(contract=_contract(symbol="AAPL"), market_price=bad_price, last=None, close=None)]
+        assert self._run(monkeypatch, ticks) == {}, f"[{label}] non-finite marketPrice() must never produce a quote"
+
     def test_valid_price_zero_or_negative_is_rejected(self, monkeypatch, _stub_ib_insync):
         from fastapi import HTTPException
 
@@ -700,6 +734,99 @@ class TestBrokerStubZeroOrdersOnMalformed:
         assert resp.status_code >= 400, f"[{label}] malformed IB response must be rejected, got {resp.status_code}: {resp.text}"
         assert "ib_insync import failed" not in resp.text, f"[{label}] rejection must come from response validation, not a missing dependency: {resp.text}"
         assert fake_ib.placed_orders == [], f"[{label}] malformed IB response must never reach placeOrder(); got {fake_ib.placed_orders}"
+
+
+class TestBrokerStubZeroOrdersOnNonFinitePrice:
+    """Regression for ECC attempt-2 (verdict 2026-09-15 19:00 WEST, pinned
+    e66cd051): a reqTickers() marketPrice() of NaN was accepted by
+    _fetch_live_quotes, and with LIVE_FRACTIONAL_SHARES=true, _build_preview
+    computed target_qty = target_value / NaN = NaN, delta = NaN - current_qty
+    = NaN. `abs(delta) < min_delta` is False for NaN (comparisons with NaN are
+    always False) so the dust-leg skip never triggered, and `delta > 0` is
+    also False for NaN so the side defaulted to "SELL" -- producing a leg with
+    NaN price and NaN quantity that the shared order_pre_flight_guard's
+    `notional > cap` checks (also False for NaN) let straight through to
+    ib.placeOrder(). Reproduced here with an existing position (so a delta is
+    computed at all) and fractional shares on (the exact shape the reviewer
+    used), for NaN, +Inf, and -Inf."""
+
+    @pytest.mark.parametrize(
+        "label,bad_price",
+        [("nan", float("nan")), ("pos_inf", float("inf")), ("neg_inf", float("-inf"))],
+    )
+    def test_non_finite_market_price_yields_zero_broker_orders(
+        self, client, db_session, monkeypatch, label, bad_price, _stub_ib_insync
+    ):
+        monkeypatch.setattr(settings, "live_fractional_shares", True)
+
+        bad_ticker = SimpleNamespace(
+            contract=SimpleNamespace(symbol="BADTICK"),
+            bid=None,
+            ask=None,
+            last=None,
+            close=None,
+            time=datetime.utcnow(),
+        )
+        bad_ticker.marketPrice = lambda: bad_price
+
+        # An existing position is required to reproduce the reviewer's exact
+        # NaN-quantity SELL leg: without one, current_qty defaults to 0.0 and
+        # the missing-quote HTTPException alone would already block it.
+        fake_ib = FakeBrokerIB(
+            tickers_response=[bad_ticker],
+            positions_response=[_pos(account=_ACCOUNT_ID, position=5.0, avgCost=90.0, contract=_contract(symbol="BADTICK"))],
+        )
+        _wire_common(monkeypatch, fake_ib)
+
+        resp = client.post(
+            "/live/rebalance/execute",
+            json=_exec_body(),
+            headers={"Idempotency-Key": str(uuid.uuid4())},
+        )
+
+        assert resp.status_code >= 400, f"[{label}] non-finite IB price must be rejected, got {resp.status_code}: {resp.text}"
+        assert "ib_insync import failed" not in resp.text, f"[{label}] rejection must come from response validation, not a missing dependency: {resp.text}"
+        assert fake_ib.placed_orders == [], f"[{label}] non-finite IB price must never reach placeOrder(); got {fake_ib.placed_orders}"
+
+
+class TestOrderPreFlightGuardRejectsNonFiniteNotional:
+    """Unit-level regression for the shared last-line-of-defense guard cited
+    in the ECC defect: order_pre_flight_guard's cap checks (`notional > cap`)
+    are False for NaN, so a non-finite notional derived from a malformed IB
+    field must be rejected unconditionally, not just when caps are enabled."""
+
+    def _policy(self):
+        from system.execution.order_preflight import OrderPreFlightPolicy
+
+        return OrderPreFlightPolicy(
+            trading_halt=False,
+            live_allowed_accounts=None,
+            max_order_notional_usd=1_000.0,
+            max_aggregate_notional_usd=5_000.0,
+        )
+
+    @pytest.mark.parametrize("bad_value", [float("nan"), float("inf"), float("-inf")])
+    def test_non_finite_order_notional_is_rejected(self, bad_value):
+        from system.execution.order_preflight import OrderPreFlightGuardError, order_pre_flight_guard
+
+        with pytest.raises(OrderPreFlightGuardError):
+            order_pre_flight_guard(
+                account_id="U1", order_notional_usd=bad_value, aggregate_notional_usd=100.0, policy=self._policy()
+            )
+
+    @pytest.mark.parametrize("bad_value", [float("nan"), float("inf"), float("-inf")])
+    def test_non_finite_aggregate_notional_is_rejected(self, bad_value):
+        from system.execution.order_preflight import OrderPreFlightGuardError, order_pre_flight_guard
+
+        with pytest.raises(OrderPreFlightGuardError):
+            order_pre_flight_guard(
+                account_id="U1", order_notional_usd=100.0, aggregate_notional_usd=bad_value, policy=self._policy()
+            )
+
+    def test_valid_finite_notional_within_caps_passes(self):
+        from system.execution.order_preflight import order_pre_flight_guard
+
+        order_pre_flight_guard(account_id="U1", order_notional_usd=500.0, aggregate_notional_usd=500.0, policy=self._policy())
 
 
 class TestBrokerStubValidFixtureExecutes:

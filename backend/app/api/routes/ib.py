@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 import re
 from typing import Any
 
@@ -15,17 +16,20 @@ router = APIRouter()
 
 
 def _to_float(v: Any) -> float | None:
+    """Parse v to a finite float, or None. NaN/+Inf/-Inf are rejected."""
     if v is None:
         return None
     if isinstance(v, (int, float)):
-        return float(v)
+        f = float(v)
+        return f if math.isfinite(f) else None
     s = str(v).strip()
     if not s:
         return None
     try:
-        return float(s)
+        f = float(s)
     except Exception:
         return None
+    return f if math.isfinite(f) else None
 
 
 def _connect_ib():
