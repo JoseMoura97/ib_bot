@@ -64,7 +64,8 @@ Coverage:
    response (fails loudly, never fabricates a quote), price<=0 rejected, stale quote
    rejected, valid quote parses correctly.
 8. Broker-stub end-to-end (`FakeBrokerIB.placed_orders`) — 5 cases: 4 malformed
-   `reqTickers()` fixtures each asserted to reach **0** `placeOrder()` calls and a
+   `reqTickers()` fixtures each asserted to reach **0 broker**-stub `placeOrder()`
+   calls and a
    non-2xx response (explicitly excluding the "ib_insync import failed" false-positive
    rejection path), plus 1 valid fixture asserted to place **exactly** the expected
    single order (`BADTICK BUY 100.0` shares for a $10,000 allocation at $100/share).
@@ -88,3 +89,23 @@ confirmed on the commit this branch is based on — untouched by this phase.)
 ## Commit
 
 Worktree branch `conductor/phase-p2-43e6`, based on commit `08028c32ffac85e4ba1b361676041fd189dbc4bb`.
+
+## Re-verification after integrating p1 into this branch (2026-09-15, ART)
+
+`conductor/phase-p2-43e6` was merged with `main` at `fc988dc` (the p1 Gateway
+state/health/dormancy hardening) so this phase's evidence is measured on the
+integrated tree, not on an isolated base.
+
+Exact command re-run from the repository root on the merged tree:
+
+```sh
+./.venv/bin/python -m pytest backend/tests/test_ib_api_response_parsing.py -q -p no:warnings
+```
+
+Result: `60 passed` (exit 0).  The broker-stub end-to-end cases still reach
+**0 broker** `placeOrder()` calls for all 4 malformed `reqTickers()` fixtures
+and **exactly 1** order for the valid fixture.
+
+No live Gateway socket, real broker, order, capital movement, restart or
+deployment was used: `ibgateway` and `xvfb-ibgw` were `inactive` and IB API
+ports 4001/4002 unbound while these tests ran.
