@@ -55,5 +55,6 @@ MiB peak) and recorded `Result=success ExecMainStatus=0` in
 the earlier failed attempt for audit history; the succeeding run is the final
 block, ending in `systemd-run_rc=0 Result=success ExecMainStatus=0`.
 
-The regression repair and this updated receipt are committed at
-`PENDING_COMMIT_SHA`.
+The worker-test precondition repair is committed at
+`967acf5543e70c1ab6e9945949868e4177458a27`; this receipt follows that repair
+and retains the durable producer's exact success markers.
