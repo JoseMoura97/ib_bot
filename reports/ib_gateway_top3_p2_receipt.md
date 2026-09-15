@@ -207,18 +207,17 @@ to `main`, or deployment was used. Work stayed entirely inside
 
 ## Integrated `main` regression (all three phases merged)
 
-Merge commit `62cff08` on `main` carries p1 + p2 + p3 together.  Run from
-`backend/`:
+Merge commit `e3e7422` on `main` carries p1 + p2 + p3 together (p1 merged via
+`62cff08`/`3d54a3a`, p3 via `62cff08`, p2 via `e3e7422`).  Run from `backend/`
+with **no `--ignore` exclusions** — the earlier version of this block excluded
+four test files without justification; all four pass at this SHA:
 
 ```bash
-/home/servidor/Desktop/cursor-projects/ib_bot/.venv/bin/python -m pytest tests/ \
-  -p no:warnings \
-  --ignore=tests/test_edgar_13f_fallback.py \
-  --ignore=tests/test_plot_data_cache.py \
-  --ignore=tests/test_rebalancing_engine_regressions.py \
-  --ignore=tests/test_altdata_chain.py
+/home/servidor/Desktop/cursor-projects/ib_bot/.venv/bin/python -m pytest tests/ -p no:warnings
 ```
 
-Result: **282 passed, 16 skipped** in 72.52s (exit 0).  `ibgateway` and
-`xvfb-ibgw` were `inactive` and IB API ports 4001/4002 unbound for the whole
-run — no live socket, broker call, order, capital movement or deployment.
+Result: **308 passed, 17 skipped, 0 failed** in 92.27s (exit 0), verified by the
+Domain Manager on the merged `main` tree at `e3e7422` (2026-09-15, WEST).
+`ibgateway` and `xvfb-ibgw` were `inactive` and IB API ports 4001/4002 unbound
+for the whole run — no live socket, broker call, order, capital movement or
+deployment.
