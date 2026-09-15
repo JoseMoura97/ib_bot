@@ -60,6 +60,31 @@ exited `0` after 1m09.317s (22.376 CPU seconds; 1.5 MiB peak) and recorded
 `reports/ib_gateway_top3_p1_full_suite_b42dd16.log`.  The final durable log
 ends in `systemd-run_rc=0 Result=success ExecMainStatus=0`.
 
+**Counted full-suite re-verification (DM, 2026-09-15, WEST).**  The durable-job
+paragraph above records only the producer's exit status, not a pass/fail count.
+The Domain Manager re-ran the whole backend suite with **no `--ignore`
+exclusions** on the merged `main` tree (merge `e3e7422`, p1 + p2 + p3 together),
+from `backend/`:
+
+```sh
+/home/servidor/Desktop/cursor-projects/ib_bot/.venv/bin/python -m pytest tests/ -p no:warnings
+```
+
+Result: **308 passed, 17 skipped, 0 failed** in 92.27s (exit 0).
+
+This phase's named suite re-run at that same `main` tree, from `backend/`:
+
+```sh
+/home/servidor/Desktop/cursor-projects/ib_bot/.venv/bin/python -m pytest \
+  tests/test_ib_gateway_state_guard.py tests/test_ib_gateway_health_check.py \
+  tests/test_ib_gateway_dormancy_enforcement.py -p no:warnings
+```
+
+Result: **10 passed** (exit 0) — the 5 negative Gateway states still reach
+**0 broker** `placeOrder()` calls and the one healthy state still reaches
+exactly 1.  `ibgateway` and `xvfb-ibgw` were `inactive` and IB API ports
+4001/4002 unbound for both runs.
+
 The verified commit contains the worker-test precondition repair and the
 integrated p1/p2/p3 main-tree regression evidence.  The final p1 check was
 performed with `ibgateway` and `xvfb-ibgw` inactive and TCP ports 4001/4002

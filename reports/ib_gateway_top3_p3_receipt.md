@@ -64,9 +64,15 @@ Full backend regression on the integrated tree, run from `backend/`:
   --ignore=tests/test_altdata_chain.py
 ```
 
-Result: **221 passed, 17 skipped** (exit 0).  The four ignored modules have
-pre-existing repo-root import / collection errors documented in `.cursorrules`
-and predate this phase.
+Result: **221 passed, 17 skipped** (exit 0) on the phase worktree.
+
+**Correction (DM, 2026-09-15, WEST):** the four `--ignore` exclusions above are
+NOT justified.  `.cursorrules` documents pre-existing repo-root import errors for
+only three of them (`test_edgar_13f_fallback`, `test_plot_data_cache`,
+`test_rebalancing_engine_regressions`) and that note is stale — when the suite is
+run from `backend/` with the repository venv, all four modules collect and pass.
+The un-ignored integrated result is recorded in the next section and supersedes
+this exclusion list.
 
 No live Gateway socket, real broker, live order, capital movement, restart or
 deployment occurred: `ibgateway` and `xvfb-ibgw` were `inactive` and IB API
@@ -75,18 +81,29 @@ an in-process `_BrokerStub`, never in `ibind`.
 
 ## Integrated `main` regression (all three phases merged)
 
-Merge commit `62cff08` on `main` carries p1 + p2 + p3 together.  Run from
+Merge commit `e3e7422` on `main` carries p1 + p2 + p3 together (p1 and p3 via
+`62cff08`/`3d54a3a`, p2 via `e3e7422`).  Run from `backend/` with **no
+`--ignore` exclusions**:
+
+```bash
+/home/servidor/Desktop/cursor-projects/ib_bot/.venv/bin/python -m pytest tests/ -p no:warnings
+```
+
+Result: **308 passed, 17 skipped, 0 failed** in 92.27s (exit 0), verified by the
+Domain Manager on the merged `main` tree (2026-09-15, WEST).  The four modules
+the older block excluded all collect and pass at this SHA.
+
+This phase's named suite re-run at `main` after the p2 merge-back, from
 `backend/`:
 
 ```bash
-/home/servidor/Desktop/cursor-projects/ib_bot/.venv/bin/python -m pytest tests/ \
-  -p no:warnings \
-  --ignore=tests/test_edgar_13f_fallback.py \
-  --ignore=tests/test_plot_data_cache.py \
-  --ignore=tests/test_rebalancing_engine_regressions.py \
-  --ignore=tests/test_altdata_chain.py
+/home/servidor/Desktop/cursor-projects/ib_bot/.venv/bin/python -m pytest \
+  tests/test_ib_web_client_order_guard.py tests/test_live_order_guard_bypass.py \
+  tests/test_ib_gateway_state_guard.py -p no:warnings
 ```
 
-Result: **282 passed, 16 skipped** in 72.52s (exit 0).  `ibgateway` and
-`xvfb-ibgw` were `inactive` and IB API ports 4001/4002 unbound for the whole
-run — no live socket, broker call, order, capital movement or deployment.
+Result: **32 passed** (exit 0) — the 11 negative bypass attempts still reach
+**0 broker**-stub submissions and the one allowed case still produces
+**exactly 1**.  `ibgateway` and `xvfb-ibgw` were `inactive` and IB API ports
+4001/4002 unbound for the whole run — no live socket, broker call, order,
+capital movement or deployment.

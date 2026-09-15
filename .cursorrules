@@ -22,5 +22,5 @@
 ## Testing
 - Run verification after major changes
 - Use existing test files in the project
-- 3 test files have pre-existing import errors (repo-root modules not on path): `test_edgar_13f_fallback.py`, `test_plot_data_cache.py`, `test_rebalancing_engine_regressions.py` -- skip with `--ignore` when running locally
+- STALE (re-checked 2026-09-15): `test_edgar_13f_fallback.py`, `test_plot_data_cache.py`, `test_rebalancing_engine_regressions.py` used to fail to import (repo-root modules not on path). They now collect and PASS when the suite is run from `backend/` with the repository venv -- do NOT `--ignore` them; the full suite is 308 passed / 17 skipped / 0 failed.
 - Rate limiting is auto-disabled in test fixtures via `limiter.enabled = False` in conftest.py
