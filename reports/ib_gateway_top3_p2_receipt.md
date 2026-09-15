@@ -109,3 +109,21 @@ and **exactly 1** order for the valid fixture.
 No live Gateway socket, real broker, order, capital movement, restart or
 deployment was used: `ibgateway` and `xvfb-ibgw` were `inactive` and IB API
 ports 4001/4002 unbound while these tests ran.
+
+## Integrated `main` regression (all three phases merged)
+
+Merge commit `62cff08` on `main` carries p1 + p2 + p3 together.  Run from
+`backend/`:
+
+```bash
+/home/servidor/Desktop/cursor-projects/ib_bot/.venv/bin/python -m pytest tests/ \
+  -p no:warnings \
+  --ignore=tests/test_edgar_13f_fallback.py \
+  --ignore=tests/test_plot_data_cache.py \
+  --ignore=tests/test_rebalancing_engine_regressions.py \
+  --ignore=tests/test_altdata_chain.py
+```
+
+Result: **282 passed, 16 skipped** in 72.52s (exit 0).  `ibgateway` and
+`xvfb-ibgw` were `inactive` and IB API ports 4001/4002 unbound for the whole
+run — no live socket, broker call, order, capital movement or deployment.
