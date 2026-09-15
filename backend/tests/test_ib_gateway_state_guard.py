@@ -119,6 +119,31 @@ def test_unhealthy_gateway_states_reach_zero_broker_orders(client, monkeypatch, 
     assert broker.place_calls == 0
 
 
+@pytest.mark.parametrize(
+    ("state", "expected_detail"),
+    [
+        (GatewayState(False, 1_000.0, "connection refused", False, "disconnected"), "disconnected"),
+        (GatewayState(True, 900.0, None, False, "stale"), "stale"),
+    ],
+)
+def test_gateway_transition_before_submission_reaches_zero_broker_orders(
+    client, monkeypatch, state, expected_detail
+):
+    """A healthy entry snapshot cannot authorize a later failed Gateway state."""
+    import app.api.routes.live as live
+
+    broker = _BrokerStub()
+    _wire_execution(monkeypatch, broker, _healthy_state())
+    snapshots = iter([_healthy_state(), state])
+    monkeypatch.setattr(live, "current_ib_gateway_state", lambda: next(snapshots))
+
+    response = _post(client)
+
+    assert response.status_code == 503
+    assert expected_detail in response.json()["detail"]
+    assert broker.place_calls == 0
+
+
 def test_healthy_gateway_state_allows_exactly_one_broker_order(client, monkeypatch):
     broker = _BrokerStub()
     _wire_execution(monkeypatch, broker, _healthy_state())

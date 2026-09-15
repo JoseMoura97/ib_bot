@@ -944,6 +944,18 @@ def execute_live_rebalance_core(
                 abs(float(leg.delta_quantity)) * float(leg.price),
                 float(preview.estimated_notional),
             )
+            # The request-entry snapshot is deliberately not sufficient here:
+            # preview construction, reconciliation, qualification and the
+            # pre-flight guard can all take long enough for the observed
+            # Gateway state to change.  Re-evaluate the same socket-free,
+            # canonical predicate at the final submission boundary.  This
+            # must stay ahead of call_try_commit(): a rejected Gateway state
+            # is not an irreversible action and therefore must not consume
+            # the caller's atomic commit token.
+            try:
+                assert_gateway_execution_ready(current_ib_gateway_state())
+            except GatewayStateGuardError as exc:
+                raise HTTPException(status_code=503, detail=str(exc)) from exc
             if not call_try_commit():
                 # The HTTP caller of this execution already timed out (e.g.
                 # an earlier broker call in this basket -- reqAllOpenOrders,
