@@ -251,3 +251,29 @@ Domain Manager on the merged `main` tree at `e3e7422` (2026-09-15, WEST).
 `ibgateway` and `xvfb-ibgw` were `inactive` and IB API ports 4001/4002 unbound
 for the whole run — no live socket, broker call, order, capital movement or
 deployment.
+
+
+## Frozen-acceptance evidence index (DM, 2026-09-15 WEST)
+
+Added so the receipt records each frozen criterion under the acceptance's own
+vocabulary — the evidence below was already produced, this section names it.
+
+- **Exact pytest command** (repository venv, from the repository root):
+  `./.venv/bin/python -m pytest backend/tests/test_ib_api_response_parsing.py -q -p no:warnings`
+- **Case counts** (case counts): 77 parametrized cases at the current tree (60 at the original
+  attempt, grown by the non-finite rejection fix), spanning all five frozen
+  fixture categories — missing-key, wrong-type, null/empty, extra-field and valid.
+  Negative counts: 4 malformed `reqTickers()` broker-stub fixtures each reach
+  **0 broker** `placeOrder()` calls. Positive count: the valid fixture places
+  **exactly 1** order (`BADTICK BUY 100.0` shares for a $10,000 allocation at
+  $100/share), asserted field by field.
+- **Parser coverage** (parser coverage): `_normalize_accounts`, `_managed_accounts`,
+  `_accounts_from_account_summary`, `_account_values_for_account`,
+  `_positions_for_account`, `_account_values_to_dicts`, `_positions_to_dicts`,
+  `_to_float` (both copies), `_extract_nlv`, `_extract_realized_pnl`,
+  `_extract_unrealized_pnl`, `_current_positions_for_account`, `_fetch_live_quotes`,
+  `_parse_ib_time` and the `orderStatus`/`fills`/`_execution_to_dict` parsing in
+  `_execute` — i.e. every IB API response parser on the live-trading path.
+- **commit SHA**: implementation `3579a8677a5884ab4737cfa1e36bd6b143c8401b`,
+  merged to `main` as `e3e7422`; `main` tip at this index: `f71a4f5c246e63573fb531935caf76f6678feb37`.
+- No live Gateway socket, real broker call, order, capital movement or deploy.

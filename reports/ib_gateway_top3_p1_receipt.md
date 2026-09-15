@@ -152,3 +152,24 @@ The verified commit contains the worker-test precondition repair and the
 integrated p1/p2/p3 main-tree regression evidence.  The final p1 check was
 performed with `ibgateway` and `xvfb-ibgw` inactive and TCP ports 4001/4002
 unbound; no real Gateway socket or broker connection was opened.
+
+
+## Frozen-acceptance evidence index (DM, 2026-09-15 WEST)
+
+Added so the receipt records each frozen criterion under the acceptance's own
+vocabulary — the evidence below was already produced, this section names it.
+
+- **Exact pytest command** (repository venv, run from `backend/`):
+  `/home/servidor/Desktop/cursor-projects/ib_bot/.venv/bin/python -m pytest tests/test_ib_gateway_state_guard.py tests/test_ib_gateway_health_check.py tests/test_ib_gateway_dormancy_enforcement.py -p no:warnings`
+- **commit SHA**: `f71a4f5c246e63573fb531935caf76f6678feb37` (verified `main` tip at the time this index was written);
+  the integrated merge commit carrying p1+p2+p3 is `e3e7422`.
+- **Negative counts**: 5 non-executable Gateway states (disconnected, stale,
+  active-during-dormancy at entry, plus healthy->disconnected and healthy->stale
+  transitions immediately before `placeOrder`) each reach **0 broker** stub orders,
+  at BOTH money-path entry points (FastAPI live route and the legacy executor).
+- **Positive counts**: the healthy state allows **exactly 1** expected broker-stub
+  order at each entry point (positive control, so the fence is not blanket-deny).
+- **no-live-socket setup**: `ibgateway` and `xvfb-ibgw` were `inactive` and IB API
+  TCP ports 4001/4002 unbound for every run recorded here; the tests drive an
+  in-process stub and never open a Gateway socket, place a real order, move
+  capital, restart a service or deploy.

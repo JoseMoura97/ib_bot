@@ -1,4 +1,13 @@
-"""Broker-stub proof that Gateway state is a fail-closed execution fence."""
+"""Broker-stub proof that Gateway state is a fail-closed execution fence.
+
+Every Gateway execution entry point authorizes a submission through ONE state
+predicate — ``assert_gateway_execution_ready`` in ``system/execution/gateway_state``.
+This file proves that single state predicate holds at both money-path entry
+points (the FastAPI live route and the legacy executor), for entry-state and for
+mid-preparation transitions: disconnected and stale entry states reach zero
+broker orders, a healthy->disconnected/stale transition before ``placeOrder``
+reaches zero broker orders, and the healthy case allows exactly 1 expected order.
+"""
 from __future__ import annotations
 
 import importlib

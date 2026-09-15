@@ -105,6 +105,19 @@ def _submit(client, *, key="web-case", **overrides):
     ],
 )
 def test_policy_bypass_attempts_submit_zero_orders(monkeypatch, name, configure, order_args):
+    """halt and disallowed-account / notional-limit bypass attempts submit 0 orders.
+
+    Frozen-acceptance coverage map for this file. Every web-client bypass
+    class is asserted to reach 0 broker-stub submissions:
+      - halt                -> this test, case "halt"
+      - disallowed-account  -> this test, case "disallowed_account"
+      - notional-limit      -> this test, cases "per_order_notional_limit"
+                               and "aggregate_notional_limit"
+      - stale-Gateway       -> test_stale_gateway_bypass_attempt_submits_zero_orders
+      - malformed-order     -> test_malformed_order_bypass_attempts_submit_zero_orders
+    The single allowed case submits exactly 1 expected payload:
+      - test_allowed_web_order_submits_exactly_one_expected_payload
+    """
     _clear_policy(monkeypatch)
     configure(monkeypatch)
     client, broker, _ = _client(monkeypatch)

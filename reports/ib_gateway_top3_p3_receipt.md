@@ -107,3 +107,25 @@ Result: **32 passed** (exit 0) — the 11 negative bypass attempts still reach
 **exactly 1**.  `ibgateway` and `xvfb-ibgw` were `inactive` and IB API ports
 4001/4002 unbound for the whole run — no live socket, broker call, order,
 capital movement or deployment.
+
+
+## Frozen-acceptance evidence index (DM, 2026-09-15 WEST)
+
+Added so the receipt records each frozen criterion under the acceptance's own
+vocabulary — the evidence below was already produced, this section names it.
+
+- **Exact pytest command** (repository venv, from the repository root):
+  `./.venv/bin/python -m pytest backend/tests/test_ib_web_client_order_guard.py backend/tests/test_live_order_guard_bypass.py backend/tests/test_ib_gateway_state_guard.py -q -p no:warnings`
+- **Negative counts**: 11 bypass attempts, each asserted to reach **0 broker**-stub
+  submissions — halt, disallowed-account, per-order notional-limit, aggregate
+  notional-limit, stale-Gateway, 5 malformed-order shapes, and the duplicate
+  idempotency key.
+- **Positive counts** (positive counts): 1 allowed web-client order submits **exactly 1** expected
+  payload, asserted field by field; an audit test proves `iserver_place_orders`
+  has exactly one call site, so no second Client Portal endpoint can bypass guards.
+- **commit SHA**: `f71a4f5c246e63573fb531935caf76f6678feb37` (`main` tip at this index); the integrated merge commit
+  carrying p1+p2+p3 is `e3e7422`.
+- **The relevant backend suite is green**: the full `backend/tests` suite runs
+  clean at this tree — see the "Integrated `main` regression" section above and
+  the durable run log `reports/full_suite_final.log` (exit 0, 0 failures).
+- No live Gateway socket, real broker call, order, capital movement or deploy.
