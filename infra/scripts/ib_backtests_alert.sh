@@ -26,6 +26,8 @@ conductor jobs add \
   --wake-spec '{"cmd":"true"}' \
   --deadline-min 1440 \
   --created-by ib-backtests-onfailure \
+  --dedup-key "ib-backtests-failure-$(date +%F)" \
+  --recovery-message "ib-backtests.service failed (Result=${RESULT}); log /var/log/ib-backtests.log (delimit by start timestamp). Safe resume: read the log, fix the failing step, re-run 'sudo systemctl start ib-backtests.service' and verify ExecMainStatus=0 — never re-run blindly while a previous run is still active." \
   --title "ib-backtests.service FAILED (ExecMainStatus=${STATUS}, Result=${RESULT}) @ ${TS}" \
   --resume-message "AUTO-ALERT: the weekly ib-backtests.service FAILED at ${TS} (ExecMainStatus=${STATUS}, Result=${RESULT}). Investigate /var/log/ib-backtests.log — delimit the run by its start timestamp; journalctl only has Start/Finished lines. Fix the failing internal step, then re-run 'sudo systemctl start ib-backtests.service' until ExecMainStatus=0 with 56/56 strategies OK and the dashboard/plot_data step complete (zero 'No tickers found', zero 'api_caution' refusal). Recent log tail: ${LOGTAIL}"
 rc=$?
