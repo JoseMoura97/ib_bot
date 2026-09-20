@@ -36,6 +36,10 @@ on_error() {
 trap on_error ERR
 
 install -D -m 0644 "$CONTAINMENT_SOURCE" "$CONTAINMENT_TARGET"
+cmp -s "$CONTAINMENT_SOURCE" "$CONTAINMENT_TARGET" || {
+  echo "Refusing rerun: installed containment drop-in differs from repository source." >&2
+  exit 76
+}
 
 if [[ -f "$STALE_DROPIN" ]]; then
   mv "$STALE_DROPIN" "/var/tmp/ib-backtests.30-phasef2-worktree.conf.stale-$(date +%Y%m%dT%H%M%S%z)"
@@ -45,6 +49,13 @@ fi
 rm -f "$RUNTIME_DROPIN_DIR/99-f2-onfailure-test.conf"
 systemctl daemon-reload
 systemctl reset-failed "$UNIT" || true
+
+installed_hash=$(sha256sum "$CONTAINMENT_TARGET" | awk '{print $1}')
+source_hash=$(sha256sum "$CONTAINMENT_SOURCE" | awk '{print $1}')
+if [[ "$installed_hash" != "$source_hash" ]]; then
+  echo "Refusing rerun: containment drop-in hash drift after daemon-reload." >&2
+  exit 76
+fi
 
 effective_exec=$(systemctl show "$UNIT" -p ExecStart --value)
 if [[ "$effective_exec" == *"/.worktrees/"* ]]; then

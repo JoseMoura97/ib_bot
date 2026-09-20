@@ -7,6 +7,7 @@ import json
 import os
 import sys
 from datetime import datetime
+from pathlib import Path
 import pandas as pd
 import numpy as np
 
@@ -14,6 +15,89 @@ from dotenv import load_dotenv
 from quiver_signals import QuiverSignals
 from rebalancing_backtest_engine import RebalancingBacktestEngine, _ProgressBar
 from run_all_backtests import STRATEGY_REGISTRY
+
+
+def generate_plot_data_from_results(results_path: Path, output_path: Path):
+    """Publish curves retained by the just-completed unified backtest run.
+
+    ``run_all_backtests.py`` has already evaluated every enabled strategy and
+    persisted its compact weekly curve in ``latest_backtest_results.json``.
+    Re-running the complete registry here used to turn the dashboard publish
+    step into a second full backtest pass, which made the weekly systemd job
+    time out after otherwise completing 56/56 strategies.
+
+    This is deliberately strict: a partial or curve-less result file is not a
+    valid dashboard update. The caller then fails loudly and preserves the
+    prior plot artifact rather than publishing a stale/partial one.
+    """
+    try:
+        payload = json.loads(results_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"cannot load completed backtest results: {exc}") from exc
+
+    by_name = {
+        entry.get("strategy"): entry
+        for entry in payload.get("results", [])
+        if entry.get("status") == "success"
+    }
+    enabled = [spec for spec in STRATEGY_REGISTRY if spec.enabled]
+    missing = [spec.name for spec in enabled if spec.name not in by_name]
+    if missing:
+        raise RuntimeError(
+            "completed results are incomplete: "
+            f"{len(enabled) - len(missing)}/{len(enabled)} successful; missing {missing[:3]}"
+        )
+
+    strategies = {}
+    for spec in enabled:
+        metrics = by_name[spec.name].get("metrics") or {}
+        curve = metrics.get("plot_curve") or {}
+        dates = curve.get("dates") if isinstance(curve, dict) else None
+        values = curve.get("values") if isinstance(curve, dict) else None
+        if not isinstance(dates, list) or not isinstance(values, list) or not dates or len(dates) != len(values):
+            raise RuntimeError(f"completed result lacks a valid plot curve: {spec.name}")
+
+        strategies[spec.name] = {
+            "name": spec.name,
+            "dates": dates,
+            "values": [float(value) for value in values],
+            "start_date": metrics.get("start_date", spec.default_start),
+            "alpha_only": bool(spec.alpha_only),
+            "cagr": float(metrics.get("cagr") or 0) * 100,
+            "sharpe": float(metrics.get("sharpe_ratio") or 0),
+            "sortino": float(metrics.get("sortino_ratio") or 0),
+            "max_drawdown": float(metrics.get("max_drawdown") or 0) * 100,
+            "transaction_cost_bps": metrics.get("transaction_cost_bps"),
+            "slippage_bps_per_side": metrics.get("slippage_bps_per_side"),
+            "execution_offset_days": metrics.get("execution_offset_days"),
+            "missing_ticker_policy": metrics.get("missing_ticker_policy"),
+            "n_missing_ticker_segments": metrics.get("n_missing_ticker_segments"),
+        }
+
+    # SPY is independent of the strategy pass. Keep its last verified series
+    # instead of introducing a network request into this cache-only publisher.
+    benchmark = None
+    try:
+        previous = json.loads(output_path.read_text(encoding="utf-8"))
+        benchmark = previous.get("benchmark")
+    except (OSError, json.JSONDecodeError):
+        pass
+
+    plot_data = {
+        "generated_at": datetime.now().isoformat(),
+        "data_source": "completed_backtest_results",
+        "synthetic": False,
+        "strategies": strategies,
+        "benchmark": benchmark,
+        "missing_ticker_policy": os.environ.get("MISSING_TICKER_POLICY", "cash"),
+    }
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = output_path.with_suffix(output_path.suffix + ".tmp")
+    tmp_path.write_text(json.dumps(plot_data, indent=2), encoding="utf-8")
+    tmp_path.replace(output_path)
+    print(f"Generated plot data for {len(strategies)}/{len(enabled)} strategies from completed results")
+    print(f"[OK] Saved to {output_path} ({output_path.stat().st_size / 1024:.1f} KB)")
+    return plot_data
 
 def normalize_equity_curve(equity_curve_df, initial_value=100):
     """Normalize an equity curve to start at initial_value (e.g., 100)."""
@@ -235,6 +319,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate plot data for strategies")
     parser.add_argument("--cache-only", action="store_true",
                         help="Use only cached price data (no external API calls)")
+    parser.add_argument("--from-results", action="store_true",
+                        help="Publish curves from latest_backtest_results.json without re-running strategies")
+    parser.add_argument("--results", type=str, default=".cache/latest_backtest_results.json",
+                        help="Completed result artifact used with --from-results")
     parser.add_argument("--cache-dir", type=str, default=".cache",
                         help="Cache directory path")
     parser.add_argument("--no-progress", action="store_true",
@@ -253,6 +341,15 @@ if __name__ == "__main__":
     os.environ["MISSING_TICKER_POLICY"] = args.policy
     if args.output:
         os.environ["PLOT_DATA_OUTPUT_PATH"] = args.output
+
+    if args.from_results:
+        output = Path(os.environ.get("PLOT_DATA_OUTPUT_PATH") or ".cache/plot_data.json")
+        try:
+            generate_plot_data_from_results(Path(args.results), output)
+        except RuntimeError as exc:
+            print(f"[ERROR] completed-result plot-data publish failed: {exc}", file=sys.stderr)
+            sys.exit(1)
+        sys.exit(0)
 
     # Set environment variables for backtesting
     os.environ['PYTHONUNBUFFERED'] = '1'

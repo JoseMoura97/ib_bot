@@ -324,6 +324,20 @@ class BacktestResult:
     elapsed_seconds: float = 0.0
 
 
+def _plot_curve_from_equity(equity_curve: pd.DataFrame) -> Dict[str, List]:
+    """Return the compact dashboard curve from a completed backtest."""
+    series = equity_curve["portfolio_value"].copy()
+    series.index = pd.DatetimeIndex(series.index)
+    series = series.sort_index().resample("W-FRI").last().ffill().dropna()
+    if series.empty or float(series.iloc[0]) <= 0:
+        return {"dates": [], "values": []}
+    normalized = (series / float(series.iloc[0]) * 100.0).round(2)
+    return {
+        "dates": series.index.strftime("%Y-%m-%d").tolist(),
+        "values": [float(value) for value in normalized.tolist()],
+    }
+
+
 def _load_plot_data_cache() -> Dict[str, Dict]:
     """Load cached equity curves from plot_data.json as fallback."""
     cache_path = ROOT_DIR / ".cache" / "plot_data.json"
@@ -469,6 +483,9 @@ def run_single_strategy(
             end_date=result.get("end_date", end_date),
             price_source=price_source,
         )
+        # Retain the downsampled curve produced by this run.  The plot-data
+        # step serializes these points instead of re-running all strategies.
+        metrics["plot_curve"] = _plot_curve_from_equity(equity_curve)
 
         # Carry forward engine-computed fields not in our metrics
         # (provenance + dropped-weight fields are part of the Phase-1 contract
@@ -514,6 +531,12 @@ def _try_cache_fallback(spec: StrategySpec, price_source: str, t0: float) -> Bac
     if spec.name in plot_cache:
         metrics = _metrics_from_plot_data(plot_cache[spec.name], spec.name, price_source)
         if "error" not in metrics:
+            # A cache fallback already has a compact dashboard curve.  Preserve
+            # it so publishing cannot trigger a second full backtest pass.
+            metrics["plot_curve"] = {
+                "dates": list(plot_cache[spec.name].get("dates", [])),
+                "values": list(plot_cache[spec.name].get("values", [])),
+            }
             metrics["_data_source"] = "cached_plot_data"
             return BacktestResult(
                 strategy=spec.name,
@@ -1015,13 +1038,10 @@ def main():
                 print("[ERROR] TEST forced plot-data step failure — propagating failure.")
                 sys.exit(97)
             import subprocess as _sp
-            # Always regenerate the dashboard from the CACHE the strategies just
-            # populated (plus yfinance for the SPY benchmark) — never live IB.
-            # --cache-only runs REAL backtests on cached prices and bypasses the
-            # api_caution gate, so the step works with the IB Gateway OFF and
-            # cannot be refused on a non-TTY weekly run (was the 9-week failure:
-            # api_caution refused 4500 IB calls → dashboard silently stale).
-            gen_cmd = [sys.executable, str(gen_script), "--cache-only"]
+            # Curves were retained in latest_backtest_results.json by the pass
+            # above. Publishing them must not repeat all 56 backtests merely
+            # to build dashboard JSON.
+            gen_cmd = [sys.executable, str(gen_script), "--from-results"]
             ret = _sp.run(
                 gen_cmd,
                 cwd=str(ROOT_DIR),
