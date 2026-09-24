@@ -1,5 +1,14 @@
 # ib_bot — Agent Instructions
 
+## Primary checkout belongs to scheduled jobs
+
+`/home/servidor/Desktop/cursor-projects/ib_bot` must remain on `main`: nightly
+altdata backup and QA jobs commit and publish from that checkout. Never switch
+its branch for lab, feature, review or test work. Create a separate Git worktree
+and branch with `git worktree add -b <branch> <separate-path> main`; run edits and
+tests there. Integrate verified changes deliberately into main. Never bypass a
+timer's main-branch guard. This applies to every PM using this repository.
+
 ## Conductor CLI
 
 conductor CLI has 36 subcommands. Key ones:
