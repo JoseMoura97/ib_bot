@@ -26,6 +26,15 @@ class IBExecutor:
         except Exception as e:
             logging.error(f"Failed to connect to IBKR: {e}")
 
+    def qualify_emini_contract(self, root, contract_month, local_symbol, *, include_expired=False):
+        """Read-only dated ES/NQ metadata using the existing connection; no orders."""
+        try:
+            from .futures_contracts import qualify_emini
+        except ImportError:  # Legacy system/app launcher.
+            from futures_contracts import qualify_emini
+        return qualify_emini(self.ib, root, contract_month, local_symbol,
+                             include_expired=include_expired)
+
     def get_current_positions(self, account=None):
         """Get current positions, optionally filtered by account."""
         positions = self.ib.positions(account) if account else self.ib.positions()
