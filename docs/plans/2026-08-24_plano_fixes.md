@@ -36,7 +36,7 @@ conta do José, gerida fora deste repositório — não precisas dela para nenhu
   infraestrutura do host o exigir; os passos abaixo são todos leves (segundos a minutos).
 - Antes de marcar qualquer passo como feito, correr o oráculo de aceitação e colar o output —
   nunca assumir sucesso porque "o comando não deu erro na consola".
-- **Este é o SEGUNDO plano de fixes seguido (o primeiro, `docs/plans/undefined_plano_fixes.md`
+- **Este é o SEGUNDO plano de fixes seguido (o primeiro, `docs/plans/2026-08-17_plano_fixes.md`
   de 2026-08-17, não foi executado — ver auditoria 2026-08-24, Finding ALTO #1). Se estás a ler
   isto numa auditoria futura e este plano também não foi executado, é o sinal mais forte possível
   de que ninguém está a agir sobre estas auditorias — reportar isso ao José em vez de escrever um

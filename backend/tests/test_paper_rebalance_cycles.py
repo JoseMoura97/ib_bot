@@ -68,3 +68,29 @@ def test_paper_rebalance_cycles(client, db_session, monkeypatch):
         summary_data = summary.json()
         assert summary_data["cash"] >= 0
         assert summary_data["equity"] >= summary_data["cash"]
+
+
+def test_paper_rebalance_core_is_callable_without_http_request(db_session, monkeypatch):
+    """The Celery task must not invoke SlowAPI's HTTP route wrapper."""
+    from app.api.routes.paper import paper_rebalance_execute_core
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "quiver_api_key", None)
+    portfolio_id = _seed_portfolio(db_session)
+    now = datetime.utcnow()
+    monkeypatch.setattr(
+        "app.api.routes.paper.fetch_prices",
+        lambda tickers: {
+            str(t).upper(): PriceQuote(ticker=str(t).upper(), price=100.0, as_of=now, source="test")
+            for t in tickers
+        },
+    )
+
+    from app.api.schemas import PaperRebalanceRequest
+    from uuid import UUID
+
+    result = paper_rebalance_execute_core(
+        PaperRebalanceRequest(portfolio_id=UUID(portfolio_id), allocation_amount=10_000.0, account_id=1),
+        db_session,
+    )
+    assert len(result.orders) == 1

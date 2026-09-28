@@ -2,7 +2,7 @@
 
 ## Gate de arranque (obrigatório)
 
-**Só começar quando o Passo 1 E o Passo 2 do `docs/plans/undefined_plano_fixes.md` estiverem
+**Só começar quando o Passo 1 E o Passo 2 do `docs/plans/2026-08-17_plano_fixes.md` estiverem
 verdes E o José tiver escolhido explicitamente esta opção (opção 2) na conversa do Passo 2.**
 Verificar com:
 ```bash

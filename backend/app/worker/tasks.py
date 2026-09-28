@@ -532,7 +532,7 @@ def paper_rebalance_daily_task() -> None:
                 continue
 
             from app.api.schemas import PaperRebalanceRequest as PRReq
-            from app.api.routes.paper import paper_rebalance_execute
+            from app.api.routes.paper import paper_rebalance_execute_core
             from uuid import UUID
 
             try:
@@ -541,7 +541,7 @@ def paper_rebalance_daily_task() -> None:
                     allocation_amount=amount,
                     account_id=account_id,
                 )
-                result = paper_rebalance_execute(body, db)
+                result = paper_rebalance_execute_core(body, db)
                 n_orders = len(result.orders) if result.orders else 0
                 log_entry = PaperRebalanceLog(
                     account_id=account_id,
@@ -558,16 +558,30 @@ def paper_rebalance_daily_task() -> None:
                 )
             except Exception as e:
                 db.rollback()
+                # Keep the full traceback both in the worker log and the
+                # durable rebalance ledger.  The previous warning-only log
+                # reduced every failure to its final exception string.
+                import traceback
+
+                error_traceback = traceback.format_exc()
                 log_entry = PaperRebalanceLog(
                     account_id=account_id,
                     portfolio_id=portfolio_id,
                     status="ERROR",
                     n_orders=0,
-                    details={"error": f"{type(e).__name__}: {e}"},
+                    details={
+                        "error": f"{type(e).__name__}: {e}",
+                        "traceback": error_traceback,
+                    },
                 )
                 db.add(log_entry)
                 db.commit()
-                logger.warning(f"paper_rebalance_daily: account={account_id} portfolio={portfolio_id} error={e}")
+                logger.exception(
+                    "paper_rebalance_daily: account=%s portfolio=%s error=%s",
+                    account_id,
+                    portfolio_id,
+                    e,
+                )
     finally:
         db.close()
 

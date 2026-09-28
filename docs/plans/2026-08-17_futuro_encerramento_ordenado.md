@@ -2,7 +2,7 @@
 
 ## Gate de arranque (obrigatório)
 
-**Só começar quando o Passo 2 do `docs/plans/undefined_plano_fixes.md` estiver concluído E o
+**Só começar quando o Passo 2 do `docs/plans/2026-08-17_plano_fixes.md` estiver concluído E o
 José tiver escolhido explicitamente a opção 3 (desligar tudo) na conversa desse passo.**
 Verificar com:
 ```bash

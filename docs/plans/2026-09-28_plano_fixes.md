@@ -221,10 +221,10 @@ cd /home/servidor/Desktop/cursor-projects/ib_bot
 git rm '$LOG' alembic_validation.db backtest_results_2026_05_12.json \
   backtest_results_corrected.json backtest_results_final.json \
   'docker-compose.prod.yml.bak.1778273314'
-git mv docs/plans/undefined_futuro_busca_edge_dormente.md docs/plans/2026-08-17_futuro_busca_edge_dormente_ORIGINAL.md 2>/dev/null || true
-git mv docs/plans/undefined_futuro_encerramento_ordenado.md docs/plans/2026-08-17_futuro_encerramento_ordenado_ORIGINAL.md 2>/dev/null || true
-git mv docs/plans/undefined_futuro_licenciamento_dados.md docs/plans/2026-08-17_futuro_licenciamento_dados_ORIGINAL.md 2>/dev/null || true
-git mv docs/plans/undefined_plano_fixes.md docs/plans/2026-08-17_plano_fixes_ORIGINAL.md 2>/dev/null || true
+git mv docs/plans/undefined_futuro_busca_edge_dormente.md docs/plans/2026-08-17_futuro_busca_edge_dormente.md
+git mv docs/plans/undefined_futuro_encerramento_ordenado.md docs/plans/2026-08-17_futuro_encerramento_ordenado.md
+git mv docs/plans/undefined_futuro_licenciamento_dados.md docs/plans/2026-08-17_futuro_licenciamento_dados.md
+git mv docs/plans/undefined_plano_fixes.md docs/plans/2026-08-17_plano_fixes.md
 git commit -m "chore: remove ficheiros órfãos da raiz (achado #8/#10, 7 auditorias) e libertar imagens Docker não usadas"
 ```
 

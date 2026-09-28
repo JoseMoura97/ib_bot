@@ -42,7 +42,7 @@ deste repositório — não precisas dela para nenhum passo abaixo.
 - Antes de marcar qualquer passo como feito, correr o oráculo de aceitação e colar o output —
   nunca assumir sucesso porque "o comando não deu erro na consola".
 - **ESTE É O TERCEIRO PLANO DE FIXES SEGUIDO com os mesmos 5 passos de limpeza** (o 1º,
-  `docs/plans/undefined_plano_fixes.md` de 08-17, e o 2º, `docs/plans/2026-08-24_plano_fixes.md`,
+  `docs/plans/2026-08-17_plano_fixes.md` de 08-17, e o 2º, `docs/plans/2026-08-24_plano_fixes.md`,
   não foram executados). Por isso este plano tem um **Passo 0 novo e obrigatório antes de
   qualquer outro** — resolver o problema-raiz de comunicação, não só repetir a limpeza.
 

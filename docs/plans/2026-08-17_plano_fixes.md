@@ -90,9 +90,9 @@ docker exec ib_bot-db-1 psql -U ibbot -d ibbot -c "SELECT count(*) FROM paper_sn
 planos futuros deste audit:**
 1. Continuar a acumular o arquivo PIT sem uso ativo (custo: engenharia + compute contínuos,
    benefício: opção futura de licenciar/vender os dados — ver
-   `docs/plans/undefined_futuro_licenciamento_dados.md`).
+   `docs/plans/2026-08-17_futuro_licenciamento_dados.md`).
 2. Redirecionar o esforço de engenharia para validar as ~30 estratégias 13F "dormentes" nunca
-   testadas com o motor deflacionado — ver `docs/plans/undefined_futuro_busca_edge_dormente.md`.
+   testadas com o motor deflacionado — ver `docs/plans/2026-08-17_futuro_busca_edge_dormente.md`.
 3. Desligar os timers de arquivo/backup/QA e arquivar o projeto por completo (parar o
    compounding do dataset) — só se o José decidir que nenhuma das opções acima vale a pena.
 

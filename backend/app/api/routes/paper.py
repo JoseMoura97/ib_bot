@@ -358,9 +358,13 @@ def paper_rebalance_preview(body: PaperRebalanceRequest, db: Session = Depends(g
     )
 
 
-@router.post("/rebalance/execute", response_model=PaperRebalanceExecuteOut)
-@limiter.limit("10/minute")
-def paper_rebalance_execute(body: PaperRebalanceRequest, db: Session = Depends(get_db), request: Request = None):
+def paper_rebalance_execute_core(body: PaperRebalanceRequest, db: Session) -> PaperRebalanceExecuteOut:
+    """Execute a paper rebalance without HTTP-only middleware.
+
+    Scheduled jobs must call this core directly: calling the rate-limited route
+    wrapper without a FastAPI ``Request`` raises inside SlowAPI before any
+    rebalance logic runs.
+    """
     preview = paper_rebalance_preview(body, db)  # reuse logic (includes ensure_paper_account)
     acct = db.query(PaperAccount).filter(PaperAccount.id == int(body.account_id)).one()
 
@@ -412,6 +416,12 @@ def paper_rebalance_execute(body: PaperRebalanceRequest, db: Session = Depends(g
         trades=[_trade_out(t) for t in trades],
         account=_account_out(acct),
     )
+
+
+@router.post("/rebalance/execute", response_model=PaperRebalanceExecuteOut)
+@limiter.limit("10/minute")
+def paper_rebalance_execute(body: PaperRebalanceRequest, db: Session = Depends(get_db), request: Request = None):
+    return paper_rebalance_execute_core(body, db)
 
 
 # ---- P&L / Snapshot endpoints

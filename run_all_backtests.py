@@ -1061,6 +1061,22 @@ def main():
                     f"status=success strategies={success_count}/{len(specs)} "
                     f"price_source={price_source} plot_data_artifact={artifact}"
                 )
+                receipt_path = ROOT_DIR / "reports" / "weekly_backtest_receipt.json"
+                receipt_path.parent.mkdir(parents=True, exist_ok=True)
+                receipt = {
+                    "status": "success",
+                    "generated_at": datetime.now().astimezone().isoformat(),
+                    "strategies_succeeded": success_count,
+                    "strategies_requested": len(specs),
+                    "price_source": price_source,
+                    "results_artifact": str(results_cache_path),
+                    "plot_data_artifact": str(artifact),
+                }
+                tmp_receipt = receipt_path.with_suffix(".json.tmp")
+                with open(tmp_receipt, "w") as receipt_file:
+                    json.dump(receipt, receipt_file, indent=2)
+                    receipt_file.write("\n")
+                tmp_receipt.replace(receipt_path)
             else:
                 # Do NOT swallow the failure. The weekly oneshot service used to
                 # print this WARN and still exit 0, so a broken dashboard looked
