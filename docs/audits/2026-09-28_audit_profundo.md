@@ -11,12 +11,21 @@
 > **Nota sobre o brief:** o pedido descreve o projeto como "PAUSED — não construir consumer app".
 > Isso continua a ser verdade ao nível de DECISÃO DE NEGÓCIO (nada de novo se lançou para
 > clientes), mas volta a ser enganoso ler "PAUSED" como "ninguém mexe": nesta janela (09-21 a
-> 09-28) o repositório recebeu **19 commits**, 17 deles automáticos (backup/QA diário do arquivo
-> de dados) e **2 de engenharia manual real**, feitos por um operador humano diferente do José
-> (Antonio Manuel) — ver secção (b). O ficheiro `ib_bot-altdata-wt` citado no brief **continua a
-> não existir**; os dois worktrees reais do repositório são `ib_bot-v2` (frontend) e um terceiro,
+> 09-28) o repositório recebeu **20 commits** (`git log --all --oneline --since "2026-09-20
+> 23:59:59" --until "2026-09-28 23:59:59"`, comando re-corrido nesta correção), dos quais **2 são
+> do próprio processo de auditoria** (`b0d9dd8`, publicado pela auditoria de 09-21, e `ccdc393`,
+> publicado por esta auditoria de 09-28). Dos **18 commits de trabalho** que sobram, **16 são
+> automáticos** (8× `backup(altdata)` + 8× `qa(altdata)`, um par por dia, 09-21 a 09-28) e **2 de
+> engenharia manual real**, feitos por um operador humano diferente do José (Antonio Manuel) — ver
+> secção (b). O ficheiro `ib_bot-altdata-wt` citado no brief **continua a não existir**; os dois
+> worktrees reais do repositório são `ib_bot-v2` (frontend) e um terceiro,
 > `/home/servidor/ib-altdata-guard-20260924`, criado esta semana para testar em segurança o fix
 > do script de backup sem tocar no checkout principal.
+>
+> **Correção (2026-09-28, pós-verificação):** a versão original desta nota e da secção (c) tinha
+> dois erros factuais (contagem de commits e existência de unidades systemd), apanhados por um
+> verificador independente e confirmados ao vivo antes desta edição — ver nota "[CORRIGIDO]" no
+> final da secção (c).
 
 ## (a) O que é este projeto (para um miúdo de 12 anos)
 
@@ -104,12 +113,37 @@ Fonte: `git log --all` completo do repositório + as 9 auditorias anteriores no 
 | `xvfb-ibgw.service` | `inactive (dead)`, `disabled` | Idem. |
 | `ib-bot-v2-frontend.service` | `active (running)` há ~1 mês 12 dias | Porta 3001, `npm start`, aponta para o mesmo backend `:8001` (`INTERNAL_API_BASE=http://localhost:8001` em `.env.local`) — confirma que é a MESMA API, só outra interface. |
 | `ib-altdata-qa-alert.service` / `ib-backtests-alert.service` | `inactive (dead)` (unidades `OnFailure`, só correm quando algo falha) | Nenhum disparo esta semana — nada falhou. |
+| `ib-altdata-backup.timer` / `ib-altdata-backup.service` | `enabled` / `active (waiting)` desde 2026-08-11 18:30 WEST | `WorkingDirectory=/home/servidor/Desktop/cursor-projects/ib_bot`, `ExecStart=.../infra/scripts/backup_altdata_snapshots.sh` (`systemctl cat`). Dispara todos os dias ~04:3x WEST; `journalctl -u ib-altdata-backup.service --since 2026-09-20` mostra os 8 commits `backup(altdata)` da janela, um por dia, com o `Finished` do systemd logo a seguir. |
+| `ib-altdata-qa.timer` / `ib-altdata-qa.service` | `enabled` / `active (waiting)` desde 2026-08-11 18:30 WEST | Mesmo `WorkingDirectory`, `ExecStart=.../infra/scripts/run_altdata_qa_daily.sh`. Dispara todos os dias às 08:00 WEST e produz o commit `qa(altdata)` correspondente. |
+| `ib-backtests.timer` / `ib-backtests.service` | `enabled` / `active (waiting)` desde 2026-08-10 15:51 WEST | Corre semanalmente (domingo ~04:15-05:15 WEST). |
 | `theta-terminal.service` + 5 timers (`theta-learned`, `paper-ironfly`, `historical-backfill`, `execution-metrics`, `cost-recalibration`) | Todos `active` | **Re-confirmado com `systemctl cat` nesta sessão: NENHUM pertence ao ib_bot.** `WorkingDirectory`/`ExecStart` apontam para `/home/servidor/Desktop/cursor-projects/polytrader-bot-master` (4 deles, descrições dizem literalmente "Polymarket") ou `/home/servidor/Desktop/cursor-projects/trading` (`paper-ironfly`, o bot irmão de opções). O nome "theta" aqui é sobre modelos de probabilidade do Polymarket, não sobre opções financeiras do ib_bot — coincidência de nome que engana à primeira vista. |
 
-Não existe unidade systemd separada `ib-altdata-qa.timer`/`ib-altdata-backup.timer`/`ib-backtests.timer`
-neste servidor hoje (as auditorias anteriores referiam-nas, mas o backup/QA diário do arquivo PIT
-corre hoje via commits automáticos do Celery beat dentro do stack Docker — confirmado pelos
-commits diários `backup(altdata)`/`qa(altdata)` no git log, não por unidades systemd distintas).
+**[CORRIGIDO 2026-09-28, pós-verificação] Existem SIM 3 unidades systemd separadas** —
+`ib-altdata-backup.timer`/`.service`, `ib-altdata-qa.timer`/`.service` e
+`ib-backtests.timer`/`.service` — e são elas, não o Celery beat do stack Docker, que produzem os
+commits diários `backup(altdata)`/`qa(altdata)`. A versão anterior desta secção afirmava o
+contrário ("Não existe unidade systemd separada... o backup/QA diário corre hoje via commits
+automáticos do Celery beat dentro do stack Docker") — isso estava **errado**, apanhado por um
+verificador independente e confirmado ao vivo antes desta edição:
+- `systemctl list-timers --all | grep ib-` mostra as 3 unidades `enabled`, `active (waiting)`,
+  todas ativas desde 2026-08-10/08-11 (não são recentes).
+- `systemctl cat ib-altdata-backup.service` / `ib-altdata-qa.service` mostram
+  `WorkingDirectory=/home/servidor/Desktop/cursor-projects/ib_bot` e
+  `ExecStart=.../infra/scripts/backup_altdata_snapshots.sh` /
+  `.../infra/scripts/run_altdata_qa_daily.sh` — o mesmo `backup_altdata_snapshots.sh` que o
+  próprio commit `486b6e3` desta auditoria modifica; nada disto tem relação com Celery/Docker.
+- `journalctl -u ib-altdata-backup.service --since "2026-09-20"` mostra, dia a dia, o systemd a
+  arrancar o script, o script a publicar o commit `backup(altdata): PIT table ...` e o systemd a
+  registar `Finished ib-altdata-backup.service` a seguir — prova direta de que é o timer, não o
+  Celery beat, a produzir o commit.
+- **Distinção correta:** só `altdata_snapshot_daily_task` (a captura diária dos dados em si,
+  descrita na secção seguinte) é Celery beat dentro do Docker. O backup/QA/git-commit desse
+  arquivo é systemd no host, fora do Docker. O plano de fixes desta mesma auditoria já usava
+  `journalctl -u ib-backtests.service` como oráculo (Passo 4) — ou seja, já assumia
+  corretamente que a unidade existe; esta secção estava desalinhada com o resto do próprio
+  entregável.
+- Ação para auditorias futuras: re-verificar sempre com `systemctl list-timers --all | grep ib-`
+  antes de reafirmar esta secção — não copiar da auditoria anterior sem re-correr o comando.
 
 ### Stack Docker (`docker ps -a --filter name=ib_bot`, `docker system df`)
 ```
