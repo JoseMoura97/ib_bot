@@ -24,7 +24,7 @@ fi
 
 # Fail before touching the daily receipt if the dedicated QA service is no
 # longer the exact image that exposes the extend-capable chain verifier.
-qa_image="$(docker compose config --images | grep -Fx 'ib_bot-worker@sha256:a83feb6b322714b5ed07b6eaa4e3407f543be70628948f25339baa27f1369f54' || true)"
+qa_image="$(docker compose config --images | grep -Fx 'ib_bot-worker@sha256:316a409261135bb1c0117831efaac957403afb09214cdd0c1e4973d4348b3849' || true)"
 if [[ -z "$qa_image" ]]; then
   echo "QA_IMAGE_GATE: dedicated pinned altdata_qa image is absent from resolved Compose config" >&2
   exit 4
