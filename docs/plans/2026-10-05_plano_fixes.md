@@ -79,17 +79,30 @@ docker exec ib_bot-db-1 psql -U ibbot -d ibbot -tAc \
    FROM paper_rebalance_logs WHERE account_id=2 AND status='ERROR' ORDER BY timestamp DESC LIMIT 1;"
 
 docker exec ib_bot-db-1 psql -U ibbot -d ibbot -tAc \
-  "SELECT id, cash, equity FROM paper_cash WHERE id=2;"
+  "SELECT id, balance, name FROM paper_cash WHERE id=2;"
 ```
 Isto dá o traceback completo (já guardado desde o fix de 09-28) e o caixa disponível real da
-conta 2 no momento do erro.
+conta 2 no momento do erro. **Nota de correção (verificador, 2026-10-05):** a coluna chama-se
+`balance`, não `cash`/`equity` — essa tabela nem tem `equity`. Confirmado nesta sessão (`\d
+paper_cash`: colunas `id, balance, currency, updated_at, name, created_at`) e a query acima
+devolve `2|36892.06707671317|Main Paper`. Se precisares também da equity de mercado da conta (não
+só do caixa disponível), essa vem de `paper_snapshots` (coluna `equity`), não de `paper_cash`.
 
 **Comandos exatos — passo 1b, ler o código relevante:**
 ```
-sed -n '1,80p' /home/servidor/ib-bot-fix-acct2-cash-20261005/backend/app/api/routes/paper.py | grep -n "insufficient cash" -A5 -B20
+grep -rn "insufficient cash" /home/servidor/ib-bot-fix-acct2-cash-20261005/backend/app/services/paper_trading.py
 sed -n '264,414p' /home/servidor/ib-bot-fix-acct2-cash-20261005/backend/app/api/routes/paper.py
 sed -n '480,572p' /home/servidor/ib-bot-fix-acct2-cash-20261005/backend/app/worker/tasks.py
 ```
+**Nota de correção (verificador, 2026-10-05):** a string `"insufficient cash"` NÃO existe em
+`paper.py` — o `grep` original (`sed -n '1,80p' .../paper.py | grep -n "insufficient cash" -A5
+-B20`) devolve vazio (exit 1) e deixa um executor fraco sem pista nenhuma. A origem real é
+`raise ValueError("insufficient cash")` em
+`backend/app/services/paper_trading.py:143`, dentro da função `place_market_order` — confirmado
+nesta sessão. O `grep` acima já aponta para o ficheiro certo; só depois disso lê `paper.py:264-414`
+para ver como essa função é chamada em loop pela tarefa diária, sem validação de caixa agregada
+antes de começar a colocar ordens.
+
 Procura onde o `allocation_amount`/pesos combinados são calculados para a conta 2 vs conta 1 —
 a hipótese mais provável (a confirmar com os dados do passo 1a, não assumir) é que o
 `allocation_amount` passado pela tarefa diária para a conta 2 (mais rica, ~$180k, 9 estratégias

@@ -63,10 +63,16 @@ automáticos a correr todos os dias sozinhos (ver secção c).
 
 ## (b) Evolução até hoje (timeline, com datas verificadas)
 
-Fonte: `git log --all` completo do repositório (336 commits) + as 10 auditorias anteriores no
-mesmo diretório + `psql -U servidor -d conductor` (4 planos e ~110 linhas de `plan_knowledge`
-ligadas ao slug `ib_bot`) + memórias em `/home/servidor/.claude/projects/-home-servidor/memory/`
-e em `.../-home-servidor-Desktop-cursor-projects-conductor/memory/`.
+Fonte: `git log main --oneline` completo do repositório (336 commits, antes do commit desta própria
+auditoria) + as 10 auditorias anteriores no mesmo diretório + `psql -U servidor -d conductor` (4
+planos e ~110 linhas de `plan_knowledge` ligadas ao slug `ib_bot`) + memórias em
+`/home/servidor/.claude/projects/-home-servidor/memory/` e em
+`.../-home-servidor-Desktop-cursor-projects-conductor/memory/`. **Correção (verificador,
+2026-10-05):** o rótulo original dizia `git log --all`, mas esse comando devolve 379/380 commits
+— muito mais do que 336 — porque o repositório tem ~24 branches/refs locais adicionais fora de
+`main` (worktrees ativos de investigação, branches `fix/`/`feature/`/`conductor/` e 6 branches
+`quarantine/`) com histórico divergente. O número 336 só bate com `git log main --oneline` corrido
+antes do commit da própria auditoria (`b1ef6b5`); com esse commit incluído dá 337.
 
 | Data | Marco |
 |---|---|
