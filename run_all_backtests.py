@@ -1061,7 +1061,10 @@ def main():
                     f"status=success strategies={success_count}/{len(specs)} "
                     f"price_source={price_source} plot_data_artifact={artifact}"
                 )
-                receipt_path = ROOT_DIR / "reports" / "weekly_backtest_receipt.json"
+                # This is runtime state, not a versioned research report.  Keep it
+                # under the ignored cache so the weekly producer cannot leave the
+                # timer-owned checkout dirty and block the nightly PIT backup.
+                receipt_path = ROOT_DIR / ".cache" / "weekly_backtest_receipt.json"
                 receipt_path.parent.mkdir(parents=True, exist_ok=True)
                 receipt = {
                     "status": "success",
