@@ -109,10 +109,12 @@ um erro claro e ACIONÁVEL (não um `400` genérico que mata o rebalance inteiro
 
 **Comandos exatos:**
 ```bash
-cd /home/servidor
+cd /home/servidor/Desktop/cursor-projects/ib_bot
 git worktree add -b fix/paper-rebalance-insufficient-cash-20261012 \
-  ib-paper-cash-fix-20261012 \
-  /home/servidor/Desktop/cursor-projects/ib_bot/main   # ajustar ref se 'main' não resolver: usar main do repo
+  /home/servidor/ib-paper-cash-fix-20261012 \
+  main
+# (worktree add corre-se DENTRO do repo principal — /home/servidor NÃO é um repositório git;
+#  o path do worktree é o 2º argumento, o commit-ish 'main' é o 3º)
 cd /home/servidor/ib-paper-cash-fix-20261012
 
 # editar backend/app/api/routes/paper.py: adicionar validação de caixa disponível
@@ -127,8 +129,11 @@ cd /home/servidor/ib-paper-cash-fix-20261012
 
 # correr os testes existentes do rebalance
 docker compose -f /home/servidor/Desktop/cursor-projects/ib_bot/docker-compose.yml \
-  exec -T worker pytest tests/ -k "paper_rebalance" -v
-# (se o worktree não tiver docker-compose a correr, usar o .venv local do repo principal)
+  exec -T worker pytest backend/tests -k "paper_rebalance" -v
+# (dentro do container worker o workdir é /app e só existe /app/backend/tests — NÃO /app/tests;
+#  confirmado com `docker exec ib_bot-worker-1 sh -c "ls /app/tests"` -> No such file or directory.
+#  Alternativa equivalente: usar o .venv local do repo principal, que resolve o path via
+#  testpaths=backend/tests no pytest.ini)
 cd /home/servidor/Desktop/cursor-projects/ib_bot && .venv/bin/pytest -k "paper_rebalance" -v
 ```
 
