@@ -30,6 +30,14 @@ HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 EXPECTED_SOURCES = frozenset(spec.source for spec in COLLECTORS) | frozenset(
     source for source, _fund in SEC_13F_FUNDS
 )
+# An optional collector is allowed to be absent for a run.  It is still shown
+# in the QA payload for observability, but a provider-side denial (for example
+# SEC 403) must not contradict the capture worker's successful, non-critical
+# outcome and turn the daily systemd unit red.
+REQUIRED_SOURCES = frozenset(
+    spec.source for spec in COLLECTORS if spec.criticality != "optional"
+) | frozenset(source for source, _fund in SEC_13F_FUNDS)
+OPTIONAL_SOURCES = EXPECTED_SOURCES - REQUIRED_SOURCES
 
 
 def _utc_now() -> datetime:
@@ -96,13 +104,19 @@ def evaluate_daily_qa(
     )
     observed_sources = set(current_by_source)
     missing_sources = sorted(EXPECTED_SOURCES - observed_sources)
+    missing_required_sources = sorted(REQUIRED_SOURCES - observed_sources)
+    missing_optional_sources = sorted(OPTIONAL_SOURCES - observed_sources)
     unexpected_sources = sorted(observed_sources - EXPECTED_SOURCES)
 
     alerts: list[dict[str, Any]] = []
     warnings: list[dict[str, Any]] = []
-    if missing_sources:
-        alerts.append({"code": "expected_sources_missing", "sources": missing_sources})
-    if count_delta is not None and count_delta < 0:
+    if missing_required_sources:
+        alerts.append({"code": "expected_sources_missing", "sources": missing_required_sources})
+    if missing_optional_sources:
+        warnings.append({"code": "optional_sources_missing", "sources": missing_optional_sources})
+    # A lower total caused solely by an optional source outage is advisory.
+    # Required-source absence above remains the failing condition.
+    if count_delta is not None and count_delta < 0 and missing_required_sources:
         alerts.append(
             {
                 "code": "snapshot_count_drop",
@@ -149,6 +163,8 @@ def evaluate_daily_qa(
         "expected_sources": sorted(EXPECTED_SOURCES),
         "observed_sources": sorted(observed_sources),
         "missing_sources": missing_sources,
+        "missing_required_sources": missing_required_sources,
+        "missing_optional_sources": missing_optional_sources,
         "source_counts": source_counts,
         "alerts": alerts,
         "warnings": warnings,

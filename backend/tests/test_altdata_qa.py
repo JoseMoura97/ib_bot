@@ -8,6 +8,8 @@ from app.models.altdata import AltDataSnapshot
 from app.services import equity_coverage as coverage
 from app.services.altdata_qa import (
     EXPECTED_SOURCES,
+    OPTIONAL_SOURCES,
+    REQUIRED_SOURCES,
     backfill_existing_dates,
     run_and_write_daily_qa,
     verify_green_log_streak,
@@ -53,7 +55,7 @@ def test_daily_qa_logs_count_delta_and_expected_sources(db_session, tmp_path):
 
 
 def test_daily_qa_alerts_when_source_and_count_drop(db_session, tmp_path):
-    missing = next(iter(EXPECTED_SOURCES))
+    missing = next(iter(REQUIRED_SOURCES))
     _seed_day(db_session, date(2026, 7, 19))
     _seed_day(db_session, date(2026, 7, 20), omit={missing})
 
@@ -70,6 +72,23 @@ def test_daily_qa_alerts_when_source_and_count_drop(db_session, tmp_path):
         "expected_sources_missing",
         "snapshot_count_drop",
     }
+
+
+def test_daily_qa_warns_but_stays_green_when_optional_source_is_absent(db_session, tmp_path):
+    optional = next(iter(OPTIONAL_SOURCES))
+    _seed_day(db_session, date(2026, 7, 19))
+    _seed_day(db_session, date(2026, 7, 20), omit={optional})
+
+    payload, _appended = run_and_write_daily_qa(
+        db_session,
+        now_utc=datetime(2026, 7, 20, 7, 0, tzinfo=timezone.utc),
+        log_path=tmp_path / "qa.jsonl",
+    )
+
+    assert payload["status"] == "green"
+    assert payload["missing_optional_sources"] == [optional]
+    assert payload["missing_required_sources"] == []
+    assert payload["warnings"] == [{"code": "optional_sources_missing", "sources": [optional]}]
 
 
 def test_historical_backfill_is_persisted_but_never_streak_eligible(db_session, tmp_path):
