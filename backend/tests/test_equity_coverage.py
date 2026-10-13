@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import json
 from datetime import date
 from pathlib import Path
@@ -68,9 +69,37 @@ def test_sec_daily_index_uses_official_file_name_header(monkeypatch):
                      "filed_date": "2026-07-10", "filename": "edgar/data/1/a.txt"}]
 
 
-def test_sec_403_stops_immediately_with_typed_optional_error(monkeypatch, tmp_path):
+S3_ACCESS_DENIED_XML = b'''<?xml version="1.0" encoding="UTF-8"?>
+<Error><Code>AccessDenied</Code><Message>Access Denied</Message></Error>'''
+
+
+def test_sec_s3_missing_daily_index_403_returns_none(monkeypatch, tmp_path):
     class Response:
         status_code = 403
+        content = gzip.compress(S3_ACCESS_DENIED_XML)
+
+        def raise_for_status(self):  # pragma: no cover - 403 is handled first
+            raise AssertionError("raise_for_status must not be reached")
+
+    class Session:
+        def __init__(self):
+            self.calls = 0
+
+        def get(self, *_args, **_kwargs):
+            self.calls += 1
+            return Response()
+
+    session = Session()
+    monkeypatch.setattr(coverage, "_sec_master_cache_path", lambda day: tmp_path / f"{day}.idx")
+
+    assert coverage._sec_master(date(2026, 10, 12), session=session) is None
+    assert session.calls == 1
+
+
+def test_sec_html_block_403_stops_immediately_with_typed_optional_error(monkeypatch, tmp_path):
+    class Response:
+        status_code = 403
+        content = b"<html><title>SEC.gov | Your Request Originates from an Undeclared Automated Tool</title></html>"
 
         def raise_for_status(self):  # pragma: no cover - 403 is handled first
             raise AssertionError("raise_for_status must not be reached")
@@ -91,6 +120,27 @@ def test_sec_403_stops_immediately_with_typed_optional_error(monkeypatch, tmp_pa
 
     assert raised.value.code == "optional_external_403"
     assert session.calls == 1
+
+
+def test_sec_daily_replay_walks_back_from_columbus_day_to_october_ninth(monkeypatch):
+    requested = []
+    published_index = (
+        "preamble\nCIK|Company Name|Form Type|Date Filed|File Name\n"
+        "1|Issuer|8-K|2026-10-09|edgar/data/1/a.txt\n"
+    )
+
+    def replay(day, session=None):
+        requested.append(day)
+        return None if day == date(2026, 10, 12) else published_index
+
+    monkeypatch.setattr(coverage, "_sec_master", replay)
+    monkeypatch.setattr(coverage, "_session", lambda total_retries=3: object())
+
+    assert coverage.collect_sec_daily_filings(date(2026, 10, 13)) == [
+        {"cik": "1", "company_name": "Issuer", "form": "8-K",
+         "filed_date": "2026-10-09", "filename": "edgar/data/1/a.txt"}
+    ]
+    assert requested == [date(2026, 10, 12), date(2026, 10, 9)]
 
 
 def test_sec_daily_index_has_hard_request_budget(monkeypatch):
