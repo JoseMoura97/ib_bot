@@ -7,6 +7,7 @@ back point-in-time vintages already captured from another source.
 from __future__ import annotations
 
 import csv
+import gzip
 import hashlib
 import io
 import json
@@ -18,6 +19,7 @@ from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
+from xml.etree import ElementTree
 
 import pandas as pd
 import requests
@@ -302,13 +304,35 @@ def _sec_master_cache_path(day: date) -> Path:
     return CACHE / "sec_daily_index" / f"master.{day:%Y%m%d}.idx"
 
 
-def _sec_master(day: date, session: requests.Session | None = None) -> str | None:
-    """Return one SEC master index, preserving access denial as a typed error.
+def _is_s3_missing_daily_index(response: requests.Response) -> bool:
+    """Whether an Archives 403 is S3's missing-object response, not a SEC block."""
+    content = response.content
+    if content.startswith(b"\x1f\x8b"):
+        try:
+            content = gzip.decompress(content)
+        except OSError:
+            return False
+    try:
+        root = ElementTree.fromstring(content)
+    except (ElementTree.ParseError, TypeError):
+        return False
+    if root.tag.rsplit("}", 1)[-1] != "Error":
+        return False
+    return any(
+        element.tag.rsplit("}", 1)[-1] == "Code" and element.text == "AccessDenied"
+        for element in root.iter()
+    )
 
-    A 404/503 can mean that a daily index has not yet been published.  A 403 is
-    different: it is an access denial, so walking backwards through more dates
-    only multiplies traffic and runtime.  It therefore stops the source on the
-    first response and is surfaced as ``optional_external_403``.
+
+def _sec_master(day: date, session: requests.Session | None = None) -> str | None:
+    """Return one SEC master index, preserving genuine access denial as typed error.
+
+    A 404/503 can mean that a daily index has not yet been published. Archives
+    serves an absent daily object (such as on a US federal holiday) as a 403
+    containing S3's ``<Error><Code>AccessDenied</Code>`` XML; that is equivalent
+    to an unpublished index and permits the bounded walk-back to continue.
+    Other 403 responses, including SEC's HTML automated-tool block page, stop
+    the source as ``optional_external_403``.
     """
     path = _sec_master_cache_path(day)
     if path.exists() and path.stat().st_size > 100:
@@ -325,6 +349,8 @@ def _sec_master(day: date, session: requests.Session | None = None) -> str | Non
             "optional_external_timeout", f"SEC daily index request failed: {type(exc).__name__}"
         ) from exc
     if response.status_code == 403:
+        if _is_s3_missing_daily_index(response):
+            return None
         raise OptionalExternalSourceError(
             "optional_external_403", f"SEC denied daily-index access for {day.isoformat()}"
         )
