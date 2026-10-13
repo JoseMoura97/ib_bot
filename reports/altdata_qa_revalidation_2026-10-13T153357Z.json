@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "kind": "post_failure_revalidation",
+  "revalidated_at_utc": "2026-10-13T15:33:57Z",
+  "code_revision": "daa2e170ac2e10a69a3bb8de038f0b5896a6d3a5",
+  "original_timer_run": {
+    "qa_date": "2026-10-13",
+    "started_at_west": "2026-10-13T08:00:00+01:00",
+    "receipt_commit": "68bb3a215a96db4032138dd707398f71effa33f6",
+    "receipt_status": "red",
+    "service_result": "exit-code",
+    "observed_source_count": 10,
+    "expected_source_count": 11,
+    "missing_sources": [
+      "sec_daily_material_filings"
+    ],
+    "preserved": true
+  },
+  "source_revalidation": {
+    "source": "sec_daily_material_filings",
+    "official_endpoint": "https://www.sec.gov/Archives/edgar/daily-index/2026/QTR4/master.20261009.idx",
+    "official_endpoint_status": 200,
+    "pinned_qa_image": "ib_bot-worker@sha256:3abe6d131f60e29a9eb921d00b5c15e194e37648e1ae00da2b2381d610ae47d4",
+    "collector_rows": 1006,
+    "filed_dates": [
+      "20261009"
+    ],
+    "restored_snapshot": {
+      "id": 1058,
+      "captured_at_utc": "2026-10-13T15:03:46.900534Z",
+      "n_rows": 1006,
+      "content_hash": "4d6e39d00b0cb214f413ad30fd3107759f63d0fa5e440f93295694f2234edcbd"
+    }
+  },
+  "current_evaluation": {
+    "status": "green",
+    "snapshot_count": 11,
+    "expected_source_count": 11,
+    "observed_source_count": 11,
+    "missing_sources": [],
+    "alerts": [],
+    "source_evidence_sha256": "23504cd68922a62a2cdb4d0aef922cffa8c5b3003b65dbb90f246a7fbdc3e172"
+  },
+  "interpretation": "This is a post-failure revalidation, not a replacement for the immutable 08:00 WEST red daily receipt. The timer unit remains failed for that original run."
+}
