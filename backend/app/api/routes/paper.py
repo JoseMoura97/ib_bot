@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from app.api.schemas import (
     PaperAccountCreate,
@@ -346,7 +349,8 @@ def paper_rebalance_preview(body: PaperRebalanceRequest, db: Session = Depends(g
         )
         total_target_value += float(abs(delta) * float(q.price) if delta > 0 else 0.0)
 
-    estimated_remaining = float(acct.balance) - total_target_value
+    sells_val = sum(float(abs(l["delta_quantity"])) * float(l["price"]) for l in legs if l["side"] == "SELL")
+    estimated_remaining = float(acct.balance) + sells_val - total_target_value
 
     return PaperRebalancePreviewOut(
         as_of=end,
@@ -375,13 +379,54 @@ def paper_rebalance_execute_core(body: PaperRebalanceRequest, db: Session) -> Pa
     trades: list[PaperTrade] = []
 
     try:
-        for leg in sells + buys:
+        for leg in sells:
+            qty = float(abs(leg.delta_quantity))
+            if qty <= 1e-9:
+                continue
             o, tr, _, _ = place_market_order(
                 db,
                 account_id=int(body.account_id),
                 ticker=leg.ticker,
                 side=leg.side,
-                quantity=float(abs(leg.delta_quantity)),
+                quantity=qty,
+                price=float(leg.price),
+                notes=f"rebalance portfolio {body.portfolio_id}",
+                strategy=None,
+            )
+            orders.append(o)
+            trades.append(tr)
+
+        # Refresh account after sells to get actual available cash
+        db.refresh(acct)
+        available_cash = max(0.0, float(acct.balance))
+        total_buy_needed = sum(float(abs(l.delta_quantity)) * float(l.price) for l in buys)
+
+        scale = 1.0
+        if total_buy_needed > available_cash and total_buy_needed > 0:
+            scale = (available_cash * 0.999) / total_buy_needed
+            logger.warning(
+                "paper_rebalance account=%s: total buy notional %.2f exceeds available cash %.2f, scaled buy orders by %.4f",
+                body.account_id,
+                total_buy_needed,
+                available_cash,
+                scale,
+            )
+
+        for leg in buys:
+            qty = float(int(float(abs(leg.delta_quantity)) * scale))
+            if qty <= 0:
+                continue
+            cost = qty * float(leg.price)
+            if cost > float(acct.balance):
+                qty = float(int(float(acct.balance) / float(leg.price)))
+            if qty <= 0:
+                continue
+            o, tr, _, _ = place_market_order(
+                db,
+                account_id=int(body.account_id),
+                ticker=leg.ticker,
+                side=leg.side,
+                quantity=qty,
                 price=float(leg.price),
                 notes=f"rebalance portfolio {body.portfolio_id}",
                 strategy=None,

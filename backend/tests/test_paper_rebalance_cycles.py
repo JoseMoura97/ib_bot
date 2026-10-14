@@ -94,3 +94,44 @@ def test_paper_rebalance_core_is_callable_without_http_request(db_session, monke
         db_session,
     )
     assert len(result.orders) == 1
+
+
+def test_paper_rebalance_scales_buys_when_cash_is_insufficient(db_session, monkeypatch):
+    """When target allocation exceeds available cash, buys must be scaled without raising insufficient cash."""
+    from app.api.routes.paper import paper_rebalance_execute_core
+    from app.api.schemas import PaperRebalanceRequest
+    from app.core.config import settings
+    from app.models.paper import PaperAccount
+    from uuid import UUID
+
+    monkeypatch.setattr(settings, "quiver_api_key", None)
+    portfolio_id = _seed_portfolio(db_session)
+    now = datetime.utcnow()
+    monkeypatch.setattr(
+        "app.api.routes.paper.fetch_prices",
+        lambda tickers: {
+            str(t).upper(): PriceQuote(ticker=str(t).upper(), price=100.0, as_of=now, source="test")
+            for t in tickers
+        },
+    )
+
+    # Set account cash low (e.g. $500) while requesting $100,000 allocation
+    acct = db_session.query(PaperAccount).filter(PaperAccount.id == 1).first()
+    if not acct:
+        acct = PaperAccount(id=1, name="Test", balance=500.0, currency="USD")
+        db_session.add(acct)
+    else:
+        acct.balance = 500.0
+    db_session.commit()
+
+    # Rebalance requesting $100,000 when only $500 cash is available
+    result = paper_rebalance_execute_core(
+        PaperRebalanceRequest(portfolio_id=UUID(portfolio_id), allocation_amount=100_000.0, account_id=1),
+        db_session,
+    )
+
+    db_session.refresh(acct)
+    assert acct.balance >= 0.0
+    assert len(result.orders) > 0
+    # Verified: orders placed within the $500 available, without 400 insufficient cash!
+
