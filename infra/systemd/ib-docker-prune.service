@@ -1,0 +1,14 @@
+[Unit]
+Description=IB Bot weekly SAFE docker prune (dangling images + build cache older than 30d; never volumes or tagged images)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=servidor
+Group=servidor
+Environment=PRUNE_UNTIL=720h
+ExecStart=/home/servidor/Desktop/cursor-projects/ib_bot/infra/scripts/docker_prune_weekly.sh
+TimeoutStartSec=1800
+Nice=10
+IOSchedulingClass=idle

@@ -1,0 +1,10 @@
+[Unit]
+Description=Weekly SAFE docker prune for the host (ib_bot finding #4)
+
+[Timer]
+OnCalendar=Sun 06:00 UTC
+Persistent=true
+RandomizedDelaySec=10m
+
+[Install]
+WantedBy=timers.target
