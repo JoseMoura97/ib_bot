@@ -222,6 +222,12 @@ def extend_manifest(old_baseline: dict[str, Any], actual_days: list[dict[str, An
     if tampered:
         raise ChainTamperError(tampered, pre_result)
     new_baseline = manifest_document(actual_days)
+    # The reseal audit trail is permanent evidence of an authorised exception --
+    # a routine --extend must carry it forward, never silently drop it. Caught
+    # live on 2026-10-14: the very next daily --extend after a --reseal-day
+    # wrote a fresh manifest_document() with no reseal_log key at all.
+    if old_baseline.get("reseal_log"):
+        new_baseline["reseal_log"] = list(old_baseline["reseal_log"])
     return new_baseline, pre_result
 
 

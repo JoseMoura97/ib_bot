@@ -198,6 +198,26 @@ def test_reseal_day_rechains_successors_and_audits():
     assert new_baseline["reseal_log"][-1]["as_of_date"] == "2026-10-13"
 
 
+def test_extend_after_reseal_carries_the_reseal_log_forward():
+    """Regression: caught live 2026-10-14 -- the daily --extend run right after
+    a --reseal-day wrote a fresh manifest_document() with no reseal_log key at
+    all, silently erasing the audit trail of an authorised exception.
+    """
+    old_rows = [row("2026-10-12", "a", [{"v": 0}]), row("2026-10-13", "a", [{"v": 1}])]
+    old_baseline = chain.manifest_document(chain.build_days(old_rows))
+    resealed_rows = old_rows + [row("2026-10-13", "b", [{"v": 2}])]
+    resealed, audit = chain.reseal_day(
+        old_baseline, chain.build_days(resealed_rows), "2026-10-13", reason="x", authority="y"
+    )
+    assert resealed["reseal_log"] == [audit]
+
+    # Next day's routine --extend run (new day 10-14 lands, nothing about
+    # 10-13 changes): the reseal_log must survive untouched.
+    next_day_rows = resealed_rows + [row("2026-10-14", "a", [{"v": 3}])]
+    extended, _pre = chain.extend_manifest(resealed, chain.build_days(next_day_rows))
+    assert extended.get("reseal_log") == [audit]
+
+
 def test_reseal_day_refuses_if_prefix_was_tampered():
     old_rows = [row("2026-10-12", "a", [{"v": 0}]), row("2026-10-13", "a", [{"v": 1}])]
     old_baseline = chain.manifest_document(chain.build_days(old_rows))

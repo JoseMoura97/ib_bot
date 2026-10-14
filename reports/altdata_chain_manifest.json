@@ -5752,7 +5752,19 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-10-14T11:34:57.363706+00:00",
+  "generated_at_utc": "2026-10-14T11:37:47.410158+00:00",
+  "reseal_log": [
+    {
+      "as_of_date": "2026-10-13",
+      "at": "2026-10-14T11:37:47.410143+00:00",
+      "authority": "jarvis 14/10 08:00 sweep",
+      "changed_sources": [],
+      "new_manifest_hash": "a958352ec925ddcd1f1dc6d5c9ab5b29d083749ebe55944cc8a6d23a56b5177d",
+      "reason": "Restore reseal audit entry dropped by extend_manifest bug (fixed same commit); original reseal: GM restore 957e51f5 after SEC holiday outage, additive row 1058",
+      "rechained_successors": [],
+      "superseded_manifest_hash": "a958352ec925ddcd1f1dc6d5c9ab5b29d083749ebe55944cc8a6d23a56b5177d"
+    }
+  ],
   "schema_version": 1,
   "top_manifest_hash": "a958352ec925ddcd1f1dc6d5c9ab5b29d083749ebe55944cc8a6d23a56b5177d",
   "total_days": 93
