@@ -96,15 +96,23 @@ def test_paper_rebalance_core_is_callable_without_http_request(db_session, monke
     assert len(result.orders) == 1
 
 
-def test_paper_rebalance_scales_buys_when_cash_is_insufficient(db_session, monkeypatch):
-    """When target allocation exceeds available cash, buys must be scaled without raising insufficient cash."""
+def test_paper_rebalance_scales_buys_when_cash_is_insufficient(db_session, monkeypatch, caplog):
+    """Regression for paper account 2 (insufficient cash every day since 2026-09-28).
+
+    The account holds a position the target no longer contains (never sold), so
+    cash is far below allocation_amount. Buys must be scaled to the available
+    cash with a logged warning instead of raising HTTPException 400.
+    """
+    import logging
+
     from app.api.routes.paper import paper_rebalance_execute_core
     from app.api.schemas import PaperRebalanceRequest
     from app.core.config import settings
-    from app.models.paper import PaperAccount
+    from app.models.paper import PaperPosition
+    from app.services.paper_trading import ensure_paper_account
     from uuid import UUID
 
-    monkeypatch.setattr(settings, "quiver_api_key", None)
+    monkeypatch.setattr(settings, "quiver_api_key", None)  # deterministic SPY target
     portfolio_id = _seed_portfolio(db_session)
     now = datetime.utcnow()
     monkeypatch.setattr(
@@ -115,23 +123,23 @@ def test_paper_rebalance_scales_buys_when_cash_is_insufficient(db_session, monke
         },
     )
 
-    # Set account cash low (e.g. $500) while requesting $100,000 allocation
-    acct = db_session.query(PaperAccount).filter(PaperAccount.id == 1).first()
-    if not acct:
-        acct = PaperAccount(id=1, name="Test", balance=500.0, currency="USD")
-        db_session.add(acct)
-    else:
-        acct.balance = 500.0
+    acct = ensure_paper_account(db_session, 1)
+    acct.balance = 500.0
+    db_session.add(PaperPosition(account_id=1, ticker="ORPH", quantity=50.0, avg_cost=10.0, currency="USD"))
     db_session.commit()
 
-    # Rebalance requesting $100,000 when only $500 cash is available
+    caplog.set_level(logging.WARNING, logger="app.api.routes.paper")
     result = paper_rebalance_execute_core(
         PaperRebalanceRequest(portfolio_id=UUID(portfolio_id), allocation_amount=100_000.0, account_id=1),
         db_session,
     )
 
     db_session.refresh(acct)
+    buys = [o for o in result.orders if o.action == "BUY"]
+    assert buys, "scaled buy should still be placed"
+    assert sum(o.value for o in buys) <= 500.0 + 1e-6
+    assert buys[0].quantity == 4.0  # floor(500 * 0.999 / 100)
     assert acct.balance >= 0.0
-    assert len(result.orders) > 0
-    # Verified: orders placed within the $500 available, without 400 insufficient cash!
-
+    assert any("exceeds available cash" in r.getMessage() for r in caplog.records)
+    orph = db_session.query(PaperPosition).filter_by(account_id=1, ticker="ORPH").one()
+    assert float(orph.quantity) == 50.0  # guard does not change sell semantics

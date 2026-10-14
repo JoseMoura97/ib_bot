@@ -6,8 +6,6 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
-logger = logging.getLogger(__name__)
-
 from app.api.schemas import (
     PaperAccountCreate,
     PaperAccountOut,
@@ -26,6 +24,8 @@ from app.db.session import get_db
 from app.models.paper import PaperAccount, PaperOrder, PaperPosition, PaperTrade
 from app.models.portfolio import Portfolio, PortfolioStrategy
 from app.services.paper_trading import ensure_paper_account, fetch_prices, place_market_order
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -396,8 +396,12 @@ def paper_rebalance_execute_core(body: PaperRebalanceRequest, db: Session) -> Pa
             orders.append(o)
             trades.append(tr)
 
-        # Refresh account after sells to get actual available cash
-        db.refresh(acct)
+        # Cash guard: buy legs are sized from allocation_amount, but positions the
+        # target no longer holds are never sold, so the cash actually available
+        # after the sells can be smaller than the buy notional. Scale buys down to
+        # fit instead of letting place_market_order raise "insufficient cash" and
+        # roll back the whole rebalance. acct.balance is the in-session value
+        # already updated by the sells above.
         available_cash = max(0.0, float(acct.balance))
         total_buy_needed = sum(float(abs(l.delta_quantity)) * float(l.price) for l in buys)
 
