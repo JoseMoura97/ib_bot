@@ -5691,7 +5691,7 @@
     },
     {
       "as_of_date": "2026-10-13",
-      "manifest_hash": "5d4a33080aa64e4cb361c7bf12f2007ea919d8225e9aac519decb6105f096624",
+      "manifest_hash": "a958352ec925ddcd1f1dc6d5c9ab5b29d083749ebe55944cc8a6d23a56b5177d",
       "previous_manifest_hash": "3fc29aff24ac61504670c0f8e7d8d5a4192d1fd359c082026f3fb74d1afa62d2",
       "sources": [
         {
@@ -5740,6 +5740,11 @@
           "stored_hash_matches_payload": true
         },
         {
+          "content_hash": "4d6e39d00b0cb214f413ad30fd3107759f63d0fa5e440f93295694f2234edcbd",
+          "source": "sec_daily_material_filings",
+          "stored_hash_matches_payload": true
+        },
+        {
           "content_hash": "8f581a63b14d82da1723b43d08fb733d00bfd24b99a260dbd133cab9b4407d6d",
           "source": "usaspending_recent_contract_awards",
           "stored_hash_matches_payload": true
@@ -5747,8 +5752,22 @@
       ]
     }
   ],
-  "generated_at_utc": "2026-10-13T07:00:35.422962+00:00",
+  "generated_at_utc": "2026-10-14T11:26:53.107714+00:00",
+  "reseal_log": [
+    {
+      "as_of_date": "2026-10-13",
+      "at": "2026-10-14T11:26:53.107698+00:00",
+      "authority": "jarvis 14/10 08:00 sweep",
+      "changed_sources": [
+        "sec_daily_material_filings"
+      ],
+      "new_manifest_hash": "a958352ec925ddcd1f1dc6d5c9ab5b29d083749ebe55944cc8a6d23a56b5177d",
+      "reason": "GM restore 957e51f5 after SEC holiday outage; additive row 1058",
+      "rechained_successors": [],
+      "superseded_manifest_hash": "5d4a33080aa64e4cb361c7bf12f2007ea919d8225e9aac519decb6105f096624"
+    }
+  ],
   "schema_version": 1,
-  "top_manifest_hash": "5d4a33080aa64e4cb361c7bf12f2007ea919d8225e9aac519decb6105f096624",
+  "top_manifest_hash": "a958352ec925ddcd1f1dc6d5c9ab5b29d083749ebe55944cc8a6d23a56b5177d",
   "total_days": 93
 }

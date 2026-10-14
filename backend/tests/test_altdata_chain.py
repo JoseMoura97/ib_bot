@@ -104,3 +104,107 @@ def test_psycopg_url_and_prior_negative_proof(tmp_path):
     report = tmp_path / "report.json"
     report.write_text(json.dumps({"negative_test_detected": True, "negative_test": {"detected": True}}))
     assert chain.prior_negative_proof(report) == {"detected": True}
+
+
+def test_split_closed_days_excludes_today_and_later():
+    days = [{"as_of_date": d} for d in ["2026-10-11", "2026-10-12", "2026-10-13", "2026-10-14"]]
+    closed, open_days = chain.split_closed_days(days, "2026-10-13")
+    assert [d["as_of_date"] for d in closed] == ["2026-10-11", "2026-10-12"]
+    assert [d["as_of_date"] for d in open_days] == ["2026-10-13", "2026-10-14"]
+
+
+def test_extend_never_seals_an_open_same_day_late_capture_no_longer_trips_tamper():
+    """Root cause (2026-10-13): --extend sealed "today" before it closed, so a
+    later same-day additive row broke its own freshly-written seal. Excluding
+    the open day before calling extend_manifest means a late same-day capture
+    is simply absent from the baseline -- never a tamper -- until the day
+    actually closes.
+    """
+    today = "2026-10-14"
+    baseline_rows = [row("2026-10-12", "a", [{"v": 1}])]
+    old_baseline = chain.manifest_document(chain.build_days(baseline_rows))
+
+    # First run of the day: one source landed for "today" (open, excluded).
+    first_run_rows = baseline_rows + [row("2026-10-14", "a", [{"v": 2}])]
+    closed_1, open_1 = chain.split_closed_days(chain.build_days(first_run_rows), today)
+    extended_1, _pre = chain.extend_manifest(old_baseline, closed_1)
+    assert [d["as_of_date"] for d in extended_1["days"]] == ["2026-10-12"]
+    assert [d["as_of_date"] for d in open_1] == ["2026-10-14"]
+
+    # Later the SAME UTC day: a second source lands additively for "today".
+    # Because "today" was never sealed in extended_1, this is not a tamper.
+    second_run_rows = first_run_rows + [row("2026-10-14", "b", [{"v": 3}])]
+    closed_2, open_2 = chain.split_closed_days(chain.build_days(second_run_rows), today)
+    extended_2, _pre = chain.extend_manifest(extended_1, closed_2)
+    assert [d["as_of_date"] for d in extended_2["days"]] == ["2026-10-12"]
+    assert len(open_2[0]["sources"]) == 2
+
+
+def test_extend_still_refuses_mutation_of_a_closed_sealed_day():
+    baseline_rows = [row("2026-10-12", "a", [{"v": 1}]), row("2026-10-13", "a", [{"v": 2}])]
+    old_baseline = chain.manifest_document(chain.build_days(baseline_rows))
+
+    tampered_rows = [row("2026-10-12", "a", [{"v": "tampered"}]), row("2026-10-13", "a", [{"v": 2}])]
+    closed, _open = chain.split_closed_days(chain.build_days(tampered_rows), "2026-10-14")
+    try:
+        chain.extend_manifest(old_baseline, closed)
+        raise AssertionError("mutating an already-closed sealed day must still raise ChainTamperError")
+    except chain.ChainTamperError as exc:
+        assert exc.tampered_days == ["2026-10-12", "2026-10-13"]
+
+
+def test_reseal_day_requires_reason_and_authority():
+    baseline_rows = [row("2026-10-13", "a", [{"v": 1}])]
+    old_baseline = chain.manifest_document(chain.build_days(baseline_rows))
+    closed = chain.build_days(baseline_rows)
+    for reason, authority in [(None, "jarvis"), ("legit", None), ("", ""), (None, None)]:
+        try:
+            chain.reseal_day(old_baseline, closed, "2026-10-13", reason, authority)
+            raise AssertionError("reseal must refuse without both --reason and --authority")
+        except chain.ResealError:
+            pass
+
+
+def test_reseal_day_rechains_successors_and_audits():
+    # 10-13 was wrongly sealed with only source "a"; 10-14 later chained on top.
+    old_rows = [
+        row("2026-10-12", "a", [{"v": 0}]),
+        row("2026-10-13", "a", [{"v": 1}]),
+        row("2026-10-14", "a", [{"v": 9}]),
+    ]
+    old_baseline = chain.manifest_document(chain.build_days(old_rows))
+
+    # Live data: 10-13 additionally has source "b" (the legitimate GM restore);
+    # 10-14 is unchanged.
+    live_rows = old_rows + [row("2026-10-13", "b", [{"v": 2}])]
+    closed = chain.build_days(live_rows)
+
+    new_baseline, audit = chain.reseal_day(
+        old_baseline, closed, "2026-10-13", reason="GM restore after outage; additive row", authority="jarvis 14/10"
+    )
+    assert audit["as_of_date"] == "2026-10-13"
+    assert audit["changed_sources"] == ["b"]
+    assert audit["rechained_successors"] == ["2026-10-14"]
+    assert audit["reason"] and audit["authority"]
+    assert [d["as_of_date"] for d in new_baseline["days"]] == ["2026-10-12", "2026-10-13", "2026-10-14"]
+    # 10-14's manifest_hash must differ from the old one: it now chains from the
+    # resealed 10-13, not the old (now-superseded) seal.
+    old_1014 = next(d for d in old_baseline["days"] if d["as_of_date"] == "2026-10-14")
+    new_1014 = next(d for d in new_baseline["days"] if d["as_of_date"] == "2026-10-14")
+    assert new_1014["manifest_hash"] != old_1014["manifest_hash"]
+    # Re-verifying the new baseline against the current live data must now pass clean.
+    result = chain.verify(new_baseline, closed)
+    assert result["invalid_days"] == []
+    assert new_baseline["reseal_log"][-1]["as_of_date"] == "2026-10-13"
+
+
+def test_reseal_day_refuses_if_prefix_was_tampered():
+    old_rows = [row("2026-10-12", "a", [{"v": 0}]), row("2026-10-13", "a", [{"v": 1}])]
+    old_baseline = chain.manifest_document(chain.build_days(old_rows))
+    tampered_prefix = [row("2026-10-12", "a", [{"v": "tampered"}]), row("2026-10-13", "a", [{"v": 1}])]
+    closed = chain.build_days(tampered_prefix)
+    try:
+        chain.reseal_day(old_baseline, closed, "2026-10-13", reason="x", authority="y")
+        raise AssertionError("reseal must refuse when a day before it no longer verifies")
+    except chain.ChainTamperError as exc:
+        assert exc.tampered_days == ["2026-10-12"]

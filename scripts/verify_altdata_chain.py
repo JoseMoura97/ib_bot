@@ -209,6 +209,12 @@ def extend_manifest(old_baseline: dict[str, Any], actual_days: list[dict[str, An
     caller must never write ``actual_days`` as the baseline before this check;
     that would compare the database against itself and could never detect a
     retroactive rewrite.
+
+    ``actual_days`` must already exclude any day that is not yet CLOSED (see
+    ``split_closed_days``) -- a day is only safe to commit once no more rows can
+    legitimately land for it. Sealing an open day here is the exact 2026-10-13
+    defect: a same-day restore/backfill landing after the day was already
+    committed turned a legitimate additive write into a tamper detection.
     """
     old_dates = {item["as_of_date"] for item in old_baseline.get("days", [])}
     pre_result = verify(old_baseline, actual_days) if old_dates else {"invalid_days": []}
@@ -217,6 +223,110 @@ def extend_manifest(old_baseline: dict[str, Any], actual_days: list[dict[str, An
         raise ChainTamperError(tampered, pre_result)
     new_baseline = manifest_document(actual_days)
     return new_baseline, pre_result
+
+
+def split_closed_days(
+    actual_days: list[dict[str, Any]], today_utc_date: str
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Split freshly-built days into CLOSED (safe to seal) and OPEN (today or later).
+
+    A day is only closed once its UTC calendar date is strictly in the past --
+    while it is "today" more rows can still legitimately land for it (a backfill,
+    a GM restore, a retried capture), and sealing it early is what caused the
+    2026-10-13 incident: ``--extend`` ran at 07:00 UTC and committed that same
+    day before it had finished accumulating sources, so a later additive row
+    broke its own hash and cascaded into every successor.
+    """
+    closed = [d for d in actual_days if d["as_of_date"] < today_utc_date]
+    open_days = [d for d in actual_days if d["as_of_date"] >= today_utc_date]
+    return closed, open_days
+
+
+class ResealError(RuntimeError):
+    """Raised when an explicit --reseal-day request cannot be performed safely."""
+
+
+def reseal_day(
+    old_baseline: dict[str, Any],
+    closed_days: list[dict[str, Any]],
+    reseal_date: str,
+    reason: str,
+    authority: str,
+    *,
+    now: datetime | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Explicitly re-seal ONE already-committed day from live data, audited.
+
+    This is the only supported way to absorb a legitimate additive change to a
+    day that was already (wrongly) sealed. Every day strictly before
+    ``reseal_date`` must still verify unchanged against the baseline -- this is
+    not a bulk regeneration, it touches exactly one day and re-chains its
+    successors. Refuses without both ``reason`` and ``authority``, refuses if
+    the prefix before the day no longer verifies (a real tamper, not the
+    resealed day itself), and refuses to silently drop a previously-committed
+    successor day that has no current data.
+    """
+    if not (reason or "").strip() or not (authority or "").strip():
+        raise ResealError("--reseal-day requires both --reason and --authority")
+
+    old_days = old_baseline.get("days", [])
+    old_by_date = {d["as_of_date"]: d for d in old_days}
+    if reseal_date not in old_by_date:
+        raise ResealError(f"{reseal_date} is not a previously-committed day in the baseline -- nothing to reseal")
+
+    actual_by_date = {d["as_of_date"]: d for d in closed_days}
+    if reseal_date not in actual_by_date:
+        raise ResealError(f"{reseal_date} has no current (closed) source data to reseal from")
+
+    before = [d for d in old_days if d["as_of_date"] < reseal_date]
+    prefix_actual = [d for d in closed_days if d["as_of_date"] < reseal_date]
+    pre_check = verify({"days": before}, prefix_actual) if before else {"invalid_days": []}
+    unexpected = [day for day in pre_check["invalid_days"] if day < reseal_date]
+    if unexpected:
+        raise ChainTamperError(unexpected, pre_check)
+
+    successors = sorted(d for d in actual_by_date if d >= reseal_date)
+    missing = sorted(d for d in old_by_date if d >= reseal_date and d not in actual_by_date)
+    if missing:
+        raise ResealError(
+            f"reseal would drop previously-committed day(s) with no current data -- refusing: {missing}"
+        )
+
+    old_source_hash = {s["source"]: s["content_hash"] for s in old_by_date[reseal_date]["sources"]}
+    previous_hash = before[-1]["manifest_hash"] if before else None
+    rebuilt_tail: list[dict[str, Any]] = []
+    for as_of_date in successors:
+        actual_day = actual_by_date[as_of_date]
+        body = {
+            "as_of_date": as_of_date,
+            "previous_manifest_hash": previous_hash,
+            "sources": [{"source": s["source"], "content_hash": s["content_hash"]} for s in actual_day["sources"]],
+        }
+        manifest_hash = sha256_json(body)
+        rebuilt_tail.append({**body, "manifest_hash": manifest_hash, "sources": actual_day["sources"]})
+        previous_hash = manifest_hash
+
+    resealed_day = rebuilt_tail[0]
+    new_source_hash = {s["source"]: s["content_hash"] for s in resealed_day["sources"]}
+    changed_sources = sorted(
+        set(new_source_hash) ^ set(old_source_hash)
+        | {name for name, h in new_source_hash.items() if name in old_source_hash and old_source_hash[name] != h}
+    )
+
+    audit_entry = {
+        "as_of_date": reseal_date,
+        "superseded_manifest_hash": old_by_date[reseal_date]["manifest_hash"],
+        "new_manifest_hash": resealed_day["manifest_hash"],
+        "changed_sources": changed_sources,
+        "rechained_successors": [d["as_of_date"] for d in rebuilt_tail[1:]],
+        "reason": reason,
+        "authority": authority,
+        "at": (now or datetime.now(timezone.utc)).isoformat(),
+    }
+
+    new_baseline = manifest_document(before + rebuilt_tail)
+    new_baseline["reseal_log"] = list(old_baseline.get("reseal_log", [])) + [audit_entry]
+    return new_baseline, audit_entry
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -269,14 +379,37 @@ def main() -> int:
         ),
     )
     parser.add_argument("--negative-test", action="store_true")
+    parser.add_argument(
+        "--reseal-day",
+        metavar="YYYY-MM-DD",
+        default=None,
+        help=(
+            "Explicitly re-seal ONE already-committed day from current live data and "
+            "re-chain its successors. Only supported way to absorb a legitimate additive "
+            "change to a day that was sealed too early. Requires --reason and --authority."
+        ),
+    )
+    parser.add_argument("--reason", default=None, help="Required with --reseal-day: why this reseal is legitimate.")
+    parser.add_argument("--authority", default=None, help="Required with --reseal-day: who authorised it.")
     args = parser.parse_args()
     if not args.database_url:
         parser.error("--database-url or DATABASE_URL is required")
     if args.bootstrap and args.extend:
         parser.error("--bootstrap and --extend are mutually exclusive")
+    if args.reseal_day and (args.bootstrap or args.extend):
+        parser.error("--reseal-day is mutually exclusive with --bootstrap/--extend")
+    if args.reseal_day and not (args.reason and args.authority):
+        parser.error("--reseal-day requires both --reason and --authority")
+
+    today_utc_date = datetime.now(timezone.utc).date().isoformat()
 
     with psycopg.connect(psycopg_url(args.database_url)) as conn:
-        actual_days = build_days(fetch_rows(conn, args.table))
+        all_days = build_days(fetch_rows(conn, args.table))
+        # A day is only safe to commit to the baseline once it is CLOSED (its UTC
+        # calendar date is strictly in the past) -- see split_closed_days. The
+        # 2026-10-13 incident was exactly this: --extend sealed "today" at 07:00
+        # UTC, then a legitimate same-day additive row broke the seal.
+        closed_days, open_days = split_closed_days(all_days, today_utc_date)
 
         if args.bootstrap:
             if args.manifest.exists():
@@ -284,7 +417,7 @@ def main() -> int:
                     f"refusing --bootstrap: manifest already exists at {args.manifest} -- "
                     "use --extend to add new days without regenerating the committed baseline"
                 )
-            baseline = manifest_document(actual_days)
+            baseline = manifest_document(closed_days)
             write_json(args.manifest, baseline)
         elif not args.manifest.exists():
             raise FileNotFoundError(
@@ -294,7 +427,7 @@ def main() -> int:
         elif args.extend:
             old_baseline = read_json(args.manifest)
             try:
-                baseline, _pre_result = extend_manifest(old_baseline, actual_days)
+                baseline, _pre_result = extend_manifest(old_baseline, closed_days)
             except ChainTamperError as exc:
                 failure_report = {
                     "schema_version": 1,
@@ -308,16 +441,28 @@ def main() -> int:
                 print(str(exc), file=sys.stderr)
                 return 1
             write_json(args.manifest, baseline)
+        elif args.reseal_day:
+            old_baseline = read_json(args.manifest)
+            try:
+                baseline, audit_entry = reseal_day(
+                    old_baseline, closed_days, args.reseal_day, args.reason, args.authority
+                )
+            except (ChainTamperError, ResealError) as exc:
+                print(str(exc), file=sys.stderr)
+                return 1
+            write_json(args.manifest, baseline)
+            print(json.dumps({"reseal": audit_entry}, indent=2, sort_keys=True))
         else:
             baseline = read_json(args.manifest)
 
-        result = verify(baseline, actual_days)
+        result = verify(baseline, closed_days)
         negative = negative_copy_test(conn, baseline) if args.negative_test else prior_negative_proof(args.report)
 
     report = {
         "schema_version": 1,
         "verified_at_utc": datetime.now(timezone.utc).isoformat(),
         **result,
+        "open_days": [{"as_of_date": d["as_of_date"]} for d in open_days],
         "negative_test_detected": bool(negative and negative["detected"]),
         "negative_test": negative,
     }

@@ -1,5 +1,5 @@
 {
-  "baseline_top_manifest_hash": "5d4a33080aa64e4cb361c7bf12f2007ea919d8225e9aac519decb6105f096624",
+  "baseline_top_manifest_hash": "a958352ec925ddcd1f1dc6d5c9ab5b29d083749ebe55944cc8a6d23a56b5177d",
   "chained_valid_days": 93,
   "days": [
     {
@@ -647,57 +647,23 @@
       "valid": true
     },
     {
-      "actual_manifest_hash": "5d4a33080aa64e4cb361c7bf12f2007ea919d8225e9aac519decb6105f096624",
+      "actual_manifest_hash": "a958352ec925ddcd1f1dc6d5c9ab5b29d083749ebe55944cc8a6d23a56b5177d",
       "as_of_date": "2026-10-13",
-      "expected_manifest_hash": "5d4a33080aa64e4cb361c7bf12f2007ea919d8225e9aac519decb6105f096624",
+      "expected_manifest_hash": "a958352ec925ddcd1f1dc6d5c9ab5b29d083749ebe55944cc8a6d23a56b5177d",
       "source_hashes_ok": true,
       "valid": true
     }
   ],
   "invalid_days": [],
-  "negative_test": {
-    "detected": true,
-    "expected_invalid_days": [
-      "2026-07-29",
-      "2026-07-30",
-      "2026-07-31",
-      "2026-08-01",
-      "2026-08-02",
-      "2026-08-03",
-      "2026-08-04",
-      "2026-08-05",
-      "2026-08-06",
-      "2026-08-07",
-      "2026-08-08",
-      "2026-08-09",
-      "2026-08-10",
-      "2026-08-11",
-      "2026-08-12",
-      "2026-08-13"
-    ],
-    "invalid_days": [
-      "2026-07-29",
-      "2026-07-30",
-      "2026-07-31",
-      "2026-08-01",
-      "2026-08-02",
-      "2026-08-03",
-      "2026-08-04",
-      "2026-08-05",
-      "2026-08-06",
-      "2026-08-07",
-      "2026-08-08",
-      "2026-08-09",
-      "2026-08-10",
-      "2026-08-11",
-      "2026-08-12",
-      "2026-08-13"
-    ],
-    "target_day": "2026-07-29"
-  },
-  "negative_test_detected": true,
+  "negative_test": null,
+  "negative_test_detected": false,
+  "open_days": [
+    {
+      "as_of_date": "2026-10-14"
+    }
+  ],
   "schema_version": 1,
-  "top_manifest_hash": "5d4a33080aa64e4cb361c7bf12f2007ea919d8225e9aac519decb6105f096624",
+  "top_manifest_hash": "a958352ec925ddcd1f1dc6d5c9ab5b29d083749ebe55944cc8a6d23a56b5177d",
   "total_days": 93,
-  "verified_at_utc": "2026-10-13T07:00:35.429403+00:00"
+  "verified_at_utc": "2026-10-14T11:26:53.114701+00:00"
 }
