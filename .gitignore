@@ -62,6 +62,7 @@ infra/scripts/askpass.cmd
 
 # IBeam runtime daily logs (rotating runtime artifact — churn, keep on disk only)
 infra/ibeam/outputs/ibeam_log__*.txt
+infra/ibeam/outputs_test1015/
 
 # OS files
 .DS_Store
