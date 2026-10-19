@@ -103,17 +103,36 @@ bash infra/scripts/docker_prune_weekly.sh
 docker system df
 ```
 
-**Oracle de aceitação:**
+**Correção (verificador, 2026-10-19):** o número de 65,13GB/56,37GB de `docker system df` é do
+**HOST INTEIRO** (22 imagens, 17 de outros projetos — Jellyfin, Nextcloud/family-drive, Immich,
+OnlyOffice, Mongo, etc.), não só do `ib_bot`. `docker images -f dangling=true` devolve **zero**
+hoje — não há camadas dangling acumuladas. Das 5 imagens do `ib_bot`, só `ib_bot-worker:latest`
+tem 0 containers a usá-la (~8,76GB de "unique size", via `docker system df -v`). Este passo só
+pode libertar, no máximo, **~8-9GB** — não vai mover visivelmente o número de 65GB/56GB do host.
+O oracle abaixo foi reescrito para ser verificável NO MESMO TURNO (antes/depois), em vez de
+empurrar o teste real para o próximo domingo sem monitorização.
+
+**Oracle de aceitação (medir ANTES e DEPOIS, no mesmo turno, nunca aceitar por omissão):**
 ```bash
-docker system df --format '{{.Type}}: {{.Reclaimable}}' | grep -i images
+# ANTES (correr logo no início do passo, antes de qualquer `--force-recreate`/prune):
+docker system df --format '{{.Type}}: {{.Reclaimable}}' | grep -i images > /tmp/docker_images_before.txt
+cat /tmp/docker_images_before.txt
+
+# ... aplicar o fix (1b/1c/1d acima) ...
+
+# DEPOIS:
+docker system df --format '{{.Type}}: {{.Reclaimable}}' | grep -i images > /tmp/docker_images_after.txt
+cat /tmp/docker_images_after.txt
+diff /tmp/docker_images_before.txt /tmp/docker_images_after.txt
 ```
-→ esperado: o valor de `Reclaimable` para `Images` desce de forma visível (não fica em "0B"
-reclaimed no log do script) — comparar `docker system df` ANTES e DEPOIS deste passo e confirmar
-que a diferença é > 0. Se o valor reclamável não baixar porque não há imagens órfãs reais nesse
-momento (ex.: nenhum build novo desde o último prune), isso é aceitável — o teste de aceitação
-real é: `docker logs` do próximo disparo semanal (domingo 25-out) do `ib-docker-prune.service`
-NÃO deve voltar a dizer "Total reclaimed space: 0B" SE houver imagens antigas acumuladas nesse
-momento (confirmar com `journalctl -u ib-docker-prune.service -n 20` depois de 25-out).
+→ **esperado: o valor de `Reclaimable` para `Images` desce em ~8-9GB** (o tamanho único de
+`ib_bot-worker:latest`, a única imagem do `ib_bot` hoje com 0 containers a usá-la — confirmar
+antes com `docker system df -v | grep ib_bot`). **Se o valor não baixar por essa ordem de
+grandeza, o passo NÃO está feito** — reportar explicitamente "não resolvido: 0B reclaimed
+mesmo depois do force-recreate" em vez de aceitar por omissão ou empurrar a verificação para o
+disparo semanal de domingo (25-out). O disparo de domingo serve só como confirmação adicional de
+regressão a longo prazo (`journalctl -u ib-docker-prune.service -n 20` depois de 25-out), nunca
+como o único teste de aceitação deste passo.
 
 **Rollback:**
 ```bash

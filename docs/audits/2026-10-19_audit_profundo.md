@@ -148,10 +148,21 @@ Build Cache     22        0         26.85GB   0B
 ```
 **Piorou desde 10-12** (imagens reclamáveis: 48,72→65,13 GB) apesar do novo timer de limpeza — ver
 achado MÉDIO #2 com a causa raiz identificada. Disco raiz: `df -h /` → 1,8 TB total, **89% usado,
-204 GB livres** (era 87%/240GB há 1 semana — a piorar). `docker images` mostra 5 imagens "vivas"
-etiquetadas (`api` 8,47GB, `beat` 10GB, `worker:latest` 10GB, `worker:altdata-qa-pin-3ea8fb0`
-10GB, `web` 1,3GB ≈ 40GB) — o resto dos 65,13GB são camadas intermédias "dangling" que o Docker
-não consegue remover porque ainda estão referenciadas pelos containers antigos em execução.
+204 GB livres** (era 87%/240GB há 1 semana — a piorar).
+
+**Correção desta sessão (o parágrafo abaixo, de uma versão anterior deste audit, estava
+sobrestimado — ver `docker system df -v` e `docker images -f dangling=true` corridos agora):**
+o número de 65,13GB de `docker system df` é **do HOST INTEIRO**, não só do `ib_bot` — das 22
+imagens no host, **17 não têm nada a ver com o `ib_bot`** (Jellyfin ~2,27GB, Nextcloud/
+family-drive ~2,05GB, Immich server+ML ~5GB, OnlyOffice ~4,3GB, Mongo ~1,19GB, cadvisor,
+postgres/redis genéricos usados por outros projetos, etc.). `docker images -f dangling=true`
+devolve **VAZIO** — zero imagens dangling no host agora, não "camadas intermédias dangling" como
+uma versão anterior deste texto afirmava. `docker system df -v` mostra que, das 5 imagens do
+`ib_bot` (`api` 8,47GB, `beat` 10GB, `worker:latest` 10GB, `worker:altdata-qa-pin-3ea8fb0` 10GB,
+`web` 1,3GB), **só 1 tem 0 containers a usá-la**: `ib_bot-worker:latest` (10GB total, ~8,76GB
+"unique size" — o espaço realmente recuperável se for removida). As outras 4 imagens do `ib_bot`
+têm 1 container cada a usá-las (não são órfãs). Ou seja: o espaço reclamável real e imediato
+atribuível ao `ib_bot` é **~8,76GB**, não "o resto dos 65,13GB" — ver achado MÉDIO #3 corrigido.
 
 ### Tarefas internas do bot (celery beat/worker — `backend/app/worker/celery_app.py`)
 8 tarefas agendadas: `refresh_plot_data_nightly` (diário 02:00 UTC), `refresh_validation_weekly`
@@ -223,8 +234,11 @@ viva. `phase-status.json` nesse repo **continua desatualizado** (campo `status` 
 ```
 journalctl -u lifeos-ib-refresh.service --since "2026-10-13" | grep pushed
 ```
-→ progressão: 13-out `30.276,98` (9 posições) → ... → 18-out `41.695,87` (7 posições) → 19-out
-(hoje, 03:15) `41.724,54` (7 posições). **Esta é a conta pessoal do José**, gerida manualmente por
+→ progressão: 13-out `33.314,75` (10 posições, corrigido nesta sessão — o valor `30.276,98`/9
+posições de uma versão anterior deste texto era na verdade o registo de 12-out, copiado por
+engano de uma auditoria anterior, não re-verificado via `journalctl` como o resto desta linha)
+→ ... → 18-out `41.695,87` (7 posições) → 19-out (hoje, 03:15) `41.724,54` (7 posições). **Esta é
+a conta pessoal do José**, gerida manualmente por
 ele fora deste bot — não é do `ib_bot` (`ib_orders=0` continua exatamente igual). Registado só
 para manter o estado da conta atualizado; não é um achado do bot. (O conector MCP `Interactive
 Brokers (IBKR)` está disponível nesta sessão, mas usar o registo já verificado do timer evita
@@ -266,13 +280,22 @@ investigar sem gerar novas ideias do zero.
 ### MÉDIO
 
 **#3 — A limpeza automática de Docker criada na semana passada (achado da 12ª auditoria) não
-funciona: reporta "0B reclaimed" nas duas corridas até hoje, e o espaço reclamável VOLTOU A SUBIR
-(48,72→65,13 GB numa semana).** Causa raiz identificada nesta sessão: `docker_prune_weekly.sh`
-só remove imagens `dangling` (sem container a usá-las); como os containers `ib_bot-worker-1`/
-`ib_bot-beat-1`/`ib_bot-api-1` nunca são reiniciados depois de uma nova imagem ser construída
-(cada fix de código gera uma imagem nova com a mesma tag `latest`), as imagens antigas continuam
-"agarradas" aos containers em execução e nunca ficam verdadeiramente `dangling` de forma
-removível. Ver plano de fixes, passo 1, para a correção.
+funciona: reporta "0B reclaimed" nas duas corridas até hoje.** Causa raiz identificada nesta
+sessão: `docker_prune_weekly.sh` só remove imagens `dangling` (sem container a usá-las); como os
+containers `ib_bot-worker-1`/`ib_bot-beat-1`/`ib_bot-api-1` nunca são reiniciados depois de uma
+nova imagem ser construída (cada fix de código gera uma imagem nova com a mesma tag `latest`), a
+imagem antiga continua "agarrada" ao container em execução e nunca fica verdadeiramente
+`dangling` de forma removível.
+**Correção de gravidade/expectativa (esta sessão):** o `docker system df` de 65,13GB
+"reclamável" é do **HOST INTEIRO** (22 imagens, 17 de outros projetos — Jellyfin, Nextcloud,
+Immich, OnlyOffice, Mongo, etc.), não só do `ib_bot`. `docker images -f dangling=true` devolve
+**zero** imagens dangling no host hoje — não há "camadas intermédias dangling" acumuladas como
+uma versão anterior deste achado dizia. Das 5 imagens do `ib_bot`, **só 1 é realmente órfã**:
+`ib_bot-worker:latest` (0 containers a usá-la, ~8,76GB de espaço único recuperável). O bug é
+real (o script não recupera nada, "0B reclaimed" está correto como sintoma), mas o fix do Passo
+1 do plano de fixes só vai libertar, no máximo, **~8-9GB** — não vai mover de forma visível o
+número de 65GB/56GB do host. Ver plano de fixes, passo 1 (oracle de aceitação corrigido para
+medir especificamente esta diferença).
 
 **#4 — Projeto sem dono formal no Conductor há 34 dias (desde 2026-09-15).** O bug crítico
 `insufficient cash` ficou 16 dias sem correção (28-set a 14-out) sem nenhum plano a dar-lhe dono
