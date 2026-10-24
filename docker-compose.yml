@@ -79,7 +79,7 @@ services:
   # to be running as the Celery worker. This is intentionally content-addressed
   # so the timer fails before QA if the proven image is absent or replaced.
   altdata_qa:
-    image: ib_bot-worker@sha256:03210d42c4b28b93e2e12924076908edbe3d107d29286bca475b3365d7710302
+    image: ib_bot-worker@sha256:1a67ff15fbcbcadeb342ee727170712813beff61182a00de77e8580f21bf4d4d
     environment:
       DATABASE_URL: postgresql+psycopg://ibbot_app:ibbot_app@db:5432/ibbot
       REDIS_URL: redis://redis:6379/0
